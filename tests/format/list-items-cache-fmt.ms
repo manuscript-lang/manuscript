@@ -125,3 +125,4 @@ test "an out of range read or write inside a cached loop faults" {
 
 	expect_contains(write, "List.set")?
 }
+// expect-format: unchanged

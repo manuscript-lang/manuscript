@@ -40,3 +40,5 @@ test "a lambda parameter destructures" {
 	expect_equal(rows.map(([a, b]) => a - b), [-1, -1])?
 	expect_equal(rows.fold(0, (total, [a, b]) => total + a * b), 14)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

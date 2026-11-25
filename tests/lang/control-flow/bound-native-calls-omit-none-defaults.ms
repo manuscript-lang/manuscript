@@ -7,3 +7,5 @@ test "omitted none defaults" {
 	expect_equal("ab".repeat(count: 2), "abab")?
 	expect_equal("ab".pad_start(target_length: 4, padding: "-"), "--ab")?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

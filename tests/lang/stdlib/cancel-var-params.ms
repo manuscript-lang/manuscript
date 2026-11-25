@@ -60,3 +60,5 @@ test "owned values moved across parks by value and by var" {
 	merged := merge(left, right)?
 	expect_equal(merged.names.length(), 7)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

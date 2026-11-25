@@ -79,3 +79,20 @@ export fn main() Int {
 	say(f"acc14 = {acc14}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: acc1 = 60
+// expect-stdout: i2 = 195125
+// expect-stdout: l3 = [] len 0
+// expect-stdout: fact(10) = 3628800
+// expect-stdout: s4 = [  deddap  ]
+// expect-stdout: b5 = false
+// expect-stdout: s6 = [  padded  ]
+// expect-stdout: b7 = false
+// expect-stdout: l8 = [] len 0
+// expect-stdout: i9 = 0
+// expect-stdout: i10 = 26
+// expect-stdout: i11 = 0
+// expect-stdout: i12 = 195175
+// expect-stdout: deddap
+// expect-stdout: i13 = -86388573707
+// expect-stdout: acc14 = 0

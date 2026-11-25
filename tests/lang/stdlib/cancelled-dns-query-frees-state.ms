@@ -34,3 +34,5 @@ fn main() Void! {
 
 	print("done")
 }
+// expect-exit: 0
+// expect-stdout: done

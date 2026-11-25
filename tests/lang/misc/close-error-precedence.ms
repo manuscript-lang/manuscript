@@ -574,3 +574,5 @@ test "a try exit before replacement still closes the old resource" {
 	expect_equal(cause.message, "replacement")?
 	expect_equal(events(log), "close 1\n")?
 }
+// expect-exit: 0
+// expect-tests: passed=31 failed=0

@@ -37,3 +37,11 @@ export fn main() Int {
 	say(f"l6 = {l6} len {l6.length()}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: l1 = [29, -21, 22, 6, -6] len 5
+// expect-stdout: i2 = 49290
+// expect-stdout: gcd(3521, 2958) = 1
+// expect-stdout: f3 = 2596.579727323313
+// expect-stdout: l4 = [29, -21, 22, 6, -6, 29, -21, 22, 6, -6] len 10
+// expect-stdout: l5 = [32, -18, 32, -18] len 4
+// expect-stdout: l6 = [6, -6, 29, -21, 22, 6, -6] len 7

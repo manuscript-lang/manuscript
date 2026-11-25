@@ -161,3 +161,5 @@ test "duration parsing stays exact for long leading zeros and fractions" {
 	overflow Duration! := error(Error("time: value out of range", kind: "ERANGE"))
 	expect_equal(parse_duration(f"{nines}ns"), overflow)?
 }
+// expect-exit: 0
+// expect-tests: passed=7 failed=0

@@ -23,3 +23,5 @@ test "dynamic mutable data and explicit copies" {
 	expect_equal(original.get("a"), 1)?
 	expect_equal(updated.get("a"), 3)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

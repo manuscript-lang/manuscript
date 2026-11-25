@@ -39,3 +39,5 @@ fn main() Void {
 
 	void stdout().write(f"{total}\n")
 }
+// expect-exit: 0
+// expect-stdout: 8145580

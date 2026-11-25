@@ -78,3 +78,5 @@ test "primitive Map merge preserves overwrite and empty-source behavior" {
 	expect_equal(target.values(), [2, -1, 0, 1])?
 	expect_equal(source.keys(), [0, 1, 2])?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

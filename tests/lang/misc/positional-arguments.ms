@@ -202,3 +202,5 @@ test "a mutable callable value is called in place" {
 fn present[T](hold value T) &T? {
 	return value
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn f(a Int) Int {\n\tmatch a {\n\t\t1 => return 2\n\t}\n}\n"
-  }
-}

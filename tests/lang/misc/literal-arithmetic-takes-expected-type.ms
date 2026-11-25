@@ -26,3 +26,5 @@ test "literal arithmetic beside a sized operand adopts its type" {
 	y Float32 := 2.0
 	expect_equal((y + 0.5 * 3.0).to_float(), 3.5)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

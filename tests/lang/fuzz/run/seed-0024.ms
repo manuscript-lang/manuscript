@@ -35,3 +35,13 @@ export fn main() Int {
 	say(f"{((i2 + i4) * (i2 - (-918594))) % big6}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: i1 = 0
+// expect-stdout: 0 57 true sum 57
+// expect-stdout: i2 = 46
+// expect-stdout: s3 = [alpha]
+// expect-stdout: i4 = 92
+// expect-stdout: 0 5 true sum 5
+// expect-stdout: f5 = 288.561
+// expect-stderr: remainder by zero; right must be nonzero, found 0
+// expect-stderr:   at seed-0024.ms:35 in main

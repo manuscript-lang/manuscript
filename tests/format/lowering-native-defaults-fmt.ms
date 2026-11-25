@@ -53,3 +53,4 @@ fn filesystem_omitted(data Bytes) Void! {
 fn filesystem_bind() fn(String, Bytes, Bool) Void! {
 	return fs.write_file
 }
+// expect-format: unchanged

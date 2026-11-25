@@ -66,3 +66,19 @@ export fn main() Int {
 	say(f"{big13 + 3}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: i1 = -213694209677550
+// expect-stdout: b2 = false
+// expect-stdout: f3 = 587593.9920979999
+// expect-stdout: s4 = [ms]
+// expect-stdout: -10471016274198137 -427388419127513 true sum -10898404693325650
+// expect-stdout: i6 = -17
+// expect-stdout: l7 = [-14, -13] len 2
+// expect-stdout: l8 = [-12] len 1
+// expect-stdout: fib(48) = 4807526976
+// expect-stdout: i9 = 2564330516130559
+// expect-stdout: s10 = [brace{s}ms]
+// expect-stdout: i11 = 2
+// expect-stdout: s12 = [alpha]
+// expect-stderr: Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt
+// expect-stderr:   at seed-0025.ms:66 in main

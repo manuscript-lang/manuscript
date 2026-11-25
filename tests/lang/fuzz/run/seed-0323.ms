@@ -52,3 +52,16 @@ export fn main() Int {
 	say(f"i13 = {i13}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: f3 = NaN
+// expect-stdout: s4 = [ammag42héllo]
+// expect-stdout: b5 = false
+// expect-stdout: b6 = false
+// expect-stdout: b7 = true
+// expect-stdout: i8 = 802116697613
+// expect-stdout: l9 = [18] len 1
+// expect-stdout: fact(16) = 20922789888000
+// expect-stdout: b10 = true
+// expect-stdout: b11 = false
+// expect-stdout: l12 = [18] len 1
+// expect-stdout: i13 = -296604

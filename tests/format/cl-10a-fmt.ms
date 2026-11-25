@@ -37,3 +37,4 @@ test "generic implementations" {
 	expect_false(not (compare(number, 7)))?
 	expect_false(not (not compare(number, 8)))?
 }
+// expect-format: unchanged

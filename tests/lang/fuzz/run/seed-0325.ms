@@ -67,3 +67,16 @@ export fn main() Int {
 	say(f"l10 = {l10} len {l10.length()}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: b1 = false
+// expect-stdout: collatz(1706) = 16
+// expect-stdout: f2 = 5902.655
+// expect-stdout: fact(0) = 1
+// expect-stdout: l3 = [-22, 22, 19, -28, 4] len 5
+// expect-stdout: s4 = [delta]
+// expect-stdout: s5 = [  deddap  ]
+// expect-stdout: i6 = -640393364026
+// expect-stdout: i7 = -5824
+// expect-stdout: f8 = 5902.655
+// expect-stdout: s9 = [  deddap  ]
+// expect-stdout: l10 = [-26, -1, 9, 26] len 4

@@ -9,3 +9,4 @@ export fn main() Int {
 	x := double(4)
 	return x - 8
 }
+// expect-exit: 0

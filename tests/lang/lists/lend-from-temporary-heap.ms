@@ -34,3 +34,6 @@ fn main() Void {
 	also := deep(make_team(long + "?"))
 	print(f"{also}")
 }
+// expect-exit: 0
+// expect-stdout: a-string-long-enough-to-live-on-the-heap-aaaaaaaaaaaaaaaaaaaaaaaaaaaa!
+// expect-stdout: a-string-long-enough-to-live-on-the-heap-aaaaaaaaaaaaaaaaaaaaaaaaaaaa?

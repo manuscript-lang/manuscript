@@ -66,3 +66,5 @@ test "a payload identifier binds every alternative without changing semantics" {
 	)?
 	expect_equal(deliberate(denied), "permission denied")?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

@@ -6,3 +6,4 @@ import panic from "@std/core.ms"
 fn wrong(value Int??) Int {
 	return value or panic("called Optional.get() on null")
 }
+// expect-format: unchanged

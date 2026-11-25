@@ -23,3 +23,4 @@ export fn main() Int {
 	say(f"l1 = {l1} len {l1.length()}")
 	return 0
 }
+// expect-format: unchanged

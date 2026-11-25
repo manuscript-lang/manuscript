@@ -39,3 +39,5 @@ test "source call dispatch contracts" {
 	expect_equal(callback(3, 4), 34)?
 	expect_equal(identity(6), 6)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

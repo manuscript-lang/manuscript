@@ -4,3 +4,4 @@
 fn main() Void {
 	return
 }
+// expect-exit: 0

@@ -9,3 +9,5 @@ test "grouped imports" {
 	entries.add("count", values.length())
 	expect_equal(entries.length(), 1)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

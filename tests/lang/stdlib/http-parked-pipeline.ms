@@ -82,3 +82,7 @@ export fn main() Int {
 
 	return 1
 }
+// expect-exit: 0
+// expect-stdout: responses: 2
+// expect-stdout: slow first: true
+// expect-stdout: prompt: true

@@ -18,3 +18,5 @@ fn main() Void! {
 	bump()
 	stdout().write(f"{before} {size2()} {n}\n")?
 }
+// expect-exit: 0
+// expect-stdout: 3 4 3

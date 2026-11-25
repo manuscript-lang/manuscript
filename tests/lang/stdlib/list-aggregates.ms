@@ -118,3 +118,5 @@ test "Float compare orders NaN above every value and equal to itself" {
 	expect_equal((-0.0).compare(0.0), 0)?
 	expect_equal((2.0).compare(1.0), 1)?
 }
+// expect-exit: 0
+// expect-tests: passed=11 failed=0

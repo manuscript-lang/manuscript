@@ -17,3 +17,5 @@ fn Counter.read() Int => return self.value
 test "a forward generic interface bound dispatches with its argument" {
 	expect_equal(read(Counter(7)), 7)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

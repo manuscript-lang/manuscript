@@ -19,3 +19,5 @@ test "print takes an end string" {
 	print("a", end: "")
 	print("b")
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

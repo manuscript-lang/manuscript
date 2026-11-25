@@ -29,3 +29,10 @@ export fn main() Int {
 	say(f"i6 = {i6}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: b1 = false
+// expect-stdout: b2 = false
+// expect-stdout: s3 = [HELLO WORLDQUOTE"D  PADDED  ]
+// expect-stdout: i4 = 28
+// expect-stdout: i5 = 27
+// expect-stdout: i6 = 37861157017

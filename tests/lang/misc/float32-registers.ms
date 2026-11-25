@@ -55,3 +55,5 @@ test "Float32 compares and formats" {
 	widened := a.to_float()
 	expect_equal(widened > 0.1, true)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

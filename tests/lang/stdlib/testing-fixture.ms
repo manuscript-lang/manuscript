@@ -26,3 +26,5 @@ test "first fixture use" {
 test "second fixture use starts from clean state" {
 	expect_equal(fixture.value, 1)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

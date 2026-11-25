@@ -77,3 +77,5 @@ fn main_run() Int {
 fn main() Void {
 	_w := stdout().write(f"{main_run()}\n")
 }
+// expect-exit: 0
+// expect-stdout: 383556634

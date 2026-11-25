@@ -63,3 +63,5 @@ test "interface views and method values retain exact callback identity" {
 	expect_equal(read_plain(), 1)?
 	expect_equal(read_changing(), 2)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

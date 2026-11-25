@@ -13,3 +13,7 @@ fn main() Void {
 	print(base)
 	print(inner)
 }
+// expect-exit: 0
+// expect-stdout: inner
+// expect-stdout: base
+// expect-stdout: inner

@@ -38,3 +38,13 @@ export fn main() Int {
 	say(f"i9 = {i9}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = 37
+// expect-stdout: b2 = false
+// expect-stdout: s3 = [brace{s}]
+// expect-stdout: b4 = true
+// expect-stdout: b5 = true
+// expect-stdout: s6 = [NAÏVE]
+// expect-stdout: b7 = true
+// expect-stdout: i8 = 50653
+// expect-stdout: i9 = 1447

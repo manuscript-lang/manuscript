@@ -48,3 +48,17 @@ export fn main() Int {
 
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: f1 = 1499481.9030010002
+// expect-stdout: i2 = -498455
+// expect-stdout: i3 = -498486
+// expect-stdout: l4 = [-15, -20, -14, 17, -3] len 5
+// expect-stdout: -19439160 -17 true sum -19439177
+// expect-stdout: i5 = 459808
+// expect-stdout: i6 = 459808
+// expect-stdout: i7 = 5
+// expect-stdout: s8 = [928893:line
+// expect-stdout: break]
+// expect-stdout: s9 = [928893:line
+// expect-stdout: break]
+// expect-stdout: hello world

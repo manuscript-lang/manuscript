@@ -5,3 +5,4 @@ fn port_number(text String) Result[Int, Error] {
 	port := text.parse_int().ok_or()?
 	return ok(port)
 }
+// expect-format: unchanged

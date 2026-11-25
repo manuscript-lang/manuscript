@@ -25,3 +25,5 @@ fn main() Void {
 	void pending
 	print(f"{timed_out.is_error()} {first.get_or(0)}")
 }
+// expect-exit: 0
+// expect-stdout: true 4

@@ -32,3 +32,13 @@ export fn main() Int {
 	print("end")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: 1
+// expect-stdout: 2
+// expect-stdout: 1
+// expect-stdout: 70
+// expect-stdout: 70
+// expect-stdout: end
+// expect-stdout: close 70
+// expect-stdout: close 2
+// expect-stdout: close 1

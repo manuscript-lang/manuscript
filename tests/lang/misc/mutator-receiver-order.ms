@@ -39,3 +39,5 @@ test "an argument that leaves through try follows the receiver and releases it" 
 	expect_equal(set_with_try(failed, true).is_error(), true)?
 	expect_equal(failed, [1, 2])?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

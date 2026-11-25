@@ -48,3 +48,15 @@ export fn main() Int {
 	say(f"s10 = [{s10}]")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: l1 = [-1, -28, -24, -17, -13] len 5
+// expect-stdout: i2 = 0
+// expect-stdout: f3 = 488.25
+// expect-stdout: Tab\there
+// expect-stdout: l4 = [-1, -28, -24, -17, -13, 50] len 6
+// expect-stdout: i5 = -9223372036854775808
+// expect-stdout: i6 = 5
+// expect-stdout: s7 = [gamma]
+// expect-stdout: l8 = [-1, -28] len 2
+// expect-stdout: l9 = [-1, -28, -24, -17, -13, 50, -1, -28, -24, -17, -13, 50] len 12
+// expect-stdout: s10 = [MiXeD CaSe]

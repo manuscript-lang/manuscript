@@ -48,3 +48,5 @@ test "an interface that outlives the call keeps its own copy" {
 	items List[Named] := [tag, Tag("b", 2)]
 	expect_equal(items.map(n => n.label()), ["short-1", "b-2"])?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

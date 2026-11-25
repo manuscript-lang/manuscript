@@ -34,3 +34,5 @@ test "text of exactly 31 and 32 bytes" {
 	expect_equal(t31.contains("y"), false)?
 	expect_equal(t32.contains("y"), false)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

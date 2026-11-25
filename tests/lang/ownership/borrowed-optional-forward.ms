@@ -33,3 +33,5 @@ fn main() Void {
 		print(item.name)
 	}
 }
+// expect-exit: 0
+// expect-stdout: a

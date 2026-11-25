@@ -82,3 +82,5 @@ test "CRC64 table paths equal the bitwise path" {
 		}
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

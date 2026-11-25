@@ -29,3 +29,10 @@ export fn main() Int {
 	print("after b")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: a
+// expect-stdout: after a
+// expect-stdout: b
+// expect-stdout: after b
+// expect-stdout: close b
+// expect-stdout: close a

@@ -63,3 +63,5 @@ test "a generic adapter forwards a resource through Result.get once" {
 	first_body(log.clone())?
 	expect_equal(events(log), "body 1\nclose 1\n")?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

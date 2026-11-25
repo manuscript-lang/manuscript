@@ -276,3 +276,5 @@ test "cancelling a later field closes acquired fields once" {
 		expect_equal(events(log), "acquire 1\nacquire 2\ncheck\nclose 2\nclose 1\n")?
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=13 failed=0

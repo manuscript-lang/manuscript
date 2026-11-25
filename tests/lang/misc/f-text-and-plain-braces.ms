@@ -27,3 +27,5 @@ test "multi-line text interpolates only as f text" {
 	  """
 	expect_equal(literal, "hi {name}")?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

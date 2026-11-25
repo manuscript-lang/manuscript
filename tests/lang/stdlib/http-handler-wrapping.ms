@@ -43,3 +43,5 @@ test "a handler can wrap a buffered handler it captured" {
 	if own != "ok" { return error(Error(f"own route: {own}")) }
 	if get(f"{base}/x/y")? != "/x/y" { return error(Error("delegated route")) }
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

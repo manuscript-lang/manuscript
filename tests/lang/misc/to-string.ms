@@ -156,3 +156,5 @@ test "interpolation and bound conversion evaluate each receiver once" {
 	(check(value: convert(), expected: "Person(age: 3, name: Ada)")?)
 	(check(value: state.value.to_string(), expected: "4")?)
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

@@ -65,3 +65,20 @@ export fn main() Int {
 	say(f"{-big13}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: gcd(300, 2662) = 2
+// expect-stdout: f1 = 280.25
+// expect-stdout: b2 = false
+// expect-stdout: l3 = [-15, 24] len 2
+// expect-stdout: s4 = [olléh]
+// expect-stdout: b5 = false
+// expect-stdout: f6 = 6.5
+// expect-stdout: i7 = 2
+// expect-stdout: i8 = 2
+// expect-stdout: l9 = [5, -15] len 2
+// expect-stdout: olléh
+// expect-stdout: i10 = -43
+// expect-stdout: l11 = [6, -14] len 2
+// expect-stdout: i12 = 8
+// expect-stderr: Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt
+// expect-stderr:   at seed-0370.ms:65 in main

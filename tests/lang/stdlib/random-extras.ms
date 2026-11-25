@@ -109,3 +109,5 @@ test "seeded int names a range wider than the largest Int" {
 	widest := rng.int(-1, 9223372036854775806)
 	expect_true(widest >= -1 and widest < 9223372036854775806)?
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

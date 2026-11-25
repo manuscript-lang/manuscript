@@ -53,3 +53,17 @@ export fn main() Int {
 	say(f"i13 = {i13}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: s1 = [DLROW OLLEH]
+// expect-stdout: l2 = [16, -10, 16, 7, -17] len 5
+// expect-stdout: l3 = [-17, 7, 16, -10, 16] len 5
+// expect-stdout: l4 = [-17, -10, 7, 16, 16] len 5
+// expect-stdout: i5 = -12920
+// expect-stdout: i6 = 16
+// expect-stdout: i7 = -17
+// expect-stdout: i8 = 4
+// expect-stdout: f9 = 630382954.8731403
+// expect-stdout: acc10 = 18
+// expect-stdout: i11 = -17
+// expect-stdout: i12 = 163549
+// expect-stdout: i13 = 10825745520

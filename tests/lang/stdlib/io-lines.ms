@@ -100,3 +100,5 @@ test "an iterator behind the Iterator interface works" {
 	}
 	expect_equal(seen, [2, 1])?
 }
+// expect-exit: 0
+// expect-tests: passed=8 failed=0

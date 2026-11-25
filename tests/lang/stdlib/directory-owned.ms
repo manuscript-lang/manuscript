@@ -43,3 +43,5 @@ test "a directory cursor reads its children and closes at scope end" {
 		| expect_equal(2)?
 	)
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

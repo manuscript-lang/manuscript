@@ -42,3 +42,4 @@ export fn main() Int {
 	say(f"collatz(2445) = {collatz(2445)}")
 	return 0
 }
+// expect-format: unchanged

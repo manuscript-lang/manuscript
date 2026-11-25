@@ -114,3 +114,4 @@ test "URL format and resolve reject invalid schemes and hostless relative paths"
 	expect_equal((uppercase | format? | parse?).scheme, "http")?
 	expect_equal((resolve(uppercase, "/next")?).scheme, "http")?
 }
+// expect-format: unchanged

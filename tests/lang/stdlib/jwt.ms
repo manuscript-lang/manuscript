@@ -758,3 +758,5 @@ test "numeric date validation still follows signature verification" {
 		| expect_equal(Error("jwt: bad signature", kind: "EBADMSG"))?
 	)
 }
+// expect-exit: 0
+// expect-tests: passed=26 failed=0

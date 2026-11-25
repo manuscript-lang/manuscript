@@ -35,3 +35,12 @@ export fn main() Int {
 	print("end")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: bound
+// expect-stdout: made
+// expect-stdout: 2
+// expect-stdout: end
+// expect-stdout: closed l2
+// expect-stdout: closed l1
+// expect-stdout: closed made
+// expect-stdout: closed bound

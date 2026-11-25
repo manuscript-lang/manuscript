@@ -44,3 +44,5 @@ test "closures borrow variables and returned closures copy" {
 	offset = 100
 	expect_equal(nested(1), 11)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

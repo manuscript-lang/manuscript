@@ -14,3 +14,5 @@ test "grouping and short circuit" {
 	expect_false(not (true or invalid_division(0)))?
 	expect_false(not (not (false and invalid_division(0))))?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

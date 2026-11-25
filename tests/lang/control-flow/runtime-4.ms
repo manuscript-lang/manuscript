@@ -30,3 +30,5 @@ test "contract-valued cleanup" {
 	expect_false(read.is_ok())?
 	expect_equal(read.err(), Error("I/O: resource is closed", kind: "EBADF"))?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

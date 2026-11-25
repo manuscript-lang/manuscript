@@ -16,3 +16,5 @@ fn outer() Int! {
 fn main() Void! {
 	print(f"{outer()?}")
 }
+// expect-exit: 0
+// expect-stdout: 7

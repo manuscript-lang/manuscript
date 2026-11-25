@@ -15,3 +15,5 @@ test "negative reserve preallocates nothing" {
 	xs.append(7)
 	expect_equal(xs[0], 7)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

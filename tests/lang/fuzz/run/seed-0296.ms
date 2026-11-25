@@ -66,3 +66,15 @@ export fn main() Int {
 	say(f"f9 = {f9}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: emoji 😀
+// expect-stdout: b1 = false
+// expect-stdout: s2 = [-865459:gamma]
+// expect-stdout: f3 = 553065.0943583993
+// expect-stdout: fib(39) = 63245986
+// expect-stdout: b4 = false
+// expect-stdout: acc5 = 6
+// expect-stdout: f6 = Infinity
+// expect-stdout: b7 = true
+// expect-stdout: l8 = [] len 0
+// expect-stdout: f9 = 226.76

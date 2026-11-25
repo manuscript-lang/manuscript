@@ -241,3 +241,5 @@ test "CSV stringify retains invalid option and negative budget errors" {
 	no_rows List[List[String]] := []
 	expect_equal((stringify(no_rows, max_bytes: 0)?), "")?
 }
+// expect-exit: 0
+// expect-tests: passed=10 failed=0

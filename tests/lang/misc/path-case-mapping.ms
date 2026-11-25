@@ -30,3 +30,5 @@ test "POSIX path comparison remains case sensitive" {
 	expect_equal(posix().relative("/ΟΣ", "/οσ")?, "../οσ")?
 	expect_equal(posix().relative("/ΟΣ", "/ος")?, "../ος")?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

@@ -83,3 +83,19 @@ export fn main() Int {
 	say(f"f7 = {f7}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = 241521
+// expect-stdout: 482992 0 false sum 482992
+// expect-stdout: l2 = [30, 28, 15] len 3
+// expect-stdout: i3 = 29
+// expect-stdout: collatz(1871) = 130
+// expect-stdout: naïve
+// expect-stdout: f4 = 79049.33382438179
+// expect-stdout:   padded  x
+// expect-stdout: 0 241521 true sum 241521
+// expect-stdout: s5 = [241521:x]
+// expect-stdout: f6 = 216.875
+// expect-stdout: back\\slash
+// expect-stdout: -24 30 true sum 6
+// expect-stdout: 241521:x
+// expect-stdout: f7 = -100556.2994637579

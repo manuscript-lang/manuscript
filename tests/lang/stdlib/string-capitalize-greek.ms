@@ -25,3 +25,5 @@ test "capitalize gives the Greek titlecase forms" {
 	void expect_equal("ß".capitalize(), "Ss")?
 	return ok()
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

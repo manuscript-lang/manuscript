@@ -103,3 +103,24 @@ export fn main() Int {
 	say(f"{l14[3]}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: fib(52) = 32951280099
+// expect-stdout: s1 = [naïveBETA]
+// expect-stdout:
+// expect-stdout: l2 = [19, 7, 29, 26, -5] len 5
+// expect-stdout: s3 = [ESAC DEXIM]
+// expect-stdout: i4 = 10
+// expect-stdout: i5 = 513
+// expect-stdout: i6 = -263596
+// expect-stdout: i7 = -263596
+// expect-stdout: acc8 = 5
+// expect-stdout: s9 = [naïveBETA]
+// expect-stdout: b10 = false
+// expect-stdout: acc11 = 228
+// expect-stdout: acc12 = 14
+// expect-stdout: acc13 = 9
+// expect-stdout: l14 = [-19] len 1
+// expect-stdout: f15 = 219.25
+// expect-stdout: s16 = [-263596:語本日-36:  padded  ]
+// expect-stderr: index 3 out of range for length 1; use get_or(index, default) to avoid the fault
+// expect-stderr:   at seed-0143.ms:103 in main

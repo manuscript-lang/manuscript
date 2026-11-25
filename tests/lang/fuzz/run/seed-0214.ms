@@ -86,3 +86,23 @@ export fn main() Int {
 	say(f"l16 = {l16} len {l16.length()}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = -1107914
+// expect-stdout: l2 = [] len 0
+// expect-stdout: s3 = [Tab\there]
+// expect-stdout: i4 = 0
+// expect-stdout: 0:日本語
+// expect-stdout: s5 = [tab\there-1288576:tab\there]
+// expect-stdout: l6 = [-4, 19, 11, -6, -15] len 5
+// expect-stdout: l7 = [16, -14, -3] len 3
+// expect-stdout: f8 = 0
+// expect-stdout: i9 = 1227434654406
+// expect-stdout: 803091 15 false sum 803106
+// expect-stdout: f10 = 0.10045098979369779
+// expect-stdout: i11 = 0
+// expect-stdout: s12 = [GAMMA]
+// expect-stdout: i13 = 0
+// expect-stdout: l14 = [16] len 1
+// expect-stdout: f15 = NaN
+// expect-stdout: collatz(679) = 64
+// expect-stdout: l16 = [-3, -14, 16] len 3

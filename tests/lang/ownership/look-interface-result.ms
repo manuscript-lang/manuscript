@@ -21,3 +21,5 @@ fn main() Void {
 	s := first(b)
 	print(s)
 }
+// expect-exit: 0
+// expect-stdout: a

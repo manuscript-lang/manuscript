@@ -72,3 +72,19 @@ export fn main() Int {
 	say(f"f12 = {f12}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: l1 = [-14, -9, 1, -13] len 4
+// expect-stdout: f2 = 0.933962375184193
+// expect-stdout: Tab\there
+// expect-stdout: i3 = 40
+// expect-stdout: a
+// expect-stdout: f4 = -0
+// expect-stdout: delta
+// expect-stdout: s5 = [a]
+// expect-stdout: acc6 = 95
+// expect-stdout: b7 = true
+// expect-stdout: i8 = 40
+// expect-stdout: i9 = 4
+// expect-stdout: s10 = [日本語Tab\there]
+// expect-stdout: i11 = -357958
+// expect-stdout: f12 = 0.933962375184193

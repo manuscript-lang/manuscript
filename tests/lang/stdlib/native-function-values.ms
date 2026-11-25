@@ -54,3 +54,5 @@ test "handle natives bound to a name are usable" {
 	second := mono()
 	expect_true(second.difference(first).to_nanoseconds() >= 0)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

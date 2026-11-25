@@ -120,3 +120,23 @@ export fn main() Int {
 	say(f"f15 = {f15}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: b1 = true
+// expect-stdout: l2 = [-7, -18, -7, 7] len 4
+// expect-stdout: fib(55) = 139583862445
+// expect-stdout: -549348:hello world
+// expect-stdout: f3 = 0
+// expect-stdout: i4 = 879408
+// expect-stdout: acc5 = 0
+// expect-stdout: acc6 = 22
+// expect-stdout: b7 = false
+// expect-stdout: l8 = [-28, -72, -28, 28] len 4
+// expect-stdout: collatz(1533) = 47
+// expect-stdout: i9 = 47
+// expect-stdout: s10 = [ahpladelta]
+// expect-stdout: 47 879408 true sum 879455
+// expect-stdout: i11 = 47
+// expect-stdout: acc12 = 252
+// expect-stdout: l13 = [-7, -18, -7, 7, -28, -72, -28, 28] len 8
+// expect-stdout: i14 = 0
+// expect-stdout: f15 = 500000000

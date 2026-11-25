@@ -558,3 +558,5 @@ test "preferred List mutators and explicit reversed copy iterate snapshots" {
 		) | expect_true?
 	)
 }
+// expect-exit: 0
+// expect-tests: passed=10 failed=0

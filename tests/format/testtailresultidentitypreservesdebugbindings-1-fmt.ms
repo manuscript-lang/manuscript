@@ -6,3 +6,9 @@ fn tail(value Int!Error) Int!Error {
 	output := value.clone()?
 	return ok(output)
 }
+// expect-format: rewritten
+// expect-formatted:
+// expect-formatted: fn tail(value Int!) Int! {
+// expect-formatted: \toutput := value.clone()?
+// expect-formatted: \treturn ok(output)
+// expect-formatted: }

@@ -90,3 +90,5 @@ test "a var record parameter can be replaced whole" {
 	expect_equal(c.peek(), 98)?
 	expect_equal(c.seen.length(), 0)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

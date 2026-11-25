@@ -174,3 +174,5 @@ test "bound Error causes are supplied at each call" {
 	expect_equal(bound_missing(Error("unused"), text).get(), "present")?
 	expect_equal(nested_bound_missing(Error("unused"), text).get(), "present")?
 }
+// expect-exit: 0
+// expect-tests: passed=10 failed=0

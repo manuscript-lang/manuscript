@@ -37,3 +37,4 @@ export fn main() Int {
 		}
 	}
 }
+// expect-format: unchanged

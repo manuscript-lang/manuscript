@@ -22,3 +22,5 @@ test "a narrowed name bound from a temporary chain outlives its statement" {
 	expect_equal(read_text(path), "kept after the statement")?
 	expect_equal(read_text(f"{dir.path()}/missing.txt"), "")?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

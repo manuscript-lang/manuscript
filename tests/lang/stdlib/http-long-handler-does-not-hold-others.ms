@@ -127,3 +127,5 @@ export fn main() Int {
 
 	return 1
 }
+// expect-exit: 0
+// expect-stdout: others served during a long handler: true

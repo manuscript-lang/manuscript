@@ -79,3 +79,23 @@ export fn main() Int {
 	say(f"fact(0) = {fact(0)}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = -19
+// expect-stdout: acc2 = 3
+// expect-stdout: s3 = [ALPHAA]
+// expect-stdout: l5 = [0, -26, -19, -1, -24] len 5
+// expect-stdout: ALPHAA
+// expect-stdout: b6 = false
+// expect-stdout: s7 = [line
+// expect-stdout: break]
+// expect-stdout: b8 = false
+// expect-stdout: i9 = 0
+// expect-stdout: i10 = 14084111
+// expect-stdout: i11 = 33
+// expect-stdout: i12 = 23
+// expect-stdout: f13 = 0.0000015511799999999972
+// expect-stdout: l14 = [12, -15, 15] len 3
+// expect-stdout: i15 = 23
+// expect-stdout: ALPHAATab\there
+// expect-stdout: i16 = -28
+// expect-stdout: fact(0) = 1

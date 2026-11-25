@@ -40,3 +40,5 @@ test "malformed armor is an error" {
 	expect_true(parse("-----BEGIN A-----\nAAAA\n-----END B-----\n").is_error())?
 	expect_true(parse("-----BEGIN A-----\n!!!!\n-----END A-----\n").is_error())?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

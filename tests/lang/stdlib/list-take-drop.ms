@@ -85,3 +85,5 @@ test "List take and drop bound methods read the retained receiver" {
 	first.set(0, 8)
 	expect_false(take(2) != [1, 2] or first != [8, 2])?
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

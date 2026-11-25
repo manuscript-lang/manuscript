@@ -56,3 +56,15 @@ export fn main() Int {
 	say(f"{((i2 - i4) / (i4 * i4)) % big9}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: s1 = [20:padded]
+// expect-stdout: i2 = 45
+// expect-stdout: b3 = true
+// expect-stdout: collatz(1092) = 31
+// expect-stdout: i4 = 45
+// expect-stdout: l5 = [-13, 7, 22] len 3
+// expect-stdout: f6 = 220.55190077716807
+// expect-stdout: f7 = 0
+// expect-stdout: i8 = -566148
+// expect-stderr: remainder by zero; right must be nonzero, found 0
+// expect-stderr:   at seed-0210.ms:56 in main

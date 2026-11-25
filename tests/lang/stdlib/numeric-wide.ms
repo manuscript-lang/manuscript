@@ -264,3 +264,5 @@ test "modular inverse scales to 4096 bits and retains canonical residues" {
 		)
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=9 failed=0

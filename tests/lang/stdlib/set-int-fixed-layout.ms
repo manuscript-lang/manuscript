@@ -26,3 +26,5 @@ test "Set[Int] contains agrees after growth, removal and reinsertion" {
 	expect_equal(s.length(), 5000)?
 	expect_false(Set[Int]([]).contains(1))?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

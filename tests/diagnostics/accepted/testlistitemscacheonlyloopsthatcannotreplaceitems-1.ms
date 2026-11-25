@@ -9,3 +9,4 @@ fn work(other List[Int]) Int {
 	var values = [1, 2, 3, 4]
 	var total = 0
 }
+// expect-error: MS3000 8:1 reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)

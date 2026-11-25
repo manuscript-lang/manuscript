@@ -131,3 +131,5 @@ test "repeated nested lists remain independent copies" {
 	expect_equal(values, [[1, 2]])?
 	expect_equal(repeated, [[1, 2, 3], [1, 2]])?
 }
+// expect-exit: 0
+// expect-tests: passed=11 failed=0

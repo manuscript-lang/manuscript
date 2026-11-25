@@ -46,3 +46,5 @@ test "compact formatting preserves behavior" {
 	choose(Choice.Zero) | expect_equal(expected: "zero # unchanged")?
 	choose(Choice.Other(3)) | expect_equal(expected: "value 3")?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

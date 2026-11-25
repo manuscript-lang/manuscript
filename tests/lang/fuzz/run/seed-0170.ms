@@ -54,3 +54,16 @@ export fn main() Int {
 
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: s1 = [hélloa]
+// expect-stdout: f2 = 64669272.96643831
+// expect-stdout: f3 = -64669272.48348524
+// expect-stdout: b4 = true
+// expect-stdout: i5 = 45
+// expect-stdout: s7 = [hélloa]
+// expect-stdout: i8 = 790626811094
+// expect-stdout: hélloa
+// expect-stdout: f9 = 190.642
+// expect-stdout: i10 = 18
+// expect-stdout: i11 = 45
+// expect-stdout: 42:back\\slash

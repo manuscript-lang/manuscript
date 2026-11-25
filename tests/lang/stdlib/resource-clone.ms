@@ -19,3 +19,5 @@ test "a cloned file handle writes through its own descriptor after the original 
 	copy.close()?
 	expect_equal(read_file(path).wait()?, "one two".to_bytes())?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

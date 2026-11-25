@@ -25,3 +25,5 @@ fn main() Void {
 	deep.cancel()
 	print(f"{deep.wait().is_error()}")
 }
+// expect-exit: 0
+// expect-stdout: true

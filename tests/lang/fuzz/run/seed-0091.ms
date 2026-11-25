@@ -54,3 +54,17 @@ export fn main() Int {
 	say(f"i9 = {i9}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: 42brace{s}
+// expect-stdout: l1 = [] len 0
+// expect-stdout: i2 = -632383322554
+// expect-stdout: -632383322554 -632383322554 false sum -1264766645108
+// expect-stdout: f3 = 539.333
+// expect-stdout: -632383322554 -632383322554 false sum -1264766645108
+// expect-stdout: l4 = [] len 0
+// expect-stdout: i5 = -41
+// expect-stdout: gcd(1352, 4833) = 1
+// expect-stdout: f6 = 20.534
+// expect-stdout: l7 = [] len 0
+// expect-stdout: i8 = -632383322554
+// expect-stdout: i9 = 632383322554

@@ -53,3 +53,5 @@ test "consecutive promise faults in an interface read free each scope-closed wra
 
 	expect_equal(failed, 3)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

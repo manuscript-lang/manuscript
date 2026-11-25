@@ -148,3 +148,10 @@ fn main() Void {
 		.get()
 	)
 }
+// expect-exit: 0
+// expect-stdout: closed listener rebound: 1
+// expect-stdout: cancelled accept rebound: 1
+// expect-stdout: cancelled reads rebound: 1
+// expect-stdout: closed datagram socket rebound: 1
+// expect-stdout: cancelled receive rebound: 1
+// expect-stdout: rebinds lost to a cancel during the bind: 0

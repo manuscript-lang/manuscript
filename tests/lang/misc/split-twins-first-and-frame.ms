@@ -63,3 +63,5 @@ test "a piece longer than a short string is read in the loop that made it" {
 
 	expect_equal(seen, 25 + 3 + 5 + 2)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

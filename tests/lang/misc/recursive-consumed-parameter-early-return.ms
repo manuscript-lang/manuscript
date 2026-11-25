@@ -36,3 +36,5 @@ test "second operand fails after the first succeeded" {
 test "both operands succeed" {
 	expect_equal(eval(Expr.Add(Expr.Num(1), Expr.Keep("k"))).get_or(0), 2)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

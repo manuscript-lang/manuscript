@@ -11,3 +11,5 @@ export fn main() Int {
 	_written := stdout().write("TARGET_RAN\n")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: TARGET_RAN

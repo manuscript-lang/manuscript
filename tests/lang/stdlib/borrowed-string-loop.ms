@@ -138,3 +138,5 @@ test "borrowed string scans support break continue return and try" {
 	expect_equal(failed_scan(words).is_error(), true)?
 	expect_equal(words[0], "aé😀b")?
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

@@ -29,3 +29,9 @@ fn main() Void {
 	print(show(Whole(ok("whole"))).is_error().to_string())
 	print(show(Whole(error(Error("bad")))).is_error().to_string())
 }
+// expect-exit: 0
+// expect-stdout: box
+// expect-stdout: false
+// expect-stdout: whole
+// expect-stdout: false
+// expect-stdout: true

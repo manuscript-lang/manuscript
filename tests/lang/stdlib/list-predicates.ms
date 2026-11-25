@@ -92,3 +92,5 @@ test "max_by and min_by with extreme Int and Float keys" {
 	expect_equal(ties.max_by(fn(w String) Int => 0), "b")?
 	expect_equal(ties.min_by(fn(w String) Int => 0), "b")?
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

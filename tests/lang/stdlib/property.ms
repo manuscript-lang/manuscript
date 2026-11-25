@@ -181,3 +181,5 @@ fn faults_at(n Int, limit Int) Void! {
 		panic("too big")
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=13 failed=0

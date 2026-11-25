@@ -83,3 +83,23 @@ export fn main() Int {
 	say(f"{l8[5]}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: 27 35107927985628 true sum 35107927985655
+// expect-stdout: -1 -995502207565 false sum -995502207566
+// expect-stdout: l1 = [-25, 22, 28, -9] len 4
+// expect-stdout: i2 = 7839542
+// expect-stdout: b3 = true
+// expect-stdout: i4 = 7839542
+// expect-stdout: delta
+// expect-stdout: s5 = [héllo]
+// expect-stdout: fib(33) = 3524578
+// expect-stdout: b6 = true
+// expect-stdout: i7 = 49
+// expect-stdout: l8 = [-9, 28, 22, -25] len 4
+// expect-stdout: i9 = -7839650
+// expect-stdout: s10 = [héllohéllo]
+// expect-stdout: l11 = [-6, -22] len 2
+// expect-stdout: i12 = -2
+// expect-stdout: acc13 = 0
+// expect-stderr: index 5 out of range for length 4; use get_or(index, default) to avoid the fault
+// expect-stderr:   at seed-0339.ms:83 in main

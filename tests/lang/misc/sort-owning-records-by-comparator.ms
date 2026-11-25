@@ -92,3 +92,5 @@ test "sorting strings longer than the inline size by compare leaves the original
 	expect_equal(words[1], "a string longer than the inline size 856")?
 	expect_equal(sorted.length(), 300)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

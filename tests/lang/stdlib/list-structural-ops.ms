@@ -41,3 +41,5 @@ test "flat_map infers its element type from list literals returned by a callback
 	expect_equal(["a"].flat_map(s => [s + "!"]), ["a!"])?
 	expect_equal([1, 2].flat_map(x => (if x > 1 { [x] } else { [] })), [2])?
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

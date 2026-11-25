@@ -46,3 +46,11 @@ export fn main() Int {
 
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: b1 = false
+// expect-stdout: fact(19) = 121645100408832000
+// expect-stdout: s2 = [ALPHA]
+// expect-stdout: i3 = -241601
+// expect-stdout: alpha
+// expect-stdout: line
+// expect-stdout: break

@@ -26,3 +26,5 @@ test "a lone dash or question mark can be a mapping key" {
 	void expect_equal(number_at(block, "?"), "2")?
 	return expect_equal(number_at(flow, "-"), "4")
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

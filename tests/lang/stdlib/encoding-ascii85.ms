@@ -90,3 +90,5 @@ test "ASCII85 round trips byte views across every block boundary" {
 	middle := bytes.slice(17, 219)?
 	expect_equal(ascii85_decode(ascii85_encode(middle))?, middle)?
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

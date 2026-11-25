@@ -38,3 +38,12 @@ export fn main() Int {
 	say(f"s8 = [{s8}]")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: l1 = [17] len 1
+// expect-stdout: f2 = Infinity
+// expect-stdout: b3 = false
+// expect-stdout: f4 = Infinity
+// expect-stdout: i5 = 2349180
+// expect-stdout: i6 = 17
+// expect-stdout: s7 = [117459000:語本日]
+// expect-stdout: s8 = [TAB\tHERE117459000:語本日quote"d117459000:語本日]

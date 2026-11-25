@@ -40,3 +40,5 @@ test "nested constructor arguments receive inferred context" {
 	expect_false(not (selected.value == null))?
 	expect_false(not (request.box.value == null))?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

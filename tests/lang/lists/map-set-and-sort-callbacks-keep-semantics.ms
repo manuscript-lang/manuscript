@@ -85,3 +85,5 @@ test "sort with a comparator" {
 	)
 	expect_true((closure[0] == "ccc"))?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

@@ -66,3 +66,20 @@ export fn main() Int {
 	)
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = -928283
+// expect-stdout: s2 = [gamma]
+// expect-stdout: acc3 = 12
+// expect-stdout: f4 = 161.032
+// expect-stdout: ammag
+// expect-stdout: -928283 0 true sum -928283
+// expect-stdout: f5 = 309.25
+// expect-stdout: f6 = 0.3180285418404211
+// expect-stdout: i7 = 0
+// expect-stdout: b8 = true
+// expect-stdout: l9 = [-7, 4, -4] len 3
+// expect-stdout: f10 = 461.821
+// expect-stdout: f11 = 147.429
+// expect-stdout: s12 = [mixed case]
+// expect-stdout: l13 = [-7, 4, -4, -7, 4, -4] len 6
+// expect-stdout: 5 0 false sum 5

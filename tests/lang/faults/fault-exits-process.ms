@@ -16,3 +16,9 @@ fn main() Void {
 	void stdout().write(f"{checked(2)}\n")
 	void stdout().write("unreachable\n")
 }
+// expect-exit: 134
+// expect-stdout: before
+// expect-stdout: 1
+// expect-stderr: n too large: 2
+// expect-stderr:   at fault-exits-process.ms:9 in checked
+// expect-stderr:   at fault-exits-process.ms:16 in main

@@ -71,3 +71,19 @@ export fn main() Int {
 
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: b1 = false
+// expect-stdout: 36 10 false sum 46
+// expect-stdout: l2 = [27] len 1
+// expect-stdout: -94 101548 true sum 101454
+// expect-stdout: b3 = true
+// expect-stdout: i4 = -48
+// expect-stdout: l5 = [27, 27] len 2
+// expect-stdout: fact(5) = 120
+// expect-stdout: s6 = [0:héllobeta]
+// expect-stdout: i7 = 518250
+// expect-stdout: l8 = [-20, -30] len 2
+// expect-stdout: l9 = [-60, -90] len 2
+// expect-stdout: b10 = true
+// expect-stdout: i11 = 892
+// expect-stdout: 0:héllobetabeta

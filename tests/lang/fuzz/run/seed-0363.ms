@@ -58,3 +58,12 @@ export fn main() Int {
 	say(f"f7 = {f7}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = 9682610
+// expect-stdout: b2 = true
+// expect-stdout: b3 = false
+// expect-stdout: ms
+// expect-stdout: fib(37) = 24157817
+// expect-stdout: s4 = [9682610:9682610:x]
+// expect-stdout: acc5 = 3
+// expect-stdout: f7 = 0

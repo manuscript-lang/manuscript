@@ -80,3 +80,5 @@ test "a missing directory is a filesystem error" {
 		f"filesystem: file or directory not found: {directory.path()}/missing/events.ndjson",
 	)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

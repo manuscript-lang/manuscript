@@ -18,3 +18,4 @@ test "fixture next to the manifest" {
 		}
 	}
 }
+// expect-format: unchanged

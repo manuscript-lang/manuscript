@@ -96,3 +96,5 @@ test "many tasks recurse past their first slot and park on several threads" {
 		expect_equal(results[i], 20000 + i)?
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

@@ -22,3 +22,5 @@ test "integer comparison sorts keep full-width ordering" {
 		[9223372036854775807, 0, 0, -9223372036854775807 - 1],
 	)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

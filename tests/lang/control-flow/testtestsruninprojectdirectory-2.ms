@@ -18,3 +18,5 @@ test "fixture next to the manifest" {
 		}
 	}
 }
+// expect-exit: 1
+// expect-tests: passed=0 failed=1

@@ -32,3 +32,5 @@ test "index_of_byte agrees with a scan across the inline window and the runtime"
 	expect_equal("0123456789abcdef".to_bytes().index_of_byte(102, 0) or (-1), 15)?
 	expect_equal("0123456789abcdef".to_bytes().index_of_byte(102, 1) or (-1), 15)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

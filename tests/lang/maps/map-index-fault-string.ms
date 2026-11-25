@@ -8,3 +8,7 @@ fn main() Void {
 	void stdout().write(f"{scores["ann"]}\n")
 	void stdout().write(f"{scores["eve"]}\n")
 }
+// expect-exit: 134
+// expect-stdout: 1
+// expect-stderr: map key not found: "eve"
+// expect-stderr:   at map-index-fault-string.ms:9 in main

@@ -12,3 +12,5 @@ fn work(early Int) Int {
     )
     return result
 }
+// expect-error: MS1000 6:14-6:15 expected an expression, found '?'; write a value, name, call, or literal here
+// expect-format-exit: 1

@@ -43,3 +43,5 @@ test "a fault still tears down" {
 	numbers List[Int] := []
 	void numbers[1]
 }
+// expect-exit: 1
+// expect-tests: passed=0 failed=2 skipped=1

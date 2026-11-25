@@ -55,3 +55,14 @@ fn main() Void {
 	shown := show(Door("converted"))
 	print(f"end {present} {second} {first} {shown}")
 }
+// expect-exit: 0
+// expect-stdout: closed optional
+// expect-stdout: --list
+// expect-stdout: closed l2
+// expect-stdout: closed l1
+// expect-stdout: --field
+// expect-stdout: closed pb
+// expect-stdout: closed pa
+// expect-stdout: --interface
+// expect-stdout: closed converted
+// expect-stdout: end true l2 pa converted

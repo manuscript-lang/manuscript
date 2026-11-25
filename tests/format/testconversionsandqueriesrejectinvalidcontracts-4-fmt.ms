@@ -7,3 +7,5 @@ enum T!E {
 }
 
 fn wrong(value: Int!String) Int? => value.to_optional()
+// expect-error: MS1000 4:7-4:8 expected '{', found '!'; block headers (fn, if, else, for, while, match, type, enum, interface, test) end with '{' on the same line, and the block closes with '}'
+// expect-format-exit: 1

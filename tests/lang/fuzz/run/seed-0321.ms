@@ -48,3 +48,13 @@ export fn main() Int {
 	say(f"acc9 = {acc9}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: acc1 = 7
+// expect-stdout: i2 = -207771518
+// expect-stdout: s3 = [HÉLLO  padded  ]
+// expect-stdout: b4 = false
+// expect-stdout: s5 = [HÉLLO  padded  betaHÉLLO  PADDED  ]
+// expect-stdout: b6 = false
+// expect-stdout: i7 = -254195
+// expect-stdout: b8 = false
+// expect-stdout: acc9 = 45

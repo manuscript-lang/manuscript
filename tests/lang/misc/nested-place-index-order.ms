@@ -79,3 +79,5 @@ test "a var field of an indexed element evaluates its index once" {
 	expect_equal(events, [7])?
 	expect_equal(cells[0].value, 2)?
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

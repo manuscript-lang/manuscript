@@ -282,3 +282,5 @@ test "flatten copies nested elements through generic and function calls" {
 	expect_equal(via_function, [[1], [2, 4]])?
 	expect_equal(source, [[[1]], [[2]]])?
 }
+// expect-exit: 0
+// expect-tests: passed=16 failed=0

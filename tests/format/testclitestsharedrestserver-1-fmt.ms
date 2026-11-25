@@ -51,3 +51,4 @@ test "second request uses same server" {
 	)?
 	expect_equal(response.body, "shared".to_bytes())?
 }
+// expect-format: unchanged

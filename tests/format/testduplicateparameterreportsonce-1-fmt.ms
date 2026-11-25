@@ -4,3 +4,7 @@
 fn f(a Int, a Int) Int {
 	return a
 }
+// expect-format: rewritten
+// expect-formatted: fn f(a, a Int) Int {
+// expect-formatted: \treturn a
+// expect-formatted: }

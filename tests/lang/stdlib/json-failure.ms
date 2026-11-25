@@ -44,3 +44,5 @@ test "JSON value limits preserve Unicode precedence and byte admission" {
 		typed_negative,
 	)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

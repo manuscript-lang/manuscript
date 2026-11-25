@@ -57,3 +57,5 @@ test "argument read from the same list" {
 	expect_equal(shelf.buckets[0].keys, [1])?
 	expect_equal(shelf.buckets[1].keys, [5])?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

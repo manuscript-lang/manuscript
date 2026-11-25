@@ -95,3 +95,26 @@ export fn main() Int {
 	say(f"{big16 * 3}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: l1 = [-23, 3] len 2
+// expect-stdout: b2 = true
+// expect-stdout: s3 = [deltbrace{s}gammaalpha]
+// expect-stdout: l4 = [-23, 3, -23, 3] len 4
+// expect-stdout: back\\slash
+// expect-stdout: s5 = [DELTBRACE{S}GAMMAALPHALINE
+// expect-stdout: BREAK-18:x]
+// expect-stdout: l6 = [-20, 6] len 2
+// expect-stdout: s7 = [ereh\tbat]
+// expect-stdout: f8 = 3.275003342920986
+// expect-stdout: l9 = [-40, 12] len 2
+// expect-stdout: s10 = [line
+// expect-stdout: break]
+// expect-stdout: collatz(1433) = 26
+// expect-stdout: 0 35 true sum 35
+// expect-stdout: s11 = [deltbrace{s}gammaalpha]
+// expect-stdout: i12 = -47
+// expect-stdout: b13 = false
+// expect-stdout: b14 = false
+// expect-stdout: acc15 = 0
+// expect-stderr: Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt
+// expect-stderr:   at seed-0282.ms:95 in main

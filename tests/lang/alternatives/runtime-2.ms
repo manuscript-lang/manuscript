@@ -31,3 +31,5 @@ test "non-prelude spellings are ordinary names" {
 		}
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

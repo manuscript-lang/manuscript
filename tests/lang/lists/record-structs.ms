@@ -68,3 +68,5 @@ test "struct records as keys and defaults" {
 	sized := Sized(3)
 	expect_false(area(sized) != 6 or area(Sized(3, 5)) != 15)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

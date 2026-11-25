@@ -16,3 +16,4 @@ fn parse() Int {
 export fn main() Int {
 	return parse()
 }
+// expect-exit: 3

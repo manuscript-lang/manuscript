@@ -147,3 +147,5 @@ test "TLS chains that break a CA constraint are rejected" {
 		| expect_error?
 	)
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

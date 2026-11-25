@@ -68,3 +68,15 @@ export fn main() Int {
 	say(f"l7 = {l7} len {l7.length()}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: l1 = [21, -10, 21, 14, -28] len 5
+// expect-stdout: aMiXeD CaSe
+// expect-stdout: b2 = false
+// expect-stdout: f3 = 1.0087941387486163
+// expect-stdout: i4 = -11
+// expect-stdout: collatz(183) = 93
+// expect-stdout: s5 = [quote"d]
+// expect-stdout: 22 0 false sum 22
+// expect-stdout: 7161 -757397 false sum -750236
+// expect-stdout: s6 = [quote"d]
+// expect-stdout: l7 = [-6, 18, -24] len 3

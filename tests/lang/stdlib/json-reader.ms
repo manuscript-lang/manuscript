@@ -129,3 +129,5 @@ test "negative limits fail the first read with EINVAL for every input" {
 		}
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

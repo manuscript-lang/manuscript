@@ -70,3 +70,5 @@ test "a named resource wrapped by the helper is closed only by its owner" {
 	use_named(path.clone())?
 	expect_equal(log_text(path)?, "3,")?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

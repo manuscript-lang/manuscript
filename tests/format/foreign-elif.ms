@@ -10,3 +10,5 @@ fn f(x Int) Int {
     }
     return 0
 }
+// expect-error: MS1000 8:5-8:9 there is no 'elif': write 'else if <condition> { ... }' for a further branch
+// expect-format-exit: 1

@@ -168,3 +168,5 @@ test "escaping closure keeps its own value" {
 	read := make_reader()
 	expect_equal(read(), 2)?
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

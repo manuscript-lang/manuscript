@@ -17,3 +17,5 @@ fn main() Void {
 	m.for_each((key, var n) => bump(n))
 	stdout().write(f"{m["a"]} {m["b"]}\n").get()
 }
+// expect-exit: 0
+// expect-stdout: 3 4

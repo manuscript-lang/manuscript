@@ -61,3 +61,5 @@ test "a named default stays with its binding and closes with the call" {
 	expect_equal(named(log.clone()), 12)?
 	logged(log.clone()) | expect_equal("4,5,")?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

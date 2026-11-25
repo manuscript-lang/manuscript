@@ -163,3 +163,5 @@ test "binary search uses logarithmically many comparisons" {
 		}
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

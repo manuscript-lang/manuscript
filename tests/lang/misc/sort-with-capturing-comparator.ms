@@ -61,3 +61,5 @@ test "a capture-free comparator still sorts" {
 	)
 	expect_equal(plain, ["a", "b"])?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

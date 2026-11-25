@@ -9,3 +9,10 @@ fn f() Int {
 	)
 	return 0
 }
+// expect-format: rewritten
+// expect-formatted: import PriorityQueue from "@std/collections/queue.ms"
+// expect-formatted:
+// expect-formatted: fn f() Int {
+// expect-formatted: \tvar q = PriorityQueue(compare: fn(left, right HttpMethod) Int => return 0)
+// expect-formatted: \treturn 0
+// expect-formatted: }

@@ -85,3 +85,5 @@ test "nested try" {
 	expect_true((joined(log: sixth).err().message == "q"))?
 	expect_true((text(log: sixth) == "p,q"))?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

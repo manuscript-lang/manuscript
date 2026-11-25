@@ -65,3 +65,5 @@ test "min max and clamp on String use scalar order" {
 	expect_equal("zebra".clamp("a", "m"), "m")?
 	expect_equal("Z".min("a"), "Z")?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

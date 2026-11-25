@@ -23,3 +23,5 @@ test "a promise that faults releases the values its frames own" {
 	grown := (memory_usage() | expect_ok?).resident - before
 	expect_true(grown < 20000000)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

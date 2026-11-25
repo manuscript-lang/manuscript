@@ -85,3 +85,5 @@ fn borrow_then_check(id Int, log String) Void! {
 	expect_equal(borrowed_status(result), true)?
 	expect_equal(read_file(log.clone()).wait().is_error(), true)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

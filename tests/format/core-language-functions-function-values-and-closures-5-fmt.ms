@@ -12,3 +12,4 @@ fn notes_reader(path String) fn() Result[Bytes, Error] {
 		return file.read_file(max_bytes: 1048576)
 	}
 }
+// expect-format: unchanged

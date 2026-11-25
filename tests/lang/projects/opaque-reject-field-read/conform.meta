@@ -1,3 +1,4 @@
 // conform: tags=projects,testing,tier-stdlib
 // conform: phase=check
 // conform: entry=main.ms
+// expect-error: MS3000 8:25 Approved is opaque outside gate.ms: field nonce is hidden; use the functions gate.ms exports

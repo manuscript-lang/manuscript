@@ -110,3 +110,5 @@ test "positive near-whole rotation preserves optional nested payloads" {
 	expect_equal(q.pop_front(), absent)?
 	expect_equal(q.is_empty(), true)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

@@ -172,3 +172,5 @@ test "reverse and reversed handle one to four word slots and owning slots" {
 		}
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=7 failed=0

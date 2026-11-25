@@ -69,3 +69,5 @@ fn each_len[T](xs List[T], f fn(var T) Void) Int {
 test "generic callee" {
 	expect_equal(each_len([1, 2], n => void n), 2)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

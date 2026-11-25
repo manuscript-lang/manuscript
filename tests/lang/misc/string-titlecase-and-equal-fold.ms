@@ -34,3 +34,5 @@ test "equal_fold treats sharp s and its capital as equal" {
 	expect_true("abcß".equal_fold("ABCSS"))?
 	expect_false("abx".equal_fold("ABCß"))?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

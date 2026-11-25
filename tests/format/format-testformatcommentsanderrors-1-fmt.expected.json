@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "// leading\nfn sum(left, right Int) Int {  // sum\n\treturn left + right  // trailing\n}\n"
-  }
-}

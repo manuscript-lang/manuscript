@@ -179,3 +179,5 @@ test "character-set trims cover each end, non-ASCII sets, empty sets and whole-t
 		| expect_equal("é")?
 	)
 }
+// expect-exit: 0
+// expect-tests: passed=8 failed=0

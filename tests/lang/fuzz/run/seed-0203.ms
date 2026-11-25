@@ -50,3 +50,15 @@ export fn main() Int {
 	say(f"{(((-314550) + i7) / ((-752991) / i7)) % big8}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: s1 = [a]
+// expect-stdout: l2 = [-19] len 1
+// expect-stdout: i3 = 1
+// expect-stdout: hsals\\kcab
+// expect-stdout: i4 = 916344
+// expect-stdout: i5 = -130923822418
+// expect-stdout: -464805:a
+// expect-stdout: s6 = [22957937:Tab\thereaa]
+// expect-stdout: i7 = 1
+// expect-stderr: remainder by zero; right must be nonzero, found 0
+// expect-stderr:   at seed-0203.ms:50 in main

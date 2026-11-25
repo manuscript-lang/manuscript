@@ -125,3 +125,5 @@ test "run and spawn pass the environment to the child" {
 	text := errors.next()?
 	expect_equal(text or "".to_bytes(), "from-parent".to_bytes())?
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

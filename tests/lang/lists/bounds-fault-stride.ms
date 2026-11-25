@@ -14,3 +14,7 @@ fn stride(a List[Int]) Int {
 fn main() Void {
 	void stdout().write(f"{stride([1, 2, 3, 4, 5, 6, 7])}\n")
 }
+// expect-exit: 134
+// expect-stderr: index 8 out of range for length 7; use get_or(index, default) to avoid the fault
+// expect-stderr:   at bounds-fault-stride.ms:9 in stride
+// expect-stderr:   at bounds-fault-stride.ms:15 in main

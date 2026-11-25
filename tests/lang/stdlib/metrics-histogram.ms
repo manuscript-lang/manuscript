@@ -100,3 +100,5 @@ test "large observations keep an exact mean" {
 	h.record(20)
 	expect_equal(h.mean(), 15.0)?
 }
+// expect-exit: 0
+// expect-tests: passed=7 failed=0

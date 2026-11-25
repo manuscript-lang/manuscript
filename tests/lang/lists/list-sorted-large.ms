@@ -69,3 +69,5 @@ test "strings, empty and single element lists sort" {
 	expect_equal(null.sorted(ascending), null)?
 	expect_equal([5].sorted(ascending), [5])?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

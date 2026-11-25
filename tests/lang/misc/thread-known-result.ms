@@ -44,3 +44,5 @@ test "an optional tested after a join" {
 	expect_equal(pick(true, 4), 5)?
 	expect_equal(pick(false, 4), null)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

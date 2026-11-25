@@ -32,3 +32,6 @@ fn main() Void {
 		_i := stdout().write(f"{score(s)} ")
 	}
 }
+// expect-exit: 0
+// expect-stdout: 1 16 2 4 8 0 0 0 32\x20
+// expect-stdout-partial

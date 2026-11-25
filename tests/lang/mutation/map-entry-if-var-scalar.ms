@@ -28,3 +28,5 @@ fn main() Void {
 		.get()
 	)
 }
+// expect-exit: 0
+// expect-stdout: 3 1 2.5

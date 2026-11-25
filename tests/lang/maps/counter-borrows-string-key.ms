@@ -20,3 +20,5 @@ fn main() Void {
 		f"{m.length()} {m.get_or("a", 0)} {m.get_or("b", 0)} {m.get_or("c", 0)}\n"
 	)
 }
+// expect-exit: 0
+// expect-stdout: 3 3 2 1

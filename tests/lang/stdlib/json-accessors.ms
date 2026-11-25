@@ -162,3 +162,5 @@ test "JSON get_in reads a chain of members in place" {
 	expect_true(d.get_in(["user", "name", "first"]) == null)?
 	expect_true(d.get_in([]) == null)?
 }
+// expect-exit: 0
+// expect-tests: passed=7 failed=0

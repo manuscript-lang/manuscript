@@ -54,3 +54,10 @@ export fn main() Int {
 	say(f"acc5 = {acc5}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = -26
+// expect-stdout: i2 = 555429045600
+// expect-stdout: f3 = 116501725754.2155
+// expect-stdout: b4 = false
+// expect-stdout: collatz(655) = 144
+// expect-stdout: acc5 = 3

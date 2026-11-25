@@ -68,3 +68,5 @@ test "a closure capturing a list whose element close faults releases the list" {
 		)
 	)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

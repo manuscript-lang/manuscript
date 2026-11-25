@@ -47,3 +47,5 @@ test "POSIX normalization preserves parents and trailing separators" {
 	expect_equal(paths.normalize("/資料//a/../日付/"), "/資料/日付/")?
 	expect_equal(paths.normalize("a\\b/./"), "a\\b/")?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

@@ -188,3 +188,5 @@ test "native contract methods through an interface value" {
 	(view.reversed()[0] == 2) | expect_true?
 	(view.clone().length() == 3) | expect_true?
 }
+// expect-exit: 0
+// expect-tests: passed=14 failed=0

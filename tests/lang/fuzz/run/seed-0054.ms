@@ -63,3 +63,15 @@ export fn main() Int {
 	say(f"s9 = [{s9}]")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = -948684
+// expect-stdout: b2 = false
+// expect-stdout: i3 = -948684
+// expect-stdout: s4 = [delta]
+// expect-stdout: f5 = 114.90300000000002
+// expect-stdout: fib(37) = 24157817
+// expect-stdout: f6 = 5530160.320845411
+// expect-stdout: i7 = -948684
+// expect-stdout: gammadelta
+// expect-stdout: b8 = false
+// expect-stdout: s9 = [MiXeD CaSe]

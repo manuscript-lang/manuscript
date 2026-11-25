@@ -40,3 +40,8 @@ export fn main() Int {
 
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: shown
+// expect-stdout: true
+// expect-stdout: true
+// expect-stdout: true

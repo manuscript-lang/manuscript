@@ -22,3 +22,5 @@ test "configuration defaults" {
 test "configuration rejects a wrong type" {
 	expect_equal((expect_error(parse[Config]("{\"port\": true}"))?).kind, "EBADMSG")?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

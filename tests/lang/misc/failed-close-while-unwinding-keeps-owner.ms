@@ -59,3 +59,5 @@ test "a failed close of an optional element while unwinding keeps the body fault
 	expect_equal(message, "body fault")?
 	expect_equal(events(log)?, "2,1,")?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

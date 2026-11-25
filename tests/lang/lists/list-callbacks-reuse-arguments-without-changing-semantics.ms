@@ -78,3 +78,5 @@ test "list callbacks" {
 	expect_true((seen.length() == 2 and grown.length() == 4))?
 	expect_true((nested(items: items)[2] == 7))?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

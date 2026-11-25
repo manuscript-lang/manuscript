@@ -48,3 +48,5 @@ test "narrow payloads of a self-containing enum read back with their sign" {
 	expect_equal(total(chain), -5 - 70000 + 255 + 2 - 3 + 65535)?
 	expect_equal(total(chain.clone()), total(chain))?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

@@ -2,3 +2,5 @@
 // conform: phase=run
 // conform: origin=examples/tooling-demo
 // conform: timeout=120
+// expect-exit: 0
+// expect-stdout: Manuscript: 53; checksum 8999994

@@ -47,3 +47,14 @@ export fn main() Int {
 	say(f"b5 = {b5}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: f1 = 8.5
+// expect-stdout: gcd(1893, 4201) = 1
+// expect-stdout: -7 -1 true sum -8
+// expect-stdout: l2 = [9, -19] len 2
+// expect-stdout: b3 = false
+// expect-stdout: 26 43 true sum 69
+// expect-stdout: i4 = 916130
+// expect-stdout: 916130 0 false sum 916130
+// expect-stdout: fact(11) = 39916800
+// expect-stdout: b5 = false

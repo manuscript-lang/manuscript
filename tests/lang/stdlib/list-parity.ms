@@ -124,3 +124,5 @@ test "List distinct handles large Int and String lists" {
 	uniqueWords := words.distinct()
 	expect_false(uniqueWords.length() != 20000 or uniqueWords[1] != "w1")?
 }
+// expect-exit: 0
+// expect-tests: passed=7 failed=0

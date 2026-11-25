@@ -35,3 +35,5 @@ test "postfix ? propagates a failure" {
 	expect_true(both("-1").is_error())?
 	expect_equal(both("3")?, 3)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

@@ -21,3 +21,6 @@ fn main() Void {
 	print(h.cursor.items.length() + h.cursor.at)
 	print(h.label)
 }
+// expect-exit: 0
+// expect-stdout: 3
+// expect-stdout: x

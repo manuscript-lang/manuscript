@@ -49,3 +49,5 @@ test "integer interpolation in loops and chains" {
 	t := f"{n}"
 	expect_equal(f"{t}{n}", "4242")?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

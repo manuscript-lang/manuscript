@@ -4,3 +4,7 @@
 enum Pair {
 	Values(first Int, second Int)
 }
+// expect-format: rewritten
+// expect-formatted: enum Pair {
+// expect-formatted: \tValues(first, second Int)
+// expect-formatted: }

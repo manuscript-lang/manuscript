@@ -23,3 +23,5 @@ test "an append loop grows in place" {
 	expect_equal(lookup(m, "a"), 1)?
 	expect_equal(grow(1000000).length(), 1000000)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

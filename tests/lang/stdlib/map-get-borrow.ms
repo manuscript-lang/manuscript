@@ -46,3 +46,5 @@ test "get with a default on integer values" {
 	expect_equal(counts.get_or("none", 7), 7)?
 	expect_false(counts.get("none") != null)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

@@ -92,3 +92,22 @@ export fn main() Int {
 	say(f"s13 = [{s13}]")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: f1 = 796.916
+// expect-stdout: i2 = -54291
+// expect-stdout: l3 = [-13, 18, 27] len 3
+// expect-stdout: betaMiXeD CaSe
+// expect-stdout: i4 = -108582
+// expect-stdout: s5 = [emoji 😀d"etouq]
+// expect-stdout: b6 = false
+// expect-stdout: fact(11) = 39916800
+// expect-stdout: f7 = 0.5
+// expect-stdout: l8 = [-13, 18, 27] len 3
+// expect-stdout: l9 = [20] len 1
+// expect-stdout: l10 = [20, 20] len 2
+// expect-stdout: f11 = 0.5
+// expect-stdout: emoji 😀d"etouqemoji 😀
+// expect-stdout: 0 908316124405 true sum 908316124405
+// expect-stdout: i12 = 20
+// expect-stdout: collatz(2820) = 35
+// expect-stdout: s13 = [QUOTE"DALPHA]

@@ -9,3 +9,5 @@ test "String affix methods work without importing their source module" {
 	prefix := "prefix".cut_suffix("fix") | expect_some?
 	expect_equal(prefix, "pre")?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

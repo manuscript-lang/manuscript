@@ -196,3 +196,5 @@ test "a comparator that faults mid-sort leaves the original list whole" {
 
 	expect_equal(ids, 5000 * 4999 / 2)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

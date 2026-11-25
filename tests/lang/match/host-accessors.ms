@@ -61,3 +61,5 @@ test "a later test receives fresh standard output" {
 		}
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

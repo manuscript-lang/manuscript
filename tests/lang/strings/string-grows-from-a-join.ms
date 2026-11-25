@@ -60,3 +60,14 @@ fn main() Int {
 	print(parts)
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: [{"id":0,"name":"item-0"},{"id":1,"name":"item-1"},{"id":2,"name":"item-2"}]
+// expect-stdout: 152781
+// expect-stdout: true
+// expect-stdout: start0:1:2:3:é:4|1:2:3:4:é:5|
+// expect-stdout: 8675
+// expect-stdout: 229
+// expect-stdout: ab<ab>0<ab<ab>0>1<ab<ab>0<ab<ab>0>1>2
+// expect-stdout: 0123
+// expect-stdout: n8910
+// expect-stdout: p-0-0!-1-2!

@@ -20,3 +20,6 @@ fn main() Void {
 	print(first)
 	print(second)
 }
+// expect-exit: 0
+// expect-stdout: some(a)
+// expect-stdout: some(b)

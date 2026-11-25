@@ -92,3 +92,23 @@ export fn main() Int {
 	say(f"b14 = {b14}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = 4
+// expect-stdout: i2 = 57
+// expect-stdout: f3 = 221.25
+// expect-stdout: s4 = [A]
+// expect-stdout: l5 = [-10, -8] len 2
+// expect-stdout: l6 = [-40, -32] len 2
+// expect-stdout: l7 = [-8, -16, 20, -6, -23] len 5
+// expect-stdout: 2223:héllo
+// expect-stdout: a
+// expect-stdout: A
+// expect-stdout: s8 = [héllo]
+// expect-stdout: l9 = [-23] len 1
+// expect-stdout: f10 = Infinity
+// expect-stdout: b11 = true
+// expect-stdout: i12 = -28978629
+// expect-stdout: -28978539 -29886742 false sum -58865281
+// expect-stdout: b13 = true
+// expect-stdout: collatz(1355) = 114
+// expect-stdout: b14 = true

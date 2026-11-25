@@ -156,3 +156,5 @@ test "URL keeps an empty query through parse, format and resolve" {
 	expect_equal(format(resolve(base, "?")?), ok("http://a/b/c/d;p?"))?
 	expect_equal(format(resolve(base, "")?), ok("http://a/b/c/d;p?q"))?
 }
+// expect-exit: 0
+// expect-tests: passed=8 failed=0

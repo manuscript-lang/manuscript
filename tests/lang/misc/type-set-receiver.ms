@@ -37,3 +37,5 @@ test "the standard ordering methods are one declaration over a set" {
 	expect_equal("b".min("a"), "a")?
 	expect_equal((15).clamp(0, 10), 10)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

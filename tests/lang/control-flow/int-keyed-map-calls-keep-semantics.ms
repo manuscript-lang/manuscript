@@ -34,3 +34,5 @@ test "int map" {
 	expect_true((total == 2 and m.length() == 4))?
 	expect_true((lookup(m: Map[Int, String](), key: 0) == "missing"))?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

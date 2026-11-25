@@ -17,3 +17,6 @@ fn main() Void {
 	y := b.pick(5)
 	print(y.is_error())
 }
+// expect-exit: 0
+// expect-stdout: ok(b)
+// expect-stdout: true

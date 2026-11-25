@@ -30,3 +30,5 @@ test "maps and sets keep distinct keys after removal to empty" {
 	s.add("cap")
 	if s.length() != 2 { return fail(f"set: length {s.length()}") }
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

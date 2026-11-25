@@ -24,3 +24,4 @@ fn hold Box[T].get() &T {
 fn read[T](hold value Box[T]) &T {
 	return value.get()
 }
+// expect-format: unchanged

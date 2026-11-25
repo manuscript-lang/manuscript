@@ -47,3 +47,17 @@ export fn main() Int {
 	say(f"{big13 * 2}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: i1 = -22
+// expect-stdout: f2 = 70.161
+// expect-stdout: b3 = false
+// expect-stdout: i4 = -8
+// expect-stdout: i5 = -22
+// expect-stdout: i6 = 23
+// expect-stdout: s7 = [gamma]
+// expect-stdout: f9 = 0
+// expect-stdout: i10 = 0
+// expect-stdout: l11 = [-16, 14] len 2
+// expect-stdout: i12 = 0
+// expect-stderr: Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt
+// expect-stderr:   at seed-0196.ms:47 in main

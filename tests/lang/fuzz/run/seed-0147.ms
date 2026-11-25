@@ -79,3 +79,20 @@ export fn main() Int {
 	say(f"{big12 * 6}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: collatz(373) = 19
+// expect-stdout: l1 = [-6, 21, -22, 19] len 4
+// expect-stdout: acc2 = -30
+// expect-stdout: l3 = [-10, 13, -25, 13] len 4
+// expect-stdout: b4 = false
+// expect-stdout: collatz(1467) = 140
+// expect-stdout: i5 = 33
+// expect-stdout: s6 = [hélloback\\slashdeltaa  padded  ]
+// expect-stdout: s7 = [hélloback\\slashdeltaa  padded  HÉLLOBACK\\SLASHDELTAA  PADDED  ]
+// expect-stdout: 33 2475 true sum 2508
+// expect-stdout: i8 = 99
+// expect-stdout: i9 = 33
+// expect-stdout: f10 = 1.5
+// expect-stdout: l11 = [] len 0
+// expect-stderr: Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt
+// expect-stderr:   at seed-0147.ms:79 in main

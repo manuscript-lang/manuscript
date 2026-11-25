@@ -33,3 +33,12 @@ export fn main() Int {
 	say(f"f7 = {f7}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = -49
+// expect-stdout: i2 = 833
+// expect-stdout: i3 = 20
+// expect-stdout: 853 -20 false sum 833
+// expect-stdout: s4 = [Tab\there]
+// expect-stdout: b5 = false
+// expect-stdout: l6 = [] len 0
+// expect-stdout: f7 = 0

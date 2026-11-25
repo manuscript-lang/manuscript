@@ -30,3 +30,6 @@ fn main() Void {
 	moved := promise(() => use(door))
 	print(f"{moved.wait().get_or(0)}")
 }
+// expect-exit: 0
+// expect-stdout: 3
+// expect-stdout: closed

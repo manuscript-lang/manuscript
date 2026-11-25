@@ -33,3 +33,5 @@ test "each_cell reports malformed input and its limits" {
 	options := CsvOptions(max_rows: 1)
 	expect_true(each_cell("a\nb\n", (r, c, cell) => void, options).is_error())?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

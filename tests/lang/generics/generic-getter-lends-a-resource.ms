@@ -35,3 +35,5 @@ test "a getter over a resource can be called as a statement" {
 	cell.get()
 	expect_equal(cell.v.name, "x")?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

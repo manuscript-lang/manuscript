@@ -99,3 +99,5 @@ test "wrapping arithmetic never faults" {
 	expect_equal(wrapping_multiply(max_int, 2), -2)?
 	expect_equal(wrapping_multiply(min_int, 3), min_int)?
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

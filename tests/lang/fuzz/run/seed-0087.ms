@@ -86,3 +86,23 @@ export fn main() Int {
 	say(f"{-big13}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: collatz(1330) = 52
+// expect-stdout: l1 = [16, -30, 16] len 3
+// expect-stdout: i2 = -35
+// expect-stdout: -35 -35 false sum -70
+// expect-stdout: s3 = [a]
+// expect-stdout: b4 = true
+// expect-stdout: aa
+// expect-stdout: s5 = [emoji 😀]
+// expect-stdout: aemoji 😀
+// expect-stdout: i6 = 2198
+// expect-stdout: l7 = [16, -30, 16, 23] len 4
+// expect-stdout: l8 = [16] len 1
+// expect-stdout: s9 = [emoji 😀]
+// expect-stdout: 19 95 true sum 114
+// expect-stdout: s10 = [-76930:delta]
+// expect-stdout: l11 = [] len 0
+// expect-stdout: i12 = 16
+// expect-stderr: Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt
+// expect-stderr:   at seed-0087.ms:86 in main

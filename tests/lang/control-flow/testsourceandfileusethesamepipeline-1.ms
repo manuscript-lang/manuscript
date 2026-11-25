@@ -5,3 +5,4 @@ export fn main() Int {
 	if not false { return 3 }
 	return 0
 }
+// expect-exit: 3

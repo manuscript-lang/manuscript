@@ -10,3 +10,5 @@ test "methods" {
 	_convert := [2].map[String]
 	_text := " hello ".trim()
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

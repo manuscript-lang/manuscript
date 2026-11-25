@@ -52,3 +52,5 @@ test "radix outside 2 through 36 is none and hex and binary helpers match" {
 	expect_equal(big_int_of_int(-255).to_hex(), "-ff")?
 	expect_equal(big_int_of_int(5).to_binary(), "101")?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

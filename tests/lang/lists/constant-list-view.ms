@@ -26,3 +26,7 @@ fn main() Void {
 	for round in 0..1000 { total += TABLE[round % 4] }
 	print(f"{total} {TABLE.clone()}")
 }
+// expect-exit: 0
+// expect-stdout: [99, 20, -30, 40, 5] [10, 20, -30, 40] [10, 20, -30, 40] 4 true
+// expect-stdout: 40 30 [20, 40, -60, 80] true [1, 2, 255]
+// expect-stdout: 10000 [10, 20, -30, 40]

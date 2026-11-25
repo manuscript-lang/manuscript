@@ -716,3 +716,5 @@ test "Decimal arithmetic matches BigInt while the result fits 34 digits" {
 		}
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=28 failed=0

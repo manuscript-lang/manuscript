@@ -51,3 +51,5 @@ test "rational powers accept the minimum Int exponent for unit and zero bases" {
 		"EOVERFLOW",
 	)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

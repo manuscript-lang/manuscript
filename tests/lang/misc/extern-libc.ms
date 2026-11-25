@@ -13,3 +13,5 @@ test "extern functions call the symbol of the same name" {
 	expect_equal(sqrt(2.25), 1.5)?
 	expect_equal(fabs(-0.5), 0.5)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

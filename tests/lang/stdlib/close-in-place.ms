@@ -264,3 +264,5 @@ test "a binding kept to the end closes once" {
 	expect_equal(reassigned(log.clone(), false), 11)?
 	expect_equal(closed(log), "11,")?
 }
+// expect-exit: 0
+// expect-tests: passed=15 failed=0

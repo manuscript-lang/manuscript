@@ -27,3 +27,5 @@ fn main() Void {
 	q := Pair(Dot, 2)
 	stdout().write(f"{name(id(Dot))} {name(p.a)} {name(p.b)} {name(q.a)} {q.b}\n").get()
 }
+// expect-exit: 0
+// expect-stdout: dot circle dot dot 2

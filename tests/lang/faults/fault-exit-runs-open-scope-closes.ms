@@ -19,3 +19,8 @@ fn main() Void {
 	marker := Marker("outer")
 	panic(f"boom {marker.name}")
 }
+// expect-exit: 134
+// expect-stdout: start
+// expect-stdout: closed outer
+// expect-stderr: boom outer
+// expect-stderr:   at fault-exit-runs-open-scope-closes.ms:20 in main

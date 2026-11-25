@@ -33,3 +33,5 @@ test "assigning a closure field changes later calls" {
 	m.scale = fn(x Int) Int => x * 10
 	expect_equal(m.scale(1), 10)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

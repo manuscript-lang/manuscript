@@ -105,3 +105,23 @@ export fn main() Int {
 	say(f"l14 = {l14} len {l14.length()}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: b1 = false
+// expect-stdout: s2 = [-5:brace{s}ms-610608:quote"d]
+// expect-stdout: collatz(745) = 90
+// expect-stdout: 933875 -27 false sum 933848
+// expect-stdout: l3 = [-23, 5, -1] len 3
+// expect-stdout: f4 = -0
+// expect-stdout: acc5 = 115
+// expect-stdout: l6 = [5, -16, -4] len 3
+// expect-stdout: i7 = 3
+// expect-stdout: 6:back\\slash
+// expect-stdout: s8 = [brace{s}]
+// expect-stdout: f9 = 224451.07724700004
+// expect-stdout: f10 = 0
+// expect-stdout: evïan
+// expect-stdout: i11 = -6
+// expect-stdout: fact(9) = 362880
+// expect-stdout: l12 = [-23, 5, -1, 46] len 4
+// expect-stdout: b13 = true
+// expect-stdout: l14 = [45, -144, -36] len 3

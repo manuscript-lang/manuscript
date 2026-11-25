@@ -74,3 +74,5 @@ test "typed string members" {
 		)
 	)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

@@ -39,3 +39,4 @@ test "selected=a=b" {
 test "unselected" {
 	write_line("unselected")?
 }
+// expect-exit: 0

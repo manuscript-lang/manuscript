@@ -18,3 +18,9 @@ export fn main() Int {
 	stdout().write(text).get()
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: a
+// expect-stdout: b
+// expect-stdout: c
+// expect-stdout: d
+// expect-stdout: e

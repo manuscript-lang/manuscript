@@ -63,3 +63,25 @@ export fn main() Int {
 	say(f"s11 = [{s11}]")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: l1 = [11, 19] len 2
+// expect-stdout: i2 = -8
+// expect-stdout: l3 = [-25, -1, -29, -14] len 4
+// expect-stdout: fact(16) = 20922789888000
+// expect-stdout: f4 = 859.301
+// expect-stdout: f5 = 2219210.998677
+// expect-stdout: i6 = -8
+// expect-stdout: s7 = [brace{s}emoji 😀line
+// expect-stdout: break]
+// expect-stdout: s8 = [brace{s}emoji 😀line
+// expect-stdout: break37:Tab\there]
+// expect-stdout: 0 19 true sum 19
+// expect-stdout: s9 = [brace{s}emoji 😀line
+// expect-stdout: break37:Tab\therebbrace{s}emoji 😀line
+// expect-stdout: break37:Tab\thereebrace{s}emoji 😀line
+// expect-stdout: break37:Tab\theretbrace{s}emoji 😀line
+// expect-stdout: break37:Tab\thereabrace{s}emoji 😀line
+// expect-stdout: break37:Tab\there]
+// expect-stdout: gcd(1411, 2114) = 1
+// expect-stdout: s10 = [ms28:gammahéllo]
+// expect-stdout: s11 = [8:ms28:gammahéllo]

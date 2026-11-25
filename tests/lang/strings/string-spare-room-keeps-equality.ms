@@ -34,3 +34,12 @@ fn main() Void {
 	small += "cd"
 	print(small == "abcd")
 }
+// expect-exit: 0
+// expect-stdout: true
+// expect-stdout: 106
+// expect-stdout: 1
+// expect-stdout: true
+// expect-stdout: false
+// expect-stdout: false
+// expect-stdout: 1
+// expect-stdout: true

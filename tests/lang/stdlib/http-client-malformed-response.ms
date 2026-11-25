@@ -58,3 +58,5 @@ test "a Content-Length that does not fit in 63 bits is an error" {
 		).is_error()
 	)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

@@ -198,3 +198,5 @@ test "a file cannot be an ancestor of a directory or file" {
 	if paths(walk(tree)?) != ["a"] { return panic(f"walk {paths(walk(tree)?)}") }
 	if (tree.read("a", null)?).length() != 1 { return panic("file replaced") }
 }
+// expect-exit: 0
+// expect-tests: passed=7 failed=0

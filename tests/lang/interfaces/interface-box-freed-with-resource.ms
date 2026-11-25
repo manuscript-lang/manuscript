@@ -38,3 +38,11 @@ fn main() Void {
 	print(show(Door("temporary")))
 	print("end")
 }
+// expect-exit: 0
+// expect-stdout: closed moved
+// expect-stdout: 1
+// expect-stdout: kept
+// expect-stdout: temporary
+// expect-stdout: closed temporary
+// expect-stdout: end
+// expect-stdout: closed kept

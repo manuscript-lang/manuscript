@@ -16,3 +16,5 @@ test "five iterations" {
 		return panic("Expected five iterations and total 10")
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

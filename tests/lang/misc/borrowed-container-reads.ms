@@ -219,3 +219,5 @@ test "an entry read from a temporary map is an owned copy" {
 		3,
 	)?
 }
+// expect-exit: 0
+// expect-tests: passed=8 failed=0

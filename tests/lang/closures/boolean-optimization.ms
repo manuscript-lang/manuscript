@@ -48,3 +48,5 @@ test "bindings read only by a folded-away operand still compile" {
 	}
 	expect_false(not dropped_or)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

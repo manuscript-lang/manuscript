@@ -66,3 +66,5 @@ test "user equal and hash keys" {
 	expect_true(m.length() == 1)?
 	expect_true(m.get_or(Folded(n: 9), 0) == 2)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

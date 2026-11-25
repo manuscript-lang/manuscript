@@ -28,3 +28,5 @@ test "a difference comparator still faults when a subtraction overflows" {
 	near := [9223372036854775807, 1, 0]
 	ascending(near) | expect_equal([0, 1, 9223372036854775807])?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

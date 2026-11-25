@@ -86,3 +86,23 @@ export fn main() Int {
 	say(f"s17 = [{s17}]")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = 8073
+// expect-stdout: i2 = 8073
+// expect-stdout: f3 = -1.1363636362338598e+22
+// expect-stdout: i4 = -1
+// expect-stdout: b5 = false
+// expect-stdout: l6 = [26, 26, -4, 1, -23] len 5
+// expect-stdout: s7 = [MiXeD CaSe]
+// expect-stdout: l8 = [26, 26] len 2
+// expect-stdout: l9 = [3] len 1
+// expect-stdout: f10 = -2.2727272724677196e+22
+// expect-stdout: f11 = 0
+// expect-stdout: l12 = [-23, -4, 1, 26, 26] len 5
+// expect-stdout: s13 = [MIXED CASE]
+// expect-stdout: collatz(250) = 109
+// expect-stdout: acc14 = -40
+// expect-stdout: b15 = false
+// expect-stdout: l16 = [-20, 27, 17, 27, 14] len 5
+// expect-stdout: 144 28 false sum 172
+// expect-stdout: s17 = [  deddap  語本日]

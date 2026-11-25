@@ -48,3 +48,5 @@ test "case mapping and normalization return text that needs no change" {
 	expect_true("abcdef".normalize("NFC", 3).is_error())?
 	expect_equal("abc".normalize("NFC", 3).get_or(""), "abc")?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

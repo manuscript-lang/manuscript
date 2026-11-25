@@ -38,3 +38,11 @@ export fn main() Int {
 	print(f"{b.length()} {c.length()}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: close 1
+// expect-stdout: 1
+// expect-stdout: 0
+// expect-stdout: 2
+// expect-stdout: 1 1
+// expect-stdout: close 3
+// expect-stdout: close 2

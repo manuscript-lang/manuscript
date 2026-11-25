@@ -20,3 +20,5 @@ test "a field bound and then assigned leaves the record with the new value" {
 	expect_equal(box.items, ["c"])?
 	expect_equal(box.label, "x")?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

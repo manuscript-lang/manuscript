@@ -42,3 +42,15 @@ export fn main() Int {
 	say(f"{i7} {(-41)} {(i7 < (-41))} sum {i7 + (-41)}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: b1 = false
+// expect-stdout: i2 = 9253434463829612
+// expect-stdout: l3 = [22, 8, 25, 29, -8] len 5
+// expect-stdout: f4 = 1.0406655e+22
+// expect-stdout: s5 = [quote"d]
+// expect-stdout: s6 = [emoji 😀15:quote"d]
+// expect-stdout: i7 = -2
+// expect-stdout: i8 = -2
+// expect-stdout: b9 = true
+// expect-stdout: f10 = 262.128
+// expect-stdout: -2 -41 false sum -43

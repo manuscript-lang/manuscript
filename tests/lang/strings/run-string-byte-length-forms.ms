@@ -17,3 +17,12 @@ export fn main() Int {
 	print(b.view(0, 0).is_empty())
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: 6
+// expect-stdout: 55
+// expect-stdout: 61
+// expect-stdout: 0
+// expect-stdout: false
+// expect-stdout: true
+// expect-stdout: false
+// expect-stdout: true

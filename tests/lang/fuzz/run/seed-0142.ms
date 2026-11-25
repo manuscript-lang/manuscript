@@ -93,3 +93,22 @@ export fn main() Int {
 	say(f"{(i11 / (11 + (-10))) / big13}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: f1 = Infinity
+// expect-stdout: b2 = true
+// expect-stdout: i3 = -32
+// expect-stdout: f4 = Infinity
+// expect-stdout: s5 = [1:msalpha]
+// expect-stdout: b6 = false
+// expect-stdout: -1 -9 false sum -10
+// expect-stdout: gcd(1801, 3687) = 1
+// expect-stdout: b7 = true
+// expect-stdout: fib(7) = 13
+// expect-stdout: l8 = [] len 0
+// expect-stdout: i9 = 327895
+// expect-stdout: collatz(906) = 15
+// expect-stdout: f10 = NaN
+// expect-stdout: i11 = -17
+// expect-stdout: i12 = 655807
+// expect-stderr: division by zero; right must be nonzero, found 0
+// expect-stderr:   at seed-0142.ms:93 in main

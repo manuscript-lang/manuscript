@@ -41,3 +41,5 @@ test "calls infer first and only then use the default" {
 	expect_equal(pick([1, 2, 3]), 3)?
 	expect_equal(pair(1, "a").second, "a")?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

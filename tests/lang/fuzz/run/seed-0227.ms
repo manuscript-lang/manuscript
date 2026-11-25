@@ -71,3 +71,20 @@ export fn main() Int {
 	say(f"s12 = [{s12}]")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = 31
+// expect-stdout: i2 = 0
+// expect-stdout: i3 = 31
+// expect-stdout: i4 = 0
+// expect-stdout: s5 = [  padded  ]
+// expect-stdout: i6 = 977560937864
+// expect-stdout: fib(19) = 4181
+// expect-stdout: i7 = 10
+// expect-stdout: fib(43) = 433494437
+// expect-stdout: f8 = 0
+// expect-stdout: 31 977560937864 true sum 977560937895
+// expect-stdout:   PADDED\x20\x20
+// expect-stdout: s9 = [  padded  ]
+// expect-stdout: b10 = true
+// expect-stdout: i11 = 977560937842
+// expect-stdout: s12 = [back\\slash]

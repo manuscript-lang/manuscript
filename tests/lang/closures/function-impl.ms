@@ -26,3 +26,5 @@ test "implementation variables inside function signatures" {
 	operation Apply[String] := box
 	expect_equal(operation.apply(4), "4")?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

@@ -71,3 +71,19 @@ export fn main() Int {
 	say(f"b10 = {b10}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: line
+// expect-stdout: break
+// expect-stdout: i1 = -362661
+// expect-stdout: f2 = 71.19502255447384
+// expect-stdout: i3 = 362661
+// expect-stdout: collatz(1031) = 36
+// expect-stdout: b4 = false
+// expect-stdout: s5 = [ALPHAdeltahello world]
+// expect-stdout: l6 = [-17, 14, 12, 0, -15] len 5
+// expect-stdout: l7 = [14, 12] len 2
+// expect-stdout: quote"dline
+// expect-stdout: break
+// expect-stdout: i8 = 0
+// expect-stdout: l9 = [-24, -1, 9, -13] len 4
+// expect-stdout: b10 = false

@@ -16,3 +16,5 @@ test "stored HashAlgorithm operations match direct calls" {
 	expect_equal(hmac(key, data)?, HashAlgorithm.Sha512.hmac(key, data)?)?
 	expect_equal((hmac(key, data)?).length(), sha512(data).length())?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

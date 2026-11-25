@@ -1057,3 +1057,5 @@ test "YAML plain scalars and keys keep Unicode spaces" {
 	)
 	expect_true(root.contains("k\u{a0}"))?
 }
+// expect-exit: 0
+// expect-tests: passed=36 failed=0

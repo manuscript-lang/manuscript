@@ -120,3 +120,5 @@ test "timestamp methods and expected range failures" {
 	roundtrip := parse_timestamp(now.to_string())?
 	expect_equal(roundtrip, now)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

@@ -38,3 +38,12 @@ export fn main() Int {
 	say(f"i6 = {i6}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: s1 = [MiXeD CaSegamma]
+// expect-stdout: f2 = -1.459016393442623
+// expect-stdout: i3 = -9
+// expect-stdout: 15 -43 false sum -28
+// expect-stdout: i4 = -9
+// expect-stdout: s5 = [MiXeD CaSegamma]
+// expect-stdout: gcd(4638, 1505) = 1
+// expect-stdout: i6 = -746264

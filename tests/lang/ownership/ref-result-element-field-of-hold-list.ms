@@ -18,3 +18,6 @@ fn main() Void {
 	print(first_label(people))
 	print(first_label_bound(people))
 }
+// expect-exit: 0
+// expect-stdout: ada
+// expect-stdout: ada

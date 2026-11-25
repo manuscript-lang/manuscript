@@ -47,3 +47,16 @@ export fn main() Int {
 	say(f"i12 = {i12}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = 35
+// expect-stdout: i2 = 24931733224996
+// expect-stdout: i3 = 20
+// expect-stdout: s4 = [x:02:2962365287191-]
+// expect-stdout: f5 = 1100358000095930.6
+// expect-stdout: i6 = 24931733224996
+// expect-stdout: f7 = 5.5
+// expect-stdout: b8 = false
+// expect-stdout: i9 = 783852101768
+// expect-stdout: i10 = 24931733224996
+// expect-stdout: l11 = [-25, 2, -26, 18] len 4
+// expect-stdout: i12 = 587809683922

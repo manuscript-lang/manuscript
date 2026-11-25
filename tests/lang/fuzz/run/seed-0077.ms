@@ -38,3 +38,9 @@ export fn main() Int {
 	say(f"f5 = {f5}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: b2 = false
+// expect-stdout: s3 = [MiXeD CaSe]
+// expect-stdout: acc4 = 0
+// expect-stdout: fact(2) = 2
+// expect-stdout: f5 = 186.396

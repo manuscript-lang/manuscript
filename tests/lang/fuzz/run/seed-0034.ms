@@ -49,3 +49,15 @@ export fn main() Int {
 	say(f"{big8 + 1}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: i1 = -1051
+// expect-stdout: f2 = 1745443853.4225
+// expect-stdout: gcd(1646, 113) = 1
+// expect-stdout: i3 = -1020
+// expect-stdout: i4 = -9338
+// expect-stdout: i5 = 409913484
+// expect-stdout: emoji 😀back\\slash
+// expect-stdout: f6 = 3046574161799988700
+// expect-stdout: i7 = 0
+// expect-stderr: Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt
+// expect-stderr:   at seed-0034.ms:49 in main

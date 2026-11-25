@@ -29,3 +29,5 @@ test "BigInt clone starts an independent accumulator" {
 	expect_equal(acc, big_int_of_int(10))?
 	expect_equal(base, big_int_of_int(5))?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

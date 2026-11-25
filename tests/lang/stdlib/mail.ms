@@ -102,3 +102,5 @@ test "a blank line with a different ending from the line before it still ends th
 	bare := parse_message("\nbody").get()
 	expect_equal(bare.body, "body")?
 }
+// expect-exit: 0
+// expect-tests: passed=9 failed=0

@@ -32,3 +32,10 @@ export fn main() Int {
 	say(f"b6 = {b6}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: s1 = [ALPHA-969468989409:back\\slash  padded  ]
+// expect-stdout: i2 = 211402
+// expect-stdout: i3 = 0
+// expect-stdout: l4 = [2] len 1
+// expect-stdout: l5 = [] len 0
+// expect-stdout: b6 = false

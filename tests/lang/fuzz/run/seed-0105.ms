@@ -79,3 +79,25 @@ export fn main() Int {
 	say(f"{l5[2]}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: f1 = Infinity
+// expect-stdout: i2 = 17
+// expect-stdout: i3 = 1496
+// expect-stdout: f4 = 289.473
+// expect-stdout: l5 = [8] len 1
+// expect-stdout: s6 = [mslphmsms]
+// expect-stdout: l7 = [8, 8] len 2
+// expect-stdout: i8 = -349125036
+// expect-stdout: fib(0) = 0
+// expect-stdout: s9 = [gamma]
+// expect-stdout: i10 = -349122059
+// expect-stdout: s11 = [kaerb
+// expect-stdout: enilnaïve]
+// expect-stdout: b12 = false
+// expect-stdout: -1 867963922584 true sum 867963922583
+// expect-stdout: f13 = 0.000006851459999999999
+// expect-stdout: l14 = [8, 8] len 2
+// expect-stdout: 12917626334 15 false sum 12917626349
+// expect-stdout: f15 = NaN
+// expect-stderr: index 2 out of range for length 1; use get_or(index, default) to avoid the fault
+// expect-stderr:   at seed-0105.ms:79 in main

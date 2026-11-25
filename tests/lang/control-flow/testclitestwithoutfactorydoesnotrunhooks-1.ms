@@ -29,3 +29,5 @@ fn UnusedFixture.after_all() Void! {
 test "plain test" {
 	expect_equal(1 + 1, 2)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

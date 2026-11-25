@@ -64,3 +64,21 @@ fn main() Void {
 	print(f"{[m.clone(), Money(5)]}")
 	print(Wallet("ada", m.clone(), [Money(5)], null))
 }
+// expect-exit: 0
+// expect-stdout: 12.50
+// expect-stdout: 12.50
+// expect-stdout: 12.50
+// expect-stdout: 12.50
+// expect-stdout: 12.50
+// expect-stdout: shape
+// expect-stdout: shape
+// expect-stdout: Plain(n: 2)
+// expect-stdout: Plain(n: 3)
+// expect-stdout: box
+// expect-stdout: box
+// expect-stdout: [box, box]
+// expect-stdout: [12.50]
+// expect-stdout: Map(a: 12.50)
+// expect-stdout: some(12.50)
+// expect-stdout: [12.50, 0.5]
+// expect-stdout: Wallet(balance: 12.50, history: [0.5], note: none, owner: ada)

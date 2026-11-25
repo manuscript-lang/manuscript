@@ -156,3 +156,5 @@ fn heard(var socket WebSocket) String! {
 	)
 	return ok(message.data.decode_utf8() or "")
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

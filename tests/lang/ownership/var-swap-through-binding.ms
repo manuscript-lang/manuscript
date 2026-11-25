@@ -14,3 +14,5 @@ fn swapped() Int {
 test "a binding of a var that is assigned afterwards owns the value" {
 	expect_equal(swapped(), 21)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

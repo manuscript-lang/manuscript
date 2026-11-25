@@ -132,3 +132,5 @@ test "a discarded resource result is closed" {
 	expect_equal(pops_and_discards(dir.clone()), 1)?
 	expect_true(closed(dir, 51))?
 }
+// expect-exit: 0
+// expect-tests: passed=7 failed=0

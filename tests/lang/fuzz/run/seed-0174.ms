@@ -85,3 +85,22 @@ export fn main() Int {
 	say(f"f13 = {f13}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: 9223372036854775758:a
+// expect-stdout: l1 = [] len 0
+// expect-stdout: i2 = 2
+// expect-stdout:
+// expect-stdout: l3 = [] len 0
+// expect-stdout: 42
+// expect-stdout: f4 = 6708484530.697124
+// expect-stdout: b5 = true
+// expect-stdout: l6 = [] len 0
+// expect-stdout: fib(47) = 2971215073
+// expect-stdout: l7 = [] len 0
+// expect-stdout: l8 = [] len 0
+// expect-stdout: fib(36) = 14930352
+// expect-stdout: f9 = 2.400001110723054e+32
+// expect-stdout: i10 = 0
+// expect-stdout: s11 = [ABRACE{S}A]
+// expect-stdout: b12 = true
+// expect-stdout: f13 = 6708484530.697124

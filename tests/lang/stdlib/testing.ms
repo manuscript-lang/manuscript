@@ -67,3 +67,5 @@ test "assertions preserve domain equality" {
 	Key(id: 1, label: "first") | expect_equal(Key(id: 1, label: "second"))?
 	Key(id: 1, label: "first") | expect_not_equal(Key(id: 2, label: "first"))?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

@@ -69,3 +69,5 @@ test "wrapped parts are references into their arguments" {
 	)
 	visits | expect_equal([1, 1, 1])?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

@@ -35,3 +35,5 @@ test "closing a standard stream flushes it and leaves the process stream open" {
 	void err.close()
 	expect_true(stderr().write("").is_ok())?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

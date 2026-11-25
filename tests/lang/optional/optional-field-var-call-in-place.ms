@@ -100,3 +100,5 @@ test "owned payload fields are updated in place" {
 	expect_equal((t.next or panic("called Optional.get() on null")).label, "b!")?
 	expect_equal(t.label, "a")?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

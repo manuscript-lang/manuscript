@@ -32,3 +32,10 @@ export fn main() Int {
 	say(f"l4 = {l4} len {l4.length()}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = -964182
+// expect-stdout: s2 = [brace{s}]
+// expect-stdout: f3 = 4267416511949.06
+// expect-stdout: -40495644 -964131 true sum -41459775
+// expect-stdout: brace{s}
+// expect-stdout: l4 = [1] len 1

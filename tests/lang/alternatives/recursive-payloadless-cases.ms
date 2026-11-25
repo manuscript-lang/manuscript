@@ -61,3 +61,5 @@ test "chains end in a shared block" {
 	sum(copy) | expect_equal(expected: 499500)?
 	sum(chain.clone()) | expect_equal(expected: 499500)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

@@ -39,3 +39,10 @@ fn main() Void {
 	void stdout().write(f"{apply(scale, 5)}\n")
 	void stdout().write(f"{apply(scale, 4611686018427387904)}\n")
 }
+// expect-exit: 134
+// expect-stdout: 63429567993
+// expect-stdout: 40094500
+// expect-stderr: Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt
+// expect-stderr:   at entry-ranges-fault-value.ms:11 in scale
+// expect-stderr:   at entry-ranges-fault-value.ms:22 in apply
+// expect-stderr:   at entry-ranges-fault-value.ms:40 in main

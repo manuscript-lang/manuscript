@@ -36,3 +36,10 @@ export fn main() Int {
 
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: f1 = 2.906688562682427e-14
+// expect-stdout: x
+// expect-stdout: i2 = 609921468
+// expect-stdout: i3 = 0
+// expect-stdout: l4 = [-18, 8, 18] len 3
+// expect-stdout: 42

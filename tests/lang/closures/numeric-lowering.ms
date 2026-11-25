@@ -53,3 +53,5 @@ test "floating operations retain binary64 edge behavior" {
 	b := 0.9999999925494194
 	expect_equal(a * b - 1.0, 0.0)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

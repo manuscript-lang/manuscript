@@ -22,3 +22,4 @@ export fn main() Int {
 	l4 := l2.clone().append(38)
 	say(f"l4 = {l4} len {l4.length()}")
 }
+// expect-format: unchanged

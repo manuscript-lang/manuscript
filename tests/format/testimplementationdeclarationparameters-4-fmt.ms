@@ -13,3 +13,4 @@ type Pair[A, B] {
 fn hold Pair[Int, B].get() &B {
 	return self.right
 }
+// expect-format: unchanged

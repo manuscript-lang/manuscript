@@ -23,3 +23,5 @@ test "alternative result" {
 	expect_equal(score(Outcome.Ready(8)), 8)?
 	expect_equal(score(Outcome.Failed("unavailable")), 0)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

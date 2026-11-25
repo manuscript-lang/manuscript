@@ -22,3 +22,7 @@ fn main() Void {
 	present := nested("temporary") != null
 	print(f"end {(bound != null)} {present}")
 }
+// expect-exit: 0
+// expect-stdout: closed temporary
+// expect-stdout: end true true
+// expect-stdout: closed bound

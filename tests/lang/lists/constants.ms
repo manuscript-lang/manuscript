@@ -55,3 +55,5 @@ fn phase_name(phase Phase) String {
 test "a qualified payloadless case is a constant" {
 	expect_false(not (phase_name(START) == "idle" and phase_name(NEXT) == "idle"))?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

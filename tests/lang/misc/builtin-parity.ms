@@ -587,3 +587,5 @@ test "generic native methods accept omitted single-parameter labels" {
 	)
 	observed_values | expect_equal(values)?
 }
+// expect-exit: 0
+// expect-tests: passed=10 failed=0

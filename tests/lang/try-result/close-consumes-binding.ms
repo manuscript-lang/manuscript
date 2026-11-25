@@ -44,3 +44,5 @@ test "an explicit close consumes the binding and scope end closes nothing more" 
 	holder()?
 	expect_equal(1, 1)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

@@ -15,3 +15,8 @@ fn main() Void {
 	print(p)
 	print([p.clone()])
 }
+// expect-exit: 0
+// expect-stdout: 7
+// expect-stdout: P(n: 7)
+// expect-stdout: P(n: 7)
+// expect-stdout: [P(n: 7)]

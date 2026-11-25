@@ -34,3 +34,5 @@ test "writing to a closed connection returns an error" {
 
 	return error(Error("writes to a closed peer never failed"))
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

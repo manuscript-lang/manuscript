@@ -39,3 +39,4 @@ fn nested(move resource Resource) Void {
 fn indirect(callback fn() Void) Void {
 	callback()
 }
+// expect-format: unchanged

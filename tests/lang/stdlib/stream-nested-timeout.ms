@@ -90,3 +90,5 @@ test "a bound does not leak into a later unbounded wait" {
 	expected Int? := 5
 	expect_equal(value, expected)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

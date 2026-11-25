@@ -44,3 +44,15 @@ export fn main() Int {
 	say(f"i11 = {i11}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: s1 = [MIXED CASE日本語]
+// expect-stdout: i2 = 0
+// expect-stdout: s3 = [-20:MIXED CASE日本語]
+// expect-stdout: s4 = [0:brace{s}naïve-20:日本語]
+// expect-stdout: b5 = false
+// expect-stdout: f6 = 2.442
+// expect-stdout: i7 = 13
+// expect-stdout: b8 = true
+// expect-stdout: l9 = [] len 0
+// expect-stdout: s10 = [X]
+// expect-stdout: i11 = -36811410622

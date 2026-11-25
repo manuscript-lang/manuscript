@@ -41,3 +41,12 @@ export fn main() Int {
 	)
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: b1 = false
+// expect-stdout: i2 = -760613727209
+// expect-stdout: i3 = 4
+// expect-stdout: i4 = 1418688
+// expect-stdout: alpha
+// expect-stdout: l6 = [14, -21] len 2
+// expect-stdout: l7 = [14] len 1
+// expect-stdout: 5674752 14 false sum 5674766

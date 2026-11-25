@@ -29,3 +29,10 @@ export fn main() Int {
 	say(f"s6 = [{s6}]")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: s1 = [msgammagamma]
+// expect-stdout: f2 = 2.1909561526947013e+28
+// expect-stdout: l3 = [28, -7] len 2
+// expect-stdout: f4 = Infinity
+// expect-stdout: f5 = 2.1909561526947013e+28
+// expect-stdout: s6 = [msgammagammamsgammagammadelta]

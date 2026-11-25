@@ -32,3 +32,5 @@ test "numbers reject whitespace separators overflow and invalid radix" {
 		expect_equal(parse_float(text), float_error)?
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

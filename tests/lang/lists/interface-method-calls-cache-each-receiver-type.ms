@@ -47,3 +47,5 @@ test "three receiver types alternate at one site" {
 
 	expect_true((total == 4 * (18 + 20 + 20)))?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

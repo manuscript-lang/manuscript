@@ -179,3 +179,5 @@ test "UTF8 selects a bounded prefix or suffix in large inputs" {
 	decode_first(data) | expect_scalar(128578, 4)?
 	decode_last(data) | expect_scalar(233, 2)?
 }
+// expect-exit: 1
+// expect-tests: passed=0 failed=0

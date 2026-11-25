@@ -36,3 +36,4 @@ export fn main() Int {
 	i5 := ((i4 - (i4 - i4)) + ((i4 * i4) + (27 + 20)))
 	say(f"i5 = {i5}")
 }
+// expect-format: unchanged

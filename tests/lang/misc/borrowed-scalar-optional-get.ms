@@ -241,3 +241,5 @@ test "labeled map keys retain their checked conversion" {
 	expect_equal(values.get(key: "absent") == null, true)?
 	expect_equal(values.length(), 1)?
 }
+// expect-exit: 0
+// expect-tests: passed=15 failed=0

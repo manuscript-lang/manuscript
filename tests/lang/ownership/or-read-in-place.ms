@@ -33,3 +33,5 @@ test "x or d read in place borrows from x or from the default" {
 	expect_equal(label(Named("kim", ["z"])), 4)?
 	expect_equal(label(Named(null, null)), 11)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

@@ -10,3 +10,4 @@ fn main() Void {
 	value Int? := null
 	_result := value.ok_or_else(crash)
 }
+// expect-format: unchanged

@@ -118,3 +118,5 @@ test "nonreturning conditions cannot reach branch breaks" {
 	)?
 	expect_contains(result_branch_fault, "stop")?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

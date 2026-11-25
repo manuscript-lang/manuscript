@@ -43,3 +43,5 @@ test "Self as a result type is the implementing type" {
 	expect_equal(keep("a"), "a")?
 	expect_equal(duplicated(Token(id: 4)).id, 4)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

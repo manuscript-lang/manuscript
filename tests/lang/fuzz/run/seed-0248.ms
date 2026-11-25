@@ -78,3 +78,18 @@ export fn main() Int {
 	say(f"b11 = {b11}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: s1 = [alpha]
+// expect-stdout: b2 = false
+// expect-stdout: i3 = 5
+// expect-stdout: 20 884331 true sum 884351
+// expect-stdout: s4 = [ahpla42]
+// expect-stdout: b5 = false
+// expect-stdout: f6 = 0.00613752976701937
+// expect-stdout: f7 = 582.6174125893011
+// expect-stdout: f8 = 20.394559182751387
+// expect-stdout: acc9 = 40
+// expect-stdout: gcd(3028, 2461) = 1
+// expect-stdout: fib(7) = 13
+// expect-stdout: b10 = true
+// expect-stdout: b11 = true

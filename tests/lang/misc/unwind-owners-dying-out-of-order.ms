@@ -64,3 +64,5 @@ test "resources registered together close once when a later call faults" {
 		expect_equal(text.contains(id), true)?
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

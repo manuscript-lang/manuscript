@@ -95,3 +95,5 @@ test "map and and_then on both types keep their meaning" {
 	expect_equal(success.clone().map(n => n + 1).get(), 3)?
 	expect_equal(success.and_then(n => ok(n * 2)).get(), 4)?
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

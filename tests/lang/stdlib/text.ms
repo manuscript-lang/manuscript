@@ -136,3 +136,5 @@ test "text quoting round trips scalar and escape neighbors" {
 		)
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

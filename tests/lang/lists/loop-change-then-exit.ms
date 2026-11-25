@@ -34,3 +34,5 @@ fn main() Void {
 	n := first_b(["a", "b", "c"])
 	stdout().write(f"{copy.length()} {seen.length()} {n}\n").get()
 }
+// expect-exit: 0
+// expect-stdout: 8 2 1

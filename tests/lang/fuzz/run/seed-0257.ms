@@ -62,3 +62,15 @@ export fn main() Int {
 	say(f"b10 = {b10}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = -704938
+// expect-stdout: l2 = [-5] len 1
+// expect-stdout: l3 = [-17, -28, 15, -20] len 4
+// expect-stdout: s4 = [  padded  alphabrace{s}😀 ijome]
+// expect-stdout: collatz(2631) = 190
+// expect-stdout: l5 = [] len 0
+// expect-stdout: s6 = [x]
+// expect-stdout: i7 = -11983950
+// expect-stdout: l8 = [-5] len 1
+// expect-stdout: s9 = [-11983950:  padded  alphabrace{s}😀 ijome]
+// expect-stdout: b10 = false

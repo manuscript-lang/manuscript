@@ -6,3 +6,9 @@ fn f(first Int, second Int) Int => first
 export fn main() Int {
 	return
 }
+// expect-format: rewritten
+// expect-formatted: fn f(first, second Int) Int => first
+// expect-formatted:
+// expect-formatted: export fn main() Int {
+// expect-formatted: \treturn
+// expect-formatted: }

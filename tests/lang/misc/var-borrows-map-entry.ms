@@ -23,3 +23,5 @@ test "the key variable may change after the entry is borrowed" {
 	expect_equal(m.get("a") or panic("called Optional.get() on null"), [1, 2])?
 	expect_equal(m.get("b") or panic("called Optional.get() on null"), [9])?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

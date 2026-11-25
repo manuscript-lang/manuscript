@@ -118,3 +118,10 @@ fn closure_keeps(text String) Int {
 	}
 	return t
 }
+// expect-exit: 0
+// expect-stdout: [aa][bbbb][c][][dddddd][eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee][f]
+// expect-stdout: bbbbb none 5
+// expect-stdout: <a><b><c><d><>
+// expect-stdout: 11
+// expect-stdout: 8 5 11 39
+// expect-stdout: p1 p2 r1 r2\x20

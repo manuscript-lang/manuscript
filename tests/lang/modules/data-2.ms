@@ -14,3 +14,5 @@ test "explicit byte conversion" {
 	expect_equal(Bytes([255]).decode_utf8(), invalid)?
 	expect_equal("-007".parse_int(), -7)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

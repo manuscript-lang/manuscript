@@ -74,3 +74,5 @@ test "owned text of one length differs at any byte, which the inline compare cov
 		}
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

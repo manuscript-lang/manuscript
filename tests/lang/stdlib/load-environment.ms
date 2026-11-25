@@ -32,3 +32,5 @@ test "load_environment errors change nothing" {
 	expect_equal(load_environment(path, 3).err().kind.clone() or "", "EOVERFLOW")?
 	expect_equal(load_environment(dir.path()).err().kind.clone() or "", "EINVAL")?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

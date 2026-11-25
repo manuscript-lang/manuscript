@@ -72,3 +72,5 @@ test "a resource passed to ok_or or get moves into the result and closes once" {
 	expect_equal(default_resource(path), 5)?
 	expect_equal(log_text(path)?, "1,2,3,4,5,")?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

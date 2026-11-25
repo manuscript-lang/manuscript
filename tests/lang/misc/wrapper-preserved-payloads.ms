@@ -186,3 +186,5 @@ test "specialized source methods and indexed function calls keep their receiver 
 	callbacks := [fn(value Int) Int => value + 1]
 	expect_equal(callbacks[0](4), 5)?
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

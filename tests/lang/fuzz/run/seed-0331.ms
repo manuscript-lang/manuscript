@@ -45,3 +45,12 @@ export fn main() Int {
 	say(f"s7 = [{s7}]")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = 65027990137
+// expect-stdout: i2 = 75215269271
+// expect-stdout: b3 = false
+// expect-stdout: i5 = 653808
+// expect-stdout: f6 = 11868994.909468751
+// expect-stdout: gcd(4086, 4753) = 1
+// expect-stdout: fact(13) = 6227020800
+// expect-stdout: s7 = [4242]

@@ -21,3 +21,5 @@ test "typed JSON Base64 decodes every byte and preserves strict syntax" {
 		expect_equal((expect_error(parse[Bytes](f"\"{encoded}\""))?).kind, "EBADMSG")?
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

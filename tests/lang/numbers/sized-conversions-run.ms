@@ -21,3 +21,8 @@ fn main() Void {
 	)
 	void stdout().write(f"{a.to_decimal()}\n")
 }
+// expect-exit: 0
+// expect-stdout: 69900 -100 none none none 5000000000
+// expect-stdout: -100 70000 5000000000 -1 11170
+// expect-stdout: 0.10000000149011612 some(0.1) false 0 some(0) some(2.5)
+// expect-stdout: -100

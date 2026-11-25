@@ -275,3 +275,5 @@ fn drain_text(var input ReadStream[String]) List[String]! {
 	}
 	return ok(seen)
 }
+// expect-exit: 0
+// expect-tests: passed=11 failed=0

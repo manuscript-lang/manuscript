@@ -63,3 +63,19 @@ export fn main() Int {
 	say(f"{-big9}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: -46 -19 true sum -65
+// expect-stdout: f1 = 220.41
+// expect-stdout: acc2 = -18
+// expect-stdout: gcd(1325, 4941) = 1
+// expect-stdout: f3 = 94.79099999999994
+// expect-stdout: b4 = false
+// expect-stdout: ms
+// expect-stdout: i5 = 390945
+// expect-stdout: -161404443055004130 0 true sum -161404443055004130
+// expect-stdout: l6 = [10, -9, -26] len 3
+// expect-stdout: s7 = [3:héllo]
+// expect-stdout: b8 = false
+// expect-stdout: -390994 30493710 true sum 30102716
+// expect-stderr: Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt
+// expect-stderr:   at seed-0083.ms:63 in main

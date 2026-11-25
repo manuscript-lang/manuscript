@@ -69,3 +69,5 @@ test "inlined callbacks" {
 		)
 	)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

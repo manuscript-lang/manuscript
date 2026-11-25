@@ -34,3 +34,5 @@ test "byte search returns the earliest hit at or after start" {
 	expect_equal(data.index_of_byte(255, -9223372036854775807 - 1), 0)?
 	expect_equal(data.index_of_byte(255, 9223372036854775807), null)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

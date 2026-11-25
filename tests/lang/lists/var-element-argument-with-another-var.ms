@@ -53,3 +53,5 @@ test "a large element changes in place with another var argument" {
 	planes[1].steps | expect_equal(1000)?
 	total | expect_equal(3000)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

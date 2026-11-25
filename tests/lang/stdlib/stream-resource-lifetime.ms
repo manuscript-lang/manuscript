@@ -338,3 +338,5 @@ test "breaking returns the source so its next resource can be read" {
 	resume_after_break(log)?
 	expect_equal(events(log), "body 1\nclose 1\nbody 2\nclose 2\n")?
 }
+// expect-exit: 0
+// expect-tests: passed=12 failed=0

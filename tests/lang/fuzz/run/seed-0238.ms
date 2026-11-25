@@ -85,3 +85,20 @@ export fn main() Int {
 	say(f"{(((-40) - 17) + (i1 + 17)) % big14}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: i1 = 41
+// expect-stdout: f2 = 619.657
+// expect-stdout: b3 = false
+// expect-stdout: b4 = false
+// expect-stdout: b5 = false
+// expect-stdout: f6 = 19373738.802353077
+// expect-stdout: i8 = -67455
+// expect-stdout: s9 = [42]
+// expect-stdout: i10 = 41
+// expect-stdout: fib(38) = 39088169
+// expect-stdout: i11 = -67455
+// expect-stdout: i12 = 0
+// expect-stdout: gcd(4156, 450) = 2
+// expect-stdout: i13 = 0
+// expect-stderr: remainder by zero; right must be nonzero, found 0
+// expect-stderr:   at seed-0238.ms:85 in main

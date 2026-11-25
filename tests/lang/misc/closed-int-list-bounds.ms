@@ -242,3 +242,5 @@ test "constant length keeps its local valid through partial polling chunks" {
 fn present[T](hold value T) &T? {
 	return value
 }
+// expect-exit: 0
+// expect-tests: passed=9 failed=0

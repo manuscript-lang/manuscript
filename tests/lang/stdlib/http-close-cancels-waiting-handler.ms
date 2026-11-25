@@ -47,3 +47,5 @@ fn main() Void {
 	void sleep(milliseconds(100)).wait()
 	print("done")
 }
+// expect-exit: 0
+// expect-stdout: done

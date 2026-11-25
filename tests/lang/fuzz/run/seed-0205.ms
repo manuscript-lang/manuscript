@@ -72,3 +72,17 @@ export fn main() Int {
 	say(f"{l2.length() / big10}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: i1 = -53953
+// expect-stdout: l2 = [11, -19, -11, 8, 21] len 5
+// expect-stdout: i3 = -16
+// expect-stdout: fact(19) = 121645100408832000
+// expect-stdout: i4 = 66948874922
+// expect-stdout: acc5 = 252
+// expect-stdout: s6 = [emoji 😀BRACE{S}]
+// expect-stdout: s7 = [  PADDED  ]
+// expect-stdout: s8 = [x日本語]
+// expect-stdout: fib(58) = 591286729879
+// expect-stdout: i9 = 32
+// expect-stderr: division by zero; right must be nonzero, found 0
+// expect-stderr:   at seed-0205.ms:72 in main

@@ -37,3 +37,5 @@ test "parse_float agrees with math.parse_float" {
 		text.parse_float() | expect_equal(parse_float(text).to_optional())?
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

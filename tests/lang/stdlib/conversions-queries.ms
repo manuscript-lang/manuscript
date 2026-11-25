@@ -570,3 +570,5 @@ test "ok_or reports its explicit cause" {
 	named Int!Error := ok_or(absent, Error("port"))
 	named.err().message | expect_equal("port")?
 }
+// expect-exit: 0
+// expect-tests: passed=9 failed=0

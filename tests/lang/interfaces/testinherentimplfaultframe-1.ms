@@ -12,3 +12,5 @@ fn Counter.overflow() Int {
 test "inherent fault frame" {
 	Counter(value: 9223372036854775807).overflow()
 }
+// expect-exit: 1
+// expect-tests: passed=0 failed=1

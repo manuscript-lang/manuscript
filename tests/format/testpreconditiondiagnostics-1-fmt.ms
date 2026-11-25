@@ -8,3 +8,11 @@ import (
 )
 
 fn compare(left Int, right Int) Int => left - right
+// expect-format: rewritten
+// expect-formatted: import (
+// expect-formatted: \tBytes, BytesBuilder from "@std/bytes.ms",
+// expect-formatted: \tPriorityQueue, Queue from "@std/collections/queue.ms",
+// expect-formatted: \tbig_int_of_int from "@std/math/math.ms",
+// expect-formatted: )
+// expect-formatted:
+// expect-formatted: fn compare(left, right Int) Int => left - right

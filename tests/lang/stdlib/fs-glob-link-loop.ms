@@ -27,3 +27,5 @@ test "glob following links skips dangling and looping links like any link withou
 		expect_equal(matched_paths(root, options)?, ["a.txt", "dangling", "loop"])?
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

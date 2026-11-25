@@ -17,3 +17,5 @@ test "an omitted default does not copy an earlier var resource argument" {
 	note(dir, "third", "text")?
 	expect_equal(dir.path().is_empty(), false)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

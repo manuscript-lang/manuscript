@@ -61,3 +61,5 @@ test "a slice is its own copy" {
 	expect_equal(piece, "xyxyxy")?
 	expect_equal(s.slice(18, 21), "xy!")?
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

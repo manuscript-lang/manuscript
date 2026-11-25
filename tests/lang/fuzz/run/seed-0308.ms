@@ -66,3 +66,18 @@ export fn main() Int {
 	)
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = 28
+// expect-stdout: s2 = [beta]
+// expect-stdout: b3 = false
+// expect-stdout: i4 = -28
+// expect-stdout: collatz(1230) = 70
+// expect-stdout: i5 = 14
+// expect-stdout: i6 = 28
+// expect-stdout: s7 = [MiXeD CaSe]
+// expect-stdout: f8 = 107.20499999999993
+// expect-stdout: i9 = 52799
+// expect-stdout: f10 = 748.105
+// expect-stdout: 28 14 false sum 42
+// expect-stdout: b11 = false
+// expect-stdout: 52799 24794728 true sum 24847527

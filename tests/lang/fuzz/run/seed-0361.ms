@@ -45,3 +45,15 @@ export fn main() Int {
 	say(f"{(833471 * (i4 * i4)) % big7}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: gcd(440, 4081) = 11
+// expect-stdout: l1 = [] len 0
+// expect-stdout: -21 -160 false sum -181
+// expect-stdout: f2 = 1312898019840000.2
+// expect-stdout: 1 47 true sum 48
+// expect-stdout: f3 = 2.9711458630784545e+60
+// expect-stdout: i4 = 2115
+// expect-stdout: l5 = [] len 0
+// expect-stdout: s6 = [hélloemoji 😀]
+// expect-stderr: remainder by zero; right must be nonzero, found 0
+// expect-stderr:   at seed-0361.ms:45 in main

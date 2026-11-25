@@ -213,3 +213,5 @@ test "a record of one hundred fields is constructed and read" {
 	w.f64 | expect_equal(64)?
 	w.f99 | expect_equal(99)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

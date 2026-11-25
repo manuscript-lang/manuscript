@@ -33,3 +33,35 @@ test "recursion below the limit runs normally" {
 test "method recursion below the limit runs normally" {
 	(Walker(step: 1, limit: 100000).walk(n: 0) - 100000) | expect_equal(0)?
 }
+// expect-format: rewritten
+// expect-formatted: import expect_equal from "@std/test/test.ms"
+// expect-formatted:
+// expect-formatted: type Walker {
+// expect-formatted: \tstep, limit Int
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: interface Walk {
+// expect-formatted: \tfn walk(n Int) Int
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn Walker.walk(n Int) Int {
+// expect-formatted: \tif n == self.limit {
+// expect-formatted: \t\treturn 0
+// expect-formatted: \t}
+// expect-formatted: \treturn 1 + self.walk(n: n + self.step)
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn bounded(n, limit Int) Int {
+// expect-formatted: \tif n == limit {
+// expect-formatted: \t\treturn 0
+// expect-formatted: \t}
+// expect-formatted: \treturn 1 + bounded(n: n + 1, limit: limit)
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: test "recursion below the limit runs normally" {
+// expect-formatted: \t(bounded(n: 0, limit: 100000) - 100000) | expect_equal(0)?
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: test "method recursion below the limit runs normally" {
+// expect-formatted: \t(Walker(step: 1, limit: 100000).walk(n: 0) - 100000) | expect_equal(0)?
+// expect-formatted: }

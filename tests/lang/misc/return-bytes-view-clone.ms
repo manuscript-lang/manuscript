@@ -18,3 +18,5 @@ test "a cloned view of a parameter or a local can be returned" {
 	expect_equal(middle(Bytes([1, 2, 3, 4])), Bytes([2, 3]))?
 	expect_equal(local_middle(), Bytes([20, 30]))?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

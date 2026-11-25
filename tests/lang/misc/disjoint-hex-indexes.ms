@@ -17,3 +17,5 @@ test "distinct hexadecimal list indexes mutate independently" {
 	expect_equal(xs[12], 12)?
 	expect_equal(xs[15], 15)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

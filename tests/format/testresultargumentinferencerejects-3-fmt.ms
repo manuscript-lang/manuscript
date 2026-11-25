@@ -4,3 +4,7 @@
 fn same[T, E](first T!E, second T!E) Void => return
 
 fn first() Void => same(first: f(), second: other())
+// expect-format: rewritten
+// expect-formatted: fn same[T, E](first, second T!E) Void => return
+// expect-formatted:
+// expect-formatted: fn first() Void => same(first: f(), second: other())

@@ -25,3 +25,5 @@ test "for_each works for values that cannot be copied" {
 	m.for_each((k, r) => hits += if r.re.matches("xx") { 1 } else { 0 })
 	expect_equal(hits, 1)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

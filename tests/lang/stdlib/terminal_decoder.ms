@@ -166,3 +166,5 @@ test "backtab keeps the Control and Alt of its modifier" {
 		],
 	)?
 }
+// expect-exit: 0
+// expect-tests: passed=7 failed=0

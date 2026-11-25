@@ -56,3 +56,17 @@ export fn main() Int {
 	say(f"f11 = {f11}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = -57306334201335999
+// expect-stdout: s2 = [-57307221816312909:MS]
+// expect-stdout: b3 = false
+// expect-stdout: l4 = [-22, -18] len 2
+// expect-stdout: gamma
+// expect-stdout: f5 = 30000000
+// expect-stdout: i6 = -57306334201335999
+// expect-stdout: -57307221816312909:MS  padded\x20\x20
+// expect-stdout: s7 = [-57307221816312909:MS]
+// expect-stdout: i8 = -18
+// expect-stdout: f9 = Infinity
+// expect-stdout: l10 = [] len 0
+// expect-stdout: f11 = Infinity

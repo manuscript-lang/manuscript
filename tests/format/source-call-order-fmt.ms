@@ -39,3 +39,42 @@ test "source call dispatch contracts" {
 	expect_equal(callback(a: 3, b: 4), 34)?
 	expect_equal(identity(6), 6)?
 }
+// expect-format: rewritten
+// expect-formatted: import (
+// expect-formatted: \tpanic from "@std/core.ms",
+// expect-formatted: \texpect_equal from "@std/test/test.ms",
+// expect-formatted: )
+// expect-formatted:
+// expect-formatted: fn pair(a, b Int) Int => a * 10 + b
+// expect-formatted:
+// expect-formatted: test "arguments" {
+// expect-formatted: \tvar value = 1
+// expect-formatted: \toption Int? := 2
+// expect-formatted: \tresult := pair(
+// expect-formatted: \t\ta: value,
+// expect-formatted: \t\tb: match option {
+// expect-formatted: \t\t\ti => {
+// expect-formatted: \t\t\t\tvalue = 9
+// expect-formatted: \t\t\t\ti
+// expect-formatted: \t\t\t} null => 0
+// expect-formatted: \t\t}
+// expect-formatted: \t)
+// expect-formatted: \texpect_equal(result, 12)?
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn optional(value Int?) Int => value or panic("called Optional.get() on null")
+// expect-formatted:
+// expect-formatted: fn defaulted(value Int = 3) Int => value
+// expect-formatted:
+// expect-formatted: fn identity[T](value T) T => value
+// expect-formatted:
+// expect-formatted: test "source call dispatch contracts" {
+// expect-formatted: \texpect_equal(optional(4), 4)?
+// expect-formatted: \texpect_equal(defaulted(5), 5)?
+// expect-formatted: \texpect_equal(defaulted(), 3)?
+// expect-formatted: \texpect_equal(pair(b: 2, a: 1), 12)?
+// expect-formatted:
+// expect-formatted: \tcallback := pair
+// expect-formatted: \texpect_equal(callback(a: 3, b: 4), 34)?
+// expect-formatted: \texpect_equal(identity(6), 6)?
+// expect-formatted: }

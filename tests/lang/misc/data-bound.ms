@@ -37,3 +37,5 @@ test "Data accepts plain records, lists, codecs, and JSON documents" {
 	expect_equal(text(JsonValue.Null), "null")?
 	expect_equal(text([1, 2, 3]), "[1,2,3]")?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

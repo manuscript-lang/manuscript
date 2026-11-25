@@ -65,3 +65,18 @@ export fn main() Int {
 	say(f"s11 = [{s11}]")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = 5265171
+// expect-stdout: i2 = 5265171
+// expect-stdout: gcd(238, 1857) = 1
+// expect-stdout: l3 = [-16] len 1
+// expect-stdout: i4 = 5265171
+// expect-stdout: l5 = [-16, -16] len 2
+// expect-stdout: b6 = false
+// expect-stdout: i7 = -205341669
+// expect-stdout: -16 -16 false sum -32
+// expect-stdout: acc8 = -32
+// expect-stdout: b9 = true
+// expect-stdout: gcd(1873, 3508) = 1
+// expect-stdout: i10 = 760
+// expect-stdout: s11 = [  padded  ]

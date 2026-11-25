@@ -5,3 +5,5 @@ export fn main() Int {
 	print(text)
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: el

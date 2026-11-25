@@ -51,3 +51,18 @@ export fn main() Int {
 	say(f"l11 = {l11} len {l11.length()}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = -25
+// expect-stdout: 20 -75 false sum -55
+// expect-stdout: i2 = -25
+// expect-stdout: i3 = 643955553260
+// expect-stdout: s4 = [-25:MiXeD CaSe]
+// expect-stdout: 0 1287911106508 true sum 1287911106508
+// expect-stdout: s5 = [-16098888831500:643955553260:-25:MiXeD CaSe-25:MiXeD CaSe-25:MiXeD CaSe]
+// expect-stdout: f6 = 738.289
+// expect-stdout: i7 = 643955553281
+// expect-stdout: -213204 -1273 true sum -214477
+// expect-stdout: i8 = -9
+// expect-stdout: b9 = false
+// expect-stdout: i10 = -25
+// expect-stdout: l11 = [3, 3] len 2

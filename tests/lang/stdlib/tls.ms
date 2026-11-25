@@ -418,3 +418,5 @@ test "start_tls rejects an untrusted server and an empty server name" {
 	)?
 	_served := wait_all([served])?
 }
+// expect-exit: 0
+// expect-tests: passed=9 failed=0

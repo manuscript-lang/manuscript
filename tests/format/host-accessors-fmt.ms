@@ -61,3 +61,4 @@ test "a later test receives fresh standard output" {
 		}
 	}
 }
+// expect-format: unchanged

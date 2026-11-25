@@ -23,3 +23,5 @@ test "sorted map get_or" {
 	expect_equal(sorted.get_or(1, "?"), "one")?
 	expect_equal(sorted.get_or(2, "?"), "?")?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

@@ -17,3 +17,6 @@ fn main() Void! {
 	print(ok().to_string())
 	done()?
 }
+// expect-exit: 0
+// expect-stdout: 7
+// expect-stdout: 7

@@ -62,3 +62,5 @@ test "ASCII decoding preserves large offset views and rejects high byte tails" {
 	expect_equal(decode(data.concat(high)), invalid)?
 	expect_equal(decode(data.concat("é".to_bytes())), invalid)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

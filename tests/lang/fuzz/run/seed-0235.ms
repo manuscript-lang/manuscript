@@ -72,3 +72,14 @@ export fn main() Int {
 	say(f"i9 = {i9}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = 1056
+// expect-stdout: i2 = 0
+// expect-stdout: l3 = [-26, -7, 13, -24, -6] len 5
+// expect-stdout: collatz(383) = 45
+// expect-stdout: b4 = true
+// expect-stdout: i5 = -169940845099
+// expect-stdout: acc6 = -58
+// expect-stdout: acc7 = 29
+// expect-stdout: f8 = 504.254
+// expect-stdout: i9 = -972352

@@ -23,3 +23,5 @@ test "nonzero shifts still enforce the result bit budget" {
 	largest_power := big_int_of_int(1).shift_left(limit - 1)?
 	expect_equal((largest_power.shift_right(limit - 1)?).to_int(), 1)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

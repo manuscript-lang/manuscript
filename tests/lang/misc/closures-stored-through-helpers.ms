@@ -89,3 +89,5 @@ test "a closure stored through helper functions owns its captures" {
 	expect_equal(d4("x,yyyy,zz"), 10)?
 	expect_equal(d5("x,yyyy,zz"), 10)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

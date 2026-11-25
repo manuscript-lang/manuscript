@@ -29,3 +29,8 @@ export fn main() Int {
 	print(f"map {from_map(m, "a")} {from_map(m, "b")}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: list 1
+// expect-stdout: map 1 0
+// expect-stdout: closed 2
+// expect-stdout: closed 1

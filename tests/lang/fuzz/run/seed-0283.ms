@@ -80,3 +80,22 @@ export fn main() Int {
 	)
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: b1 = false
+// expect-stdout: f2 = 878.264
+// expect-stdout: s3 = [quote"d]
+// expect-stdout: b4 = true
+// expect-stdout: s5 = [日本語x]
+// expect-stdout: i6 = -941
+// expect-stdout: back\\slash
+// expect-stdout: s7 = [beta]
+// expect-stdout: f8 = 441.462
+// expect-stdout: i9 = -941
+// expect-stdout: gcd(4287, 140) = 1
+// expect-stdout: s10 = [gamma]
+// expect-stdout: acc11 = 32
+// expect-stdout: s12 = [quote"dnaïve]
+// expect-stdout: i13 = -21631
+// expect-stdout: f14 = 746.927
+// expect-stdout: b15 = true
+// expect-stdout: -941 -23513 false sum -24454

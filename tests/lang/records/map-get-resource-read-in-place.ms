@@ -26,3 +26,6 @@ export fn main() Int {
 	print(f"read {first} {second}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: read 1 1
+// expect-stdout: closed 1

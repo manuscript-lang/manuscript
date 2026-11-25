@@ -76,3 +76,18 @@ export fn main() Int {
 	say(f"{big10 * 2}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: i1 = 18
+// expect-stdout: l2 = [2, 14, -12, 29, 21] len 5
+// expect-stdout: s3 = [語本日]
+// expect-stdout: l4 = [2, 14, -12, 29, 21, 2, 14, -12, 29, 21] len 10
+// expect-stdout: acc5 = 23
+// expect-stdout: 18 648 true sum 666
+// expect-stdout: i6 = -648
+// expect-stdout: 語本日
+// expect-stdout: acc7 = 2
+// expect-stdout: acc8 = -3
+// expect-stdout: b9 = false
+// expect-stdout: 3 0 false sum 3
+// expect-stderr: Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt
+// expect-stderr:   at seed-0286.ms:76 in main

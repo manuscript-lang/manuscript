@@ -18,3 +18,5 @@ fn grown() Int {
 test "an optional local is changed through an independent copy" {
 	expect_equal(grown(), 2)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

@@ -72,3 +72,5 @@ test "the copy outlives the value it came from" {
 
 	expect_equal(out, ["p0", "p1", "p2"])?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

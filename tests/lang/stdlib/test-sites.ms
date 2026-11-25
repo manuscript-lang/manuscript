@@ -87,3 +87,5 @@ test "source location constants name their use site" {
 		site_of(expect_error(fail("here"))?).contains(f"{__FILE__}:{__LINE__}:")
 	)?
 }
+// expect-exit: 1
+// expect-tests: passed=4 failed=4

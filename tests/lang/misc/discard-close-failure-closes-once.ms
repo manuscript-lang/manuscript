@@ -84,3 +84,5 @@ test "set over an entry whose close fails closes each once" {
 	expect_contains(fault, "could not be closed")?
 	expect_equal(events(log)?, "1,2,")?
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

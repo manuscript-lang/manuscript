@@ -371,3 +371,5 @@ test "computed receiver closes when payload absent or construction faults" {
 	)?
 	expect_equal((events(other)?), "1,")?
 }
+// expect-exit: 0
+// expect-tests: passed=12 failed=0

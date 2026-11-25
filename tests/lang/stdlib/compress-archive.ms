@@ -72,3 +72,5 @@ test "ZIP unpack verifies a zero stored checksum" {
 	failure := expect_error(unpack(forged, ArchiveFormat.Zip))?
 	expect_equal(failure.kind.clone() or "", "EBADMSG")?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

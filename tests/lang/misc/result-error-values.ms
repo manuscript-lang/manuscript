@@ -133,3 +133,5 @@ test "Optional adapters accept primitive errors" {
 	ok_or(missing, "absent").err() | expect_equal("absent")?
 	ok_or(present, 9).get() | expect_equal(4)?
 }
+// expect-exit: 0
+// expect-tests: passed=7 failed=0

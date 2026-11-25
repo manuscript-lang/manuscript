@@ -102,3 +102,5 @@ test "Base64 padding and alphabets preserve nested views" {
 		expect_equal(base64_encode(part, true, false), url_raw[length])?
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

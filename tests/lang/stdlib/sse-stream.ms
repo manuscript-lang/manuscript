@@ -207,3 +207,5 @@ test "a read failure is the stream's error and events before it arrive" {
 	failed := events.next()
 	expect_equal(failed.err().kind, "EBADF")?
 }
+// expect-exit: 0
+// expect-tests: passed=13 failed=0

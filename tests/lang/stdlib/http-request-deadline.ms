@@ -113,3 +113,8 @@ export fn main() Int {
 	}
 	return 1
 }
+// expect-exit: 0
+// expect-stdout: no grace slow: true prompt: true
+// expect-stdout: no grace fast: true
+// expect-stdout: grace slow: true prompt: true
+// expect-stdout: grace fast: true

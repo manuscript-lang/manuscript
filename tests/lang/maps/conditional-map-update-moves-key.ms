@@ -52,3 +52,5 @@ test "no branch taken leaves an empty map" {
 	counts := count(["a", "b"])
 	expect_equal(counts.length(), 0)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

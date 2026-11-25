@@ -73,3 +73,5 @@ test "arms that differ in constants compute each path" {
 	expect_equal(clamp_count(10, 3), 4)?
 	expect_equal(clamp_count(1, 3), 3)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

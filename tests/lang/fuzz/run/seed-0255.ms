@@ -64,3 +64,20 @@ export fn main() Int {
 	say(f"f14 = {f14}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = 66533647633284
+// expect-stdout: gcd(3431, 2601) = 1
+// expect-stdout: f2 = 300
+// expect-stdout: i3 = 66533647633284
+// expect-stdout: s4 = [a]
+// expect-stdout: i5 = -47
+// expect-stdout: f6 = 4615120.200000001
+// expect-stdout: l7 = [] len 0
+// expect-stdout: b8 = false
+// expect-stdout: i9 = 66533647633252
+// expect-stdout: l10 = [21, 5] len 2
+// expect-stdout: i11 = 0
+// expect-stdout: i12 = 1
+// expect-stdout: -3127081438764347 -5 true sum -3127081438764352
+// expect-stdout: i13 = -26
+// expect-stdout: f14 = 4616020.644660001

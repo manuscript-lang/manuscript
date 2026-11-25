@@ -21,3 +21,5 @@ test "a promise reads captures that are not scalars" {
 	expect_equal(both.get_or([]).length(), 2)?
 	expect_equal(run(xs, "ab").get_or(0), 5)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

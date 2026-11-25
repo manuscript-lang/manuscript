@@ -62,3 +62,22 @@ export fn main() Int {
 	say(f"i15 = {i15}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: b1 = false
+// expect-stdout: b2 = false
+// expect-stdout: l3 = [20, -25, 28, 28] len 4
+// expect-stdout: i4 = 4120704
+// expect-stdout: f5 = 3.5
+// expect-stdout: s6 = [emoji 😀gamma]
+// expect-stdout: i7 = 1007
+// expect-stdout: f8 = 0.004122244573948386
+// expect-stdout: i9 = 1007
+// expect-stdout: l10 = [20, 28, 28] len 3
+// expect-stdout: emoji 😀gamma
+// expect-stdout: b11 = false
+// expect-stdout: l12 = [-10, 5, -13] len 3
+// expect-stdout: s13 = [0:line
+// expect-stdout: breakemoji 😀gamma]
+// expect-stdout: s14 = [ammag😀 ijomekaerb
+// expect-stdout: enil:0:9640233:1]
+// expect-stdout: i15 = 0

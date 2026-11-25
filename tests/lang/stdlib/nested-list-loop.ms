@@ -28,3 +28,5 @@ test "a loop borrows an inner list reached by index" {
 	expect_equal(total_get(rows, 0), 3)?
 	expect_equal(lengths([["a"], ["bb", "ccc"]]), 5)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

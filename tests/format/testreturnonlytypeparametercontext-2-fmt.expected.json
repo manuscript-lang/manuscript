@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "\nfn fail[T](message String) T! => error(Error(message))\n\nfn first() Int! { ... }\n"
-  }
-}

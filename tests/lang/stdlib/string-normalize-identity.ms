@@ -55,3 +55,5 @@ test "ASCII identity retains spelling validation before normalization" {
 		}
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

@@ -19,3 +19,4 @@ export fn main() Int {
 	say(f"f1 = {f1}")
 	return 0
 }
+// expect-format: unchanged

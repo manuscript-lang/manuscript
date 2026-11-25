@@ -116,3 +116,5 @@ test "take_while and drop_while split at the first failing element" {
 	expect_equal(values.take_while(x => x < 9), values)?
 	expect_equal(List[Int]().take_while(x => x < 3), List[Int]())?
 }
+// expect-exit: 0
+// expect-tests: passed=10 failed=0

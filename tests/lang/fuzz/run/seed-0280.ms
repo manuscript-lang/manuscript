@@ -63,3 +63,16 @@ export fn main() Int {
 
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: gcd(4107, 1264) = 1
+// expect-stdout: i1 = 188784
+// expect-stdout: s2 = [dlrow olleh24]
+// expect-stdout: f3 = -4.977881434152141e-21
+// expect-stdout: i4 = -188784
+// expect-stdout: f5 = 688.25
+// expect-stdout: b6 = true
+// expect-stdout: s7 = [hsals\\kcab42hello world42hello world:997881-]
+// expect-stdout: s8 = [hsals\\kcab42hello world42hello world:997881-ms]
+// expect-stdout: 0 188784 true sum 188784
+// expect-stdout: i9 = 1
+// expect-stdout: 42

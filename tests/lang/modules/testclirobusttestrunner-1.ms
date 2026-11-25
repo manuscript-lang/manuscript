@@ -18,3 +18,5 @@ test "failing" {
 test "later" {
 	expect_equal(true, true)?
 }
+// expect-exit: 1
+// expect-tests: passed=2 failed=1 skipped=1

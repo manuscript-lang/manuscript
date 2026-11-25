@@ -55,3 +55,15 @@ export fn main() Int {
 	say(f"b9 = {b9}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: s1 = [back\\slash]
+// expect-stdout: i2 = 10
+// expect-stdout: l3 = [-7] len 1
+// expect-stdout:   padded\x20\x20
+// expect-stdout: b4 = true
+// expect-stdout: i5 = -543844684734
+// expect-stdout: b6 = true
+// expect-stdout: b7 = true
+// expect-stdout: s8 = [x]
+// expect-stdout: 3 10 true sum 13
+// expect-stdout: b9 = false

@@ -203,3 +203,5 @@ test "native borrowers retain owned arguments after a later try" {
 	)
 	expect_equal(pieces, "before-2-after")?
 }
+// expect-exit: 0
+// expect-tests: passed=19 failed=0

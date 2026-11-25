@@ -33,3 +33,5 @@ test "literals" {
 	rows := [[1], [2, 3]]
 	expect_true((rows[1] == [2, 3]))?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

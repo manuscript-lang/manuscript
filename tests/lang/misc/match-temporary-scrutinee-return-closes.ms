@@ -77,3 +77,5 @@ test "falling out of the match closes it once" {
 	late(log.clone()) | expect_equal(2)?
 	logged(log.clone()) | expect_equal("2,")?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

@@ -87,3 +87,23 @@ export fn main() Int {
 	say(f"i13 = {i13}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: l1 = [24, -19] len 2
+// expect-stdout: acc2 = 10
+// expect-stdout: i3 = -29
+// expect-stdout: 0 0 false sum 0
+// expect-stdout: s4 = [日本語]
+// expect-stdout: 日本語
+// expect-stdout: 日本語
+// expect-stdout: gcd(3648, 1897) = 1
+// expect-stdout: b5 = true
+// expect-stdout: i6 = 28
+// expect-stdout: i7 = -42
+// expect-stdout: -731902 1 true sum -731901
+// expect-stdout: i8 = -2
+// expect-stdout: -421736 31 true sum -421705
+// expect-stdout: l9 = [] len 0
+// expect-stdout: i10 = 0
+// expect-stdout: b11 = false
+// expect-stdout: i12 = -28
+// expect-stdout: i13 = -15

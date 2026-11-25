@@ -72,3 +72,19 @@ export fn main() Int {
 	say(f"fact(4) = {fact(4)}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: s1 = [x]
+// expect-stdout: l2 = [] len 0
+// expect-stdout: s3 = [emoji 😀]
+// expect-stdout: s4 = [ms]
+// expect-stdout: gcd(1471, 4071) = 1
+// expect-stdout: f5 = NaN
+// expect-stdout: b6 = false
+// expect-stdout: i7 = 266185931116
+// expect-stdout: x
+// expect-stdout: i8 = -18
+// expect-stdout: b9 = false
+// expect-stdout: i10 = -266185931116
+// expect-stdout: l11 = [] len 0
+// expect-stdout: 0 -266185931980 false sum -266185931980
+// expect-stdout: fact(4) = 24

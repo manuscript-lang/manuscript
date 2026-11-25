@@ -14,3 +14,17 @@ test "explicit standard imports" {
 	expect_equal([1, 2].length(), 2)?
 	expect_equal(amount().get_or(0.0d), 12.50d)?
 }
+// expect-format: rewritten
+// expect-formatted: import (
+// expect-formatted: \tDecimal from "@std/math/decimal.ms",
+// expect-formatted: \texpect_equal from "@std/test/test.ms",
+// expect-formatted: )
+// expect-formatted:
+// expect-formatted: fn amount() Decimal! {
+// expect-formatted: \treturn ok(12.50d)
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: test "explicit standard imports" {
+// expect-formatted: \texpect_equal([1, 2].length(), 2)?
+// expect-formatted: \texpect_equal(amount().get_or(0.0d), 12.50d)?
+// expect-formatted: }

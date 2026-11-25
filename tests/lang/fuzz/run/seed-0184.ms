@@ -53,3 +53,18 @@ export fn main() Int {
 	say(f"s12 = [{s12}]")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: f1 = 1316.246
+// expect-stdout: f2 = -5235519518001.462
+// expect-stdout: s3 = [D"ETOUQ]
+// expect-stdout: s4 = [ad"etouqd"etouq]
+// expect-stdout: b5 = true
+// expect-stdout: s6 = [evïanad"etouqd"etouq]
+// expect-stdout: i7 = 44
+// expect-stdout: i8 = 1958
+// expect-stdout: line
+// expect-stdout: break
+// expect-stdout: f9 = 3465007.0650320007
+// expect-stdout: f10 = -7.5217586123354e+25
+// expect-stdout: i11 = -24
+// expect-stdout: s12 = [Tab\there]

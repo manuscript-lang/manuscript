@@ -93,3 +93,5 @@ test "a function value with defaults passes a supplied argument through" {
 	alias(counters, 10) | expect_equal(30)?
 	counters.length() | expect_equal(2)?
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

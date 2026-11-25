@@ -11,3 +11,5 @@ fn run() Int {
 test "fault" {
 	run()
 }
+// expect-exit: 1
+// expect-tests: passed=0 failed=1

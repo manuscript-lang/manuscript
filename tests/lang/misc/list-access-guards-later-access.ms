@@ -35,3 +35,5 @@ test "an access that has run guards a later access at the same index" {
 	filled(0) | expect_equal(0)?
 	after_clone(4) | expect_equal(10)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

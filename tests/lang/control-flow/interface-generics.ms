@@ -59,3 +59,5 @@ test "parameters and bounds belong to interfaces and types" {
 	text := Box("seven")
 	expect_equal(read(text), "seven")?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

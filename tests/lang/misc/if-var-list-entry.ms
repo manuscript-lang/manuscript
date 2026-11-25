@@ -17,3 +17,5 @@ test "list probe" {
 	expect_equal(bump(xs, 2), false)?
 	expect_equal(bump(xs, -1), false)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

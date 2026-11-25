@@ -10,3 +10,5 @@ test "a list zipped with itself pairs each element with itself" {
 	expect_equal(pairs[1].second, "b")?
 	expect_equal(names.length(), 2)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

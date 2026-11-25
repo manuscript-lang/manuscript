@@ -30,3 +30,5 @@ test "native arity fallback still selects the source method" {
 	expect_equal(value.to_string("count="), "count=4")?
 	expect_equal(value.to_string().is_empty(), false)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

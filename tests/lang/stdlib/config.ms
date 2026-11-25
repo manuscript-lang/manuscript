@@ -248,3 +248,5 @@ test "INI comments after quotes may contain the quote and ignore tab-only marker
 	expect_equal(top.get_or("d", ""), "\"x\"\t#literal")?
 	expect_equal(top.get_or("e", ""), "'t'\t;literal")?
 }
+// expect-exit: 0
+// expect-tests: passed=14 failed=0

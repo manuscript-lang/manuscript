@@ -45,3 +45,5 @@ test "dialects choose the separator and bad input is EINVAL" {
 		Error("path: invalid input", kind: "EINVAL"),
 	)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

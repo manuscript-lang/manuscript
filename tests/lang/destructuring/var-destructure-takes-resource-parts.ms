@@ -27,3 +27,8 @@ fn main() Void! {
 	print(second.id + first.id)
 	return ok()
 }
+// expect-exit: 0
+// expect-stdout: closed 1
+// expect-stdout: 5
+// expect-stdout: closed 2
+// expect-stdout: closed 3

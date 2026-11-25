@@ -11,3 +11,7 @@ export fn main() Int {
 	add(value: crash(), key: 1)
 	return values.length()
 }
+// expect-exit: 134
+// expect-stderr: division by zero; right must be nonzero, found 0
+// expect-stderr:   at testfaultsourcelocations-7.ms:5 in crash
+// expect-stderr:   at testfaultsourcelocations-7.ms:11 in main

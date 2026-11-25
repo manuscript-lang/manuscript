@@ -33,3 +33,5 @@ test "decimal comparison orders signs exponent gaps and overlapping digits" {
 	expect_equal(1.1d.compare(1d), 1)?
 	expect_equal((-1.1d).compare(-1d), -1)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

@@ -25,3 +25,5 @@ test "an omitted Optional default is none" {
 	absent() | expect_true()?
 	(not absent(value: 2)) | expect_true()?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

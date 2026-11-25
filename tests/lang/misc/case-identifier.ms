@@ -45,3 +45,5 @@ test "case is an ordinary identifier in declarations and patterns" {
 	expect_equal(present(7), 7)?
 	expect_equal(present(null), 0)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

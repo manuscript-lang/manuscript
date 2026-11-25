@@ -25,3 +25,5 @@ test "maps and optionals of BigInts compare by value" {
 	var second BigInt? = big_int_of_int(1000000000000)
 	expect_equal(first == second, true)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

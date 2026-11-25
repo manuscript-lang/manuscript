@@ -115,3 +115,22 @@ export fn main() Int {
 	say(f"l14 = {l14} len {l14.length()}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: b1 = false
+// expect-stdout: l2 = [-14, 26] len 2
+// expect-stdout: l3 = [-10, 30] len 2
+// expect-stdout: l4 = [0, 5, -24, 6] len 4
+// expect-stdout: i5 = -722209
+// expect-stdout: l6 = [] len 0
+// expect-stdout: acc7 = 7
+// expect-stdout: acc8 = -19
+// expect-stdout: collatz(1618) = 47
+// expect-stdout: i9 = -722209
+// expect-stdout: s10 = [  padded  ]
+// expect-stdout: i11 = -1355175
+// expect-stdout: i12 = -722209
+// expect-stdout: fib(38) = 39088169
+// expect-stdout:   padded\x20\x20
+// expect-stdout: l13 = [0, 5, -24, 6, 13] len 5
+// expect-stdout: 日本語
+// expect-stdout: l14 = [2, -22, 8] len 3

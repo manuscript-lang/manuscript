@@ -19,3 +19,5 @@ fn main() Void {
 	}
 	void stdout().write(f"{total(4)} {xs.length()} {xs[0]} {empty} {(2..2).length()}\n")
 }
+// expect-exit: 0
+// expect-stdout: 10 3 1 0 0

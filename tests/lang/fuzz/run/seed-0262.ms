@@ -90,3 +90,21 @@ export fn main() Int {
 	say(f"l11 = {l11} len {l11.length()}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: -65 -1730477630 false sum -1730477695
+// expect-stdout: b1 = false
+// expect-stdout: l2 = [] len 0
+// expect-stdout: acc3 = 3
+// expect-stdout: l4 = [26, -8, -7] len 3
+// expect-stdout: f5 = -12440.141537
+// expect-stdout: naïve
+// expect-stdout: x
+// expect-stdout: acc6 = -30
+// expect-stdout: i7 = -2872686
+// expect-stdout: f8 = -10556430.425184386
+// expect-stdout: 42
+// expect-stdout: s9 = [-1244160306600:x]
+// expect-stdout: gcd(1974, 2356) = 2
+// expect-stdout:   padded  -1244160306600:x
+// expect-stdout: f10 = -12440.141537
+// expect-stdout: l11 = [] len 0

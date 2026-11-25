@@ -37,3 +37,8 @@ export fn main() Int {
 	void stdout().write("done\n")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: closed 2
+// expect-stdout: closed 1
+// expect-stdout: closed 3
+// expect-stdout: done

@@ -113,3 +113,5 @@ test "inferred callable returns use required arguments consistently" {
 	expect_equal(callbacks["original"](3), 4)?
 	expect_equal(callbacks["replacement"](3), 5)?
 }
+// expect-exit: 0
+// expect-tests: passed=8 failed=0

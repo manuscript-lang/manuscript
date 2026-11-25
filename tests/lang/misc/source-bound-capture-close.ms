@@ -108,3 +108,5 @@ test "shared source default method captures do not close the borrowed receiver" 
 	shared_owner(log.clone())?
 	expect_equal(read_file(log).wait().get().decode_utf8() or "", "10,")?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

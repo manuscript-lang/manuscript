@@ -62,3 +62,19 @@ export fn main() Int {
 	say(f"fact(7) = {fact(7)}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: f1 = 951949.05475
+// expect-stdout: b2 = true
+// expect-stdout: l3 = [-16, -24] len 2
+// expect-stdout: gcd(3568, 322) = 2
+// expect-stdout: f4 = 38564.369168
+// expect-stdout: l5 = [-16, -24, -16, -24] len 4
+// expect-stdout: 33 -232734280815 false sum -232734280782
+// expect-stdout: i6 = 128764070
+// expect-stdout: 128764070 128764070 false sum 257528140
+// expect-stdout: i7 = 128764050
+// expect-stdout: s8 = []
+// expect-stdout: s9 = [hello world]
+// expect-stdout: b10 = false
+// expect-stdout: l11 = [-16, -24, -16, -24] len 4
+// expect-stdout: fact(7) = 5040

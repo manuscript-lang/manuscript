@@ -52,3 +52,15 @@ export fn main() Int {
 	)
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: delta
+// expect-stdout: b1 = true
+// expect-stdout: b2 = false
+// expect-stdout: i3 = 0
+// expect-stdout: b4 = false
+// expect-stdout: b5 = true
+// expect-stdout: i6 = 0
+// expect-stdout: fact(0) = 1
+// expect-stdout: l7 = [] len 0
+// expect-stdout: i8 = -49
+// expect-stdout: 1 0 false sum 1

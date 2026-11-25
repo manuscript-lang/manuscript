@@ -14,3 +14,7 @@ fn mirror(a List[Int]) Int {
 fn main() Void {
 	void stdout().write(f"{mirror([1, 2, 3, 4])}\n")
 }
+// expect-exit: 134
+// expect-stderr: index 4 out of range for length 4; use get_or(index, default) to avoid the fault
+// expect-stderr:   at bounds-fault-mirror.ms:9 in mirror
+// expect-stderr:   at bounds-fault-mirror.ms:15 in main

@@ -89,3 +89,5 @@ test "copy names preserve Bytes and collection storage" {
 	set.clone().add(2)
 	expect_equal(set.values(), [1])?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

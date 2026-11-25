@@ -110,3 +110,5 @@ test "Bytes split returns independent List storage and immutable views" {
 	no_parts.append(Bytes([1]))
 	expect_false(not (empty.split(empty).is_empty()))?
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

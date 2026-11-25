@@ -97,3 +97,4 @@ test "inference evaluates once in written order before defaults" {
 	value := result?
 	expect_equal(value, 1)?
 }
+// expect-format: unchanged

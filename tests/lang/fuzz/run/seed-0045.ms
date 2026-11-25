@@ -50,3 +50,17 @@ export fn main() Int {
 	)
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: i1 = 62
+// expect-stdout: i2 = 799717382777
+// expect-stdout: b3 = true
+// expect-stdout: i4 = 799717382689
+// expect-stdout: i5 = 19
+// expect-stdout: s6 = [xdeltadeltahello world]
+// expect-stdout: i7 = 0
+// expect-stdout: b8 = true
+// expect-stdout: xdeltadeltahello world
+// expect-stdout: i9 = -919338
+// expect-stdout: i10 = -1
+// expect-stderr: Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt
+// expect-stderr:   at seed-0045.ms:48 in main

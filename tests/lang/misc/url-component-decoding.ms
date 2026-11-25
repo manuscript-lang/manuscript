@@ -25,3 +25,5 @@ test "component decoding rejects malformed escapes and UTF8" {
 		expect_equal(decode_component(input), invalid)?
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

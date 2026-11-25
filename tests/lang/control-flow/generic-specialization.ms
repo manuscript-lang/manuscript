@@ -40,3 +40,5 @@ test "generic calls with type-variable arguments still resolve" {
 	expect_equal(twice(4), 4)?
 	expect_equal(twice("b"), "b")?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

@@ -19,3 +19,7 @@ fn main() Void {
 	print(kept("  left"))
 	print(piece("a, b ,c"))
 }
+// expect-exit: 0
+// expect-stdout: padded
+// expect-stdout: left
+// expect-stdout:  b

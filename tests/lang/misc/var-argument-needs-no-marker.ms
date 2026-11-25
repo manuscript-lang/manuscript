@@ -26,3 +26,5 @@ test "var parameters take plain arguments" {
 	push_one(bag.items)
 	(values.length() + bag.items.length()) | expect_equal(3)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

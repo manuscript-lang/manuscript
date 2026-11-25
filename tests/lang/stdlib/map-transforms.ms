@@ -359,3 +359,5 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts" {
 	)?
 	empty_calls.is_empty() | expect_true?
 }
+// expect-exit: 0
+// expect-tests: passed=8 failed=0

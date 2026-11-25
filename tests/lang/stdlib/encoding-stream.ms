@@ -224,3 +224,5 @@ test "hex decoding rejects an odd tail" {
 	outcome := join_bytes(hex_decoded(ReadStream[String](Texts(["abc"], 0))))
 	expect_equal(outcome.err().kind, "EBADMSG")?
 }
+// expect-exit: 0
+// expect-tests: passed=8 failed=0

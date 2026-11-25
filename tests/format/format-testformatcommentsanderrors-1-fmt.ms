@@ -5,3 +5,8 @@
 fn sum(left Int, right Int) Int {  // sum
 	return left + right  // trailing
 }
+// expect-format: rewritten
+// expect-formatted: // leading
+// expect-formatted: fn sum(left, right Int) Int {  // sum
+// expect-formatted: \treturn left + right  // trailing
+// expect-formatted: }

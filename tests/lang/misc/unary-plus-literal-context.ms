@@ -37,3 +37,5 @@ test "nested sign overflow still faults" {
 		| expect_contains("overflow")?
 	)
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

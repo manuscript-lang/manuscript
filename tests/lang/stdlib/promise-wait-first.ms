@@ -37,3 +37,5 @@ test "wait_first propagates a deferred promise construction limit" {
 	expect_equal(reason.kind, "ETIMEDOUT")?
 	expect_true(monotonic().difference(start).to_milliseconds() < 2000)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

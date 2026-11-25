@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "\nfn checked(n Int) Int! {\n\tif n < 0 {\n\t\treturn error(Error(\"negative\"))\n\t}\n\treturn ok(n + 1)\n}\n\nfn chain(n Int) Int! {\n\tvalue := checked(n)?\n\treturn ok(value)\n}\n\nexport fn main() Int {\n\treturn chain(9223372036854775807).get()\n}\n"
-  }
-}

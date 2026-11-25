@@ -44,3 +44,5 @@ test "a method with a default keeps its borrowed result" {
 	expect_equal(greeting(), "dflt")?
 	expect_equal(greeting("yo"), "dflt")?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

@@ -36,3 +36,5 @@ test "loop over a call" {
 	got := read_all()?
 	expect_equal(got.length(), 3)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

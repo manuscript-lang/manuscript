@@ -10,3 +10,5 @@ test "bytes" {
 	data := "x".to_bytes().with_value(index: 0, value: 255)
 	_out := stdout_bytes().write(data)
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

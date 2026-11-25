@@ -13,6 +13,7 @@ import (
 	create_directory, temporary from "@std/os/fs.ms",
 
 	Fixture, materialize, parent_length, read_text, string_member from "./corpus.ms",
+	render_phase from "./expect.ms",
 	invoke,
 	number,
 	read_report,
@@ -28,6 +29,15 @@ size := 12
 // process of their own.
 solitary := ["@std/os/", "@std/net/", "@std/process", "@std/time", "@std/concurrency/"]
 
+// Whether the expectation lines say: exit 0, every test passed, nothing on stderr.
+fn plain_pass(lines List[String]) Bool {
+	if lines.length() != 2 or lines[0] != "expect-exit: 0" { return false }
+	return (
+		lines[1].starts_with("expect-tests: passed=")
+		and lines[1].ends_with(" failed=0")
+	)
+}
+
 // Whether `fx` recorded a plain pass: one source file, no arguments or input, exit 0,
 // quiet stderr and only the runner's own RUN and PASS lines on stdout.
 fn batchable(fx Fixture) Bool {
@@ -40,6 +50,7 @@ fn batchable(fx Fixture) Bool {
 	) {
 		return false
 	}
+	if not fx.inline.is_empty() { return plain_pass(fx.inline) }
 	if string_member(fx.expected, "stderr") != "" { return false }
 
 	report := fx.expected.get("report")
@@ -142,6 +153,12 @@ fn observation(report JsonValue) JsonValue {
 	return JsonValue.ObjectValue(fields)
 }
 
+// Whether the observation of one fixture is its expectation.
+fn matches(fx Fixture, observed JsonValue) Bool {
+	if fx.inline.is_empty() { return same(fx.expected, observed) }
+	return render_phase("test", observed) == fx.inline
+}
+
 // The ids of the fixtures of `group` whose observation inside one batch equals their
 // recording.
 fn matched(ms String, group List[Fixture], build_type String) List[String] {
@@ -169,7 +186,7 @@ fn matched(ms String, group List[Fixture], build_type String) List[String] {
 		cut := slice(report, fx.entry.clone())
 		if cut == null { continue }
 
-		if same(fx.expected, observation(cut)) {
+		if matches(fx, observation(cut)) {
 			ids.append(fx.id.clone())
 		}
 	}

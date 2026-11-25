@@ -33,3 +33,5 @@ test "big rational exponent limits remain inclusive" {
 	expect_equal((parse_rat("0e100000")?).to_string(), "0")?
 	expect_equal((parse_rat("0e-100000")?).to_string(), "0")?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

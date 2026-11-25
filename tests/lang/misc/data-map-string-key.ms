@@ -10,3 +10,5 @@ export fn main() Int {
 	scores := Map[String, Int]()
 	return need(scores) - 1
 }
+// expect-exit: 0
+// expect-tests: passed=0 failed=0

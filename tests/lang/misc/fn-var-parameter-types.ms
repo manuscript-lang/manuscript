@@ -93,3 +93,5 @@ test "a var parameter of a one-owner value is not copied" {
 	extend(words, ["b", "c"])
 	words | expect_equal(["a", "b", "c"])?
 }
+// expect-exit: 0
+// expect-tests: passed=8 failed=0

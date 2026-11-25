@@ -296,3 +296,5 @@ test "an empty host listens on every interface, with or without IPv6" {
 	socket := bind_datagram(":0")?
 	expect_false(socket.address.is_empty())?
 }
+// expect-exit: 0
+// expect-tests: passed=14 failed=0

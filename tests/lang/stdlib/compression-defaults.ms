@@ -76,3 +76,5 @@ test "compression default preparation retains supplied argument order" {
 	expect_equal(log, ["format", "data"])?
 	expect_equal((decompress(encoded, CompressionFormat.Gzip)?), data)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

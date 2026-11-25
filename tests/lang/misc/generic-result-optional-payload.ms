@@ -41,3 +41,5 @@ test "a generic Result keeps an optional payload as it is" {
 test "a concrete Result lifts a borrowed parameter" {
 	expect_equal(lifted_text("x").get() or panic("called Optional.get() on null"), "x")?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

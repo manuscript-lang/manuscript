@@ -142,3 +142,5 @@ test "operations named like generated view methods stay callable" {
 		)
 	)?
 }
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

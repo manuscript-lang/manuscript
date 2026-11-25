@@ -27,3 +27,5 @@ test "parse_int" {
 	expect_true((parsed(text: "99999999999999999999") == 0 - 1))?
 	expect_true(("héllo".to_bytes().length() == 6))?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

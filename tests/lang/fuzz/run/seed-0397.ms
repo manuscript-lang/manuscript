@@ -61,3 +61,13 @@ export fn main() Int {
 	say(f"{-big6}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: 語本日
+// expect-stdout: f1 = 220.298
+// expect-stdout: fib(9) = 34
+// expect-stdout: f2 = 706321037528.6555
+// expect-stdout: acc3 = 84
+// expect-stdout: acc4 = 18
+// expect-stdout: s5 = [BRACE{S}]
+// expect-stderr: Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt
+// expect-stderr:   at seed-0397.ms:61 in main

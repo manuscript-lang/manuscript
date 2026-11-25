@@ -21,3 +21,5 @@ test "generic argument inference" {
 	expect_equal(unwrap[Int](box), 6)?
 	expect_false(not (same(6, 6)))?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

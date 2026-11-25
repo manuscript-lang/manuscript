@@ -43,3 +43,12 @@ fn main() Void {
 	_c := branch(Room(Door("c1"), Door("c2")), false)
 	temporary()
 }
+// expect-exit: 0
+// expect-stdout: close a1
+// expect-stdout: close b2
+// expect-stdout: close c2
+// expect-stdout: close c1
+// expect-stdout: close t2
+// expect-stdout: close t1
+// expect-stdout: close b1
+// expect-stdout: close a2

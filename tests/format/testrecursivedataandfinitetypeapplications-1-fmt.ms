@@ -6,3 +6,9 @@ enum Expr {
 	Add(left Expr, right Expr)
 	Neg(inner Expr?)
 }
+// expect-format: rewritten
+// expect-formatted: enum Expr {
+// expect-formatted: \tNum(value Int)
+// expect-formatted: \tAdd(left, right Expr)
+// expect-formatted: \tNeg(inner Expr?)
+// expect-formatted: }

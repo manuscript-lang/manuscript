@@ -34,3 +34,10 @@ export fn main() Int {
 	say(f"i4 = {i4}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: s1 = [brace{s}]
+// expect-stdout: gcd(480, 2739) = 3
+// expect-stdout: 810710137948 -318891032747 false sum 491819105201
+// expect-stdout: i2 = -1133487
+// expect-stdout: s3 = [Tab\therenaïve]
+// expect-stdout: i4 = -21379134

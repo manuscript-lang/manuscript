@@ -96,3 +96,5 @@ test "stable sort and strict Result slice preserve separate storage" {
 
 	expect_false(values.slice(-7, 6).is_ok())?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

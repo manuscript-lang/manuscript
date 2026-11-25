@@ -38,3 +38,5 @@ test "short path scans keep empty root and incomplete UNC rules" {
 	expect_equal(posix().basename(""), "")?
 	expect_equal(posix().basename("a.txt/"), "a.txt")?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

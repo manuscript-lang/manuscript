@@ -70,3 +70,5 @@ test "if let unwraps an ok result and takes else on error" {
 		(check(value: true, message: "error branch")?)
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

@@ -39,3 +39,5 @@ test "pop changes a list held in a field or an element" {
 	expect_true(rows[1].pop() == null)?
 	expect_equal(rows[0].length(), 1)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

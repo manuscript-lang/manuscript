@@ -42,3 +42,5 @@ test "handlers report to one owner" {
 	expect_equal(counts.get_or("/a", 0), 2)?
 	expect_equal(counts.get_or("/b", 0), 1)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

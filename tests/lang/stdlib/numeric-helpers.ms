@@ -215,3 +215,5 @@ test "modular exponentiation matches exact large odd and even modulus reference 
 	expect_equal((base.pow_mod(exponent, odd)?), odd_result)?
 	expect_equal((base.pow_mod(exponent, even)?), even_result)?
 }
+// expect-exit: 0
+// expect-tests: passed=10 failed=0

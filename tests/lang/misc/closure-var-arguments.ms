@@ -38,3 +38,5 @@ test "closure default passes a captured variable" {
 	callback() | expect_equal(1)?
 	values.length() | expect_equal(1)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

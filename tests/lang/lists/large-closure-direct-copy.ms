@@ -20,3 +20,5 @@ fn main() Void {
 
 	print(r)
 }
+// expect-exit: 0
+// expect-stdout: 2

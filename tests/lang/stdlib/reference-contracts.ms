@@ -41,3 +41,5 @@ test "histogram times normal early returns and error Results" {
 	expect_equal(h.time(error_return).is_error(), true)?
 	expect_equal(h.count(), 2)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

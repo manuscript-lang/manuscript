@@ -18,3 +18,5 @@ test "a missing key still takes the default" {
 	var values = {1: 7}
 	expect_equal(values.get(2) or replace(values), 0)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

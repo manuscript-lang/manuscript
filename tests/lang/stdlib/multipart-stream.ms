@@ -280,3 +280,5 @@ test "retrying an invalid fragmented multipart section retains the error" {
 	expect_equal(parts.next().err().kind, "EBADMSG")?
 	expect_equal(parts.next().err().kind, "EBADMSG")?
 }
+// expect-exit: 0
+// expect-tests: passed=12 failed=0

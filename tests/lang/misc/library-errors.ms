@@ -118,3 +118,5 @@ test "a domain record converts to Error by an ordinary function" {
 	outcome.err().kind | expect_equal("EIO")?
 	outcome.err().details["path"] | expect_equal("a.txt")?
 }
+// expect-exit: 1
+// expect-tests: passed=0 failed=0

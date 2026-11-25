@@ -39,3 +39,5 @@ test "interface reader closes intact temporary wrapper" {
 	expect_equal(reader.observe(Resource(1, path.clone())), true)?
 	expect_equal(log_text(path)?, "1,")?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

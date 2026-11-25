@@ -70,3 +70,22 @@ export fn main() Int {
 	say(f"s16 = [{s16}]")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: i1 = -12141752
+// expect-stdout: f2 = Infinity
+// expect-stdout: s3 = [naïve]
+// expect-stdout: l4 = [] len 0
+// expect-stdout: f5 = -20.206860035756435
+// expect-stdout: b6 = true
+// expect-stdout: 476 -12141753 false sum -12141277
+// expect-stdout: l7 = [] len 0
+// expect-stdout: i8 = -12141752
+// expect-stdout: fact(16) = 20922789888000
+// expect-stdout: l9 = [] len 0
+// expect-stdout: i10 = 0
+// expect-stdout: b11 = true
+// expect-stdout: f12 = -Infinity
+// expect-stdout: l13 = [22, 29, -3, -24] len 4
+// expect-stdout: b14 = true
+// expect-stdout: f15 = -Infinity
+// expect-stdout: s16 = [0:  padded  ]

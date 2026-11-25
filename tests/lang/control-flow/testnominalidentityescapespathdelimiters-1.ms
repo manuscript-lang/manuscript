@@ -22,3 +22,5 @@ test "encoded nominal identity" {
 		return fail("check failed")
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

@@ -51,3 +51,5 @@ test "a list a var-parameter function appends a temporary to closes it with the 
 	logged(log.clone()) | expect_equal("")?
 	expect_equal(doors.length(), 1)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

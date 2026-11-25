@@ -70,3 +70,5 @@ test "hex encoding preserves output across bounded chunks" {
 		expect_equal(hex_encode(data), "78".repeat(length))?
 	}
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

@@ -83,3 +83,5 @@ test "contains guarding an update of a different key" {
 	m[1].count | expect_equal(51)?
 	m.length() | expect_equal(50)?
 }
+// expect-exit: 0
+// expect-tests: passed=5 failed=0

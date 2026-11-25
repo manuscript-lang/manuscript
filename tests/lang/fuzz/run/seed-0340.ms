@@ -73,3 +73,21 @@ export fn main() Int {
 	say(f"i12 = {i12}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: l1 = [-26] len 1
+// expect-stdout: b2 = false
+// expect-stdout: gcd(1287, 4784) = 13
+// expect-stdout: i3 = 1
+// expect-stdout: s4 = [Tab\there]
+// expect-stdout: f5 = 10402722.56433898
+// expect-stdout: s6 = [BETALINE
+// expect-stdout: BREAK]
+// expect-stdout: i7 = 1
+// expect-stdout: f8 = 10402722.56433898
+// expect-stdout: f9 = 919823351953451
+// expect-stdout: sm
+// expect-stdout: i10 = 14
+// expect-stdout: b11 = false
+// expect-stdout: 37:BETALINE
+// expect-stdout: BREAK
+// expect-stdout: i12 = -26

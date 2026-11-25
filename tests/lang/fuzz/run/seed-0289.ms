@@ -102,3 +102,19 @@ export fn main() Int {
 	say(f"acc10 = {acc10}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: f1 = 774.888
+// expect-stdout: l2 = [] len 0
+// expect-stdout: f3 = 774.888
+// expect-stdout: ms
+// expect-stdout: f4 = 358.44021929032795
+// expect-stdout: f5 = 1063.126
+// expect-stdout: l6 = [] len 0
+// expect-stdout: l7 = [13, -2, -18, 29, -20] len 5
+// expect-stdout: fib(40) = 102334155
+// expect-stdout: i8 = 22
+// expect-stdout: d"etouq
+// expect-stdout: i9 = -22
+// expect-stdout: collatz(2162) = 138
+// expect-stdout:   padded\x20\x20
+// expect-stdout: acc10 = 0

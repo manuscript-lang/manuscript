@@ -8,3 +8,11 @@ fn f(a Int, b Int) Int {
 fn call() Int {
 	return f(1, 2)
 }
+// expect-format: rewritten
+// expect-formatted: fn f(a, b Int) Int {
+// expect-formatted: \treturn a + b
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn call() Int {
+// expect-formatted: \treturn f(1, 2)
+// expect-formatted: }

@@ -12,3 +12,4 @@ type Box[T] {
 fn Box[T].get() T {
 	return self.value
 }
+// expect-format: unchanged

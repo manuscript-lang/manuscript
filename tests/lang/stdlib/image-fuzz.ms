@@ -212,3 +212,5 @@ test "hostile headers fail before allocating" {
 	bmp_result := decode_image(bmp)
 	if bmp_result.is_ok() { fail("hostile BMP decoded")? }
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

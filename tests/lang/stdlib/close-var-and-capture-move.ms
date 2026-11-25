@@ -84,3 +84,22 @@ fn main() Void {
 	_g := captured(false)
 	print("--end")
 }
+// expect-exit: 0
+// expect-stdout: closed var-unmoved
+// expect-stdout: --var_moved true
+// expect-stdout: closed var-moved
+// expect-stdout: --var_moved false
+// expect-stdout: closed var-moved
+// expect-stdout: --var_reassign
+// expect-stdout: closed var-old
+// expect-stdout: closed var-new
+// expect-stdout: --var_move_reassign true
+// expect-stdout: closed var-first
+// expect-stdout: closed var-second
+// expect-stdout: --var_move_reassign false
+// expect-stdout: closed var-first
+// expect-stdout: --captured true
+// expect-stdout: --captured false
+// expect-stdout: closed captured
+// expect-stdout: --end
+// expect-stdout: closed captured

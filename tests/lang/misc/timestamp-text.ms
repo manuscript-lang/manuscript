@@ -22,3 +22,5 @@ test "timestamp text pads and trims fractions across UTC boundaries" {
 		"9999-12-31T23:59:59.999999999Z",
 	)?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

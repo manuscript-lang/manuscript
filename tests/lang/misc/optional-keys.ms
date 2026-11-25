@@ -29,3 +29,5 @@ test "optional record keys in a set" {
 	expect_equal(s.contains(Named("a")), true)?
 	expect_equal(s.contains(Named("b")), false)?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

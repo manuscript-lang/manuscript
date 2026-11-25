@@ -44,3 +44,5 @@ test "a user type stores its key after the value ran" {
 	expect_equal(bag.total, 6)?
 	expect_equal(bag.keys.length(), 1)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

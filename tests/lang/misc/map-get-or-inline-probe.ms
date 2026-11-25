@@ -42,3 +42,5 @@ test "get_or on a Float-valued map" {
 	expect_equal(m.get_or("pi", 0.0), 3.5)?
 	expect_equal(m.get_or("e", 2.25), 2.25)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

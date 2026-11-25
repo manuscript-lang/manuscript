@@ -124,3 +124,5 @@ test "if var changes a map entry in place" {
 	expect_equal(o.status, "shipped")?
 	expect_equal(o.items, ["a", "label"])?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

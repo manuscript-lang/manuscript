@@ -58,3 +58,5 @@ test "a named resource lent to a call with a fallible default is not closed earl
 	expect_equal(log_text(path)?, "")?
 	expect_equal(named.id, 5)?
 }
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

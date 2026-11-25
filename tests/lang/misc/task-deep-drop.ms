@@ -54,3 +54,5 @@ test "deep data is freed on the main task" {
 	text := nested_tables(6000)?
 	expect_equal(parse_and_drop(text), 1)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

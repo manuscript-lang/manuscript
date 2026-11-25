@@ -213,11 +213,9 @@ export fn fixtures(root, phase String, filters List[String]) List[Fixture] {
 		path := if is_dir { f"{root}/{id}" } else { f"{root}/{id}.ms" }
 		source := read_text(if is_dir { f"{path}/conform.meta" } else { path.clone() })
 		var meta = parse_meta(source)
-		if not meta.phases.contains(
-			phase
-		) { continue }
+		if not meta.phases.contains(phase) { continue }
 
-		inline := if is_dir { List[String]() } else { inline_lines(source) }
+		inline := inline_lines(source)
 		sidecar := if is_dir { f"{path}/expected.json" } else { f"{root}/{id}.expected.json" }
 		var expected = JsonValue.Null
 		recorded := parse(read_text(sidecar)).get_or(JsonValue.Null).get("expected")

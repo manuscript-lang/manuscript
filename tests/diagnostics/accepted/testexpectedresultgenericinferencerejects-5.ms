@@ -4,3 +4,5 @@
 fn first() Void {
 	value fn(String) Int!Error := fail
 }
+// expect-error: MS2001 5:35 unknown binding fail; add: import fail from "@std/test/test.ms"
+// expect-fix: 1:1-1:1 "import fail from \"@std/test/test.ms\"\n"

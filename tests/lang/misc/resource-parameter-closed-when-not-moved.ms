@@ -39,3 +39,16 @@ export fn main() Int {
 	print("end")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: keep none
+// expect-stdout: close 1
+// expect-stdout: true
+// expect-stdout: keep some
+// expect-stdout: true
+// expect-stdout: id_or_zero
+// expect-stdout: close 3
+// expect-stdout: 0
+// expect-stdout: close 4
+// expect-stdout: 4
+// expect-stdout: end
+// expect-stdout: close 2

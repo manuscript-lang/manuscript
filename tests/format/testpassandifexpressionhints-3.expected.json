@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn f(a Int) Int {\n\tb := (if a == 1 { 2 } else { 3 })\n\treturn b\n}\n"
-  }
-}

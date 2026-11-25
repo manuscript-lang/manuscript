@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "interface Reader {\n\tfn read() String\n}\n\ntype Box {\n\tlabel String\n}\n\nfn hold Box.read() &String {\n\treturn self.label\n}\n\nfn message(value Reader) String {\n\treturn value.read()\n}\n\nfn make() Box {\n\treturn Box(label: \"value\")\n}\n"
-  }
-}

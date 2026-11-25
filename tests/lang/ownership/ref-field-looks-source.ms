@@ -17,3 +17,6 @@ fn main() Void {
 	names.append("c")
 	print(names.length())
 }
+// expect-exit: 0
+// expect-stdout: 3
+// expect-stdout: 3

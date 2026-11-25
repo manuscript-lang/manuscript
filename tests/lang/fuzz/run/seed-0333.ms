@@ -80,3 +80,22 @@ export fn main() Int {
 	say(f"{(i8 + (i7 + 50)) / big16}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: s1 = [42]
+// expect-stdout: i2 = 0
+// expect-stdout: fib(52) = 32951280099
+// expect-stdout: f3 = 0.00040272355160421566
+// expect-stdout: f4 = 18.25
+// expect-stdout: f5 = 0.00040272355160421566
+// expect-stdout: i7 = 0
+// expect-stdout: i8 = 26
+// expect-stdout: b9 = false
+// expect-stdout: acc10 = 0
+// expect-stdout: b11 = false
+// expect-stdout: b12 = false
+// expect-stdout: f13 = 4e+21
+// expect-stdout: fib(26) = 121393
+// expect-stdout: f14 = 18.25
+// expect-stdout: b15 = true
+// expect-stderr: division by zero; right must be nonzero, found 0
+// expect-stderr:   at seed-0333.ms:80 in main

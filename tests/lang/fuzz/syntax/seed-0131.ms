@@ -34,3 +34,4 @@ export fn main() Int {
 	i2 := ((i1 - ((-40) / i1)) * (-(i1 * i1)))
 	say(f"i2 = {i2}")
 }
+// expect-format: unchanged

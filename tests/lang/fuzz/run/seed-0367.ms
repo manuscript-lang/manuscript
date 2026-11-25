@@ -73,3 +73,15 @@ export fn main() Int {
 	say(f"l6 = {l6} len {l6.length()}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: 942572 13 false sum 942585
+// expect-stdout: i1 = -440651
+// expect-stdout: i3 = 750717620551
+// expect-stdout: quote"dx
+// expect-stdout: fib(14) = 377
+// expect-stdout: gcd(3780, 1849) = 1
+// expect-stdout: ms
+// expect-stdout: emoji 😀
+// expect-stdout: s4 = [naïve]
+// expect-stdout: s5 = [日本語]
+// expect-stdout: l6 = [] len 0

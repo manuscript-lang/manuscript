@@ -45,3 +45,5 @@ test "bytes index" {
 	data[-1] | expect_equal(99)?
 	data[-3] | expect_equal(97)?
 }
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

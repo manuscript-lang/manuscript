@@ -23,3 +23,5 @@ fn verify_bigint() Void! {
 test "large integers are exact" {
 	verify_bigint()?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

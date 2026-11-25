@@ -80,3 +80,25 @@ export fn main() Int {
 	say(f"{s12.scalar_length() % big17}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: i1 = 22
+// expect-stdout: b2 = false
+// expect-stdout: l3 = [2, -19, 11, -6, -11] len 5
+// expect-stdout: f4 = 10000000000000000
+// expect-stdout: i5 = 21
+// expect-stdout: s6 = [5:back\\slashgamma]
+// expect-stdout: acc7 = -7
+// expect-stdout: s8 = [5:back\\slashgamma]
+// expect-stdout: s9 = [-791857:kaerb
+// expect-stdout: enil]
+// expect-stdout: 45 11 false sum 56
+// expect-stdout: i10 = -3166160
+// expect-stdout: l11 = [-11, -6, 11, -19, 2] len 5
+// expect-stdout: s12 = [mixed case]
+// expect-stdout: i13 = -473
+// expect-stdout: i14 = -3166160
+// expect-stdout: fact(9) = 362880
+// expect-stdout: b15 = true
+// expect-stdout: f16 = 10000000000000000
+// expect-stderr: remainder by zero; right must be nonzero, found 0
+// expect-stderr:   at seed-0270.ms:80 in main

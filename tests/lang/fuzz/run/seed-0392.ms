@@ -37,3 +37,13 @@ export fn main() Int {
 	say(f"{big5[4]}")
 	return 0
 }
+// expect-exit: 134
+// expect-stdout: b1 = false
+// expect-stdout: 24 165947 true sum 165971
+// expect-stdout: i2 = -456
+// expect-stdout: i3 = -456
+// expect-stdout: a
+// expect-stdout: -16872 -456 true sum -17328
+// expect-stdout: i4 = 176
+// expect-stderr: index 4 out of range for length 3; use get_or(index, default) to avoid the fault
+// expect-stderr:   at seed-0392.ms:37 in main

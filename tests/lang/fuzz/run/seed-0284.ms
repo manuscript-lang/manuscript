@@ -41,3 +41,14 @@ export fn main() Int {
 	say(f"l7 = {l7} len {l7.length()}")
 	return 0
 }
+// expect-exit: 0
+// expect-stdout: gcd(1595, 4472) = 1
+// expect-stdout: f1 = 236053.46493000002
+// expect-stdout: s2 = [24héllo]
+// expect-stdout: i3 = -11
+// expect-stdout: s4 = [24HÉLLO]
+// expect-stdout: s5 = [line
+// expect-stdout: break  padded24HÉLLO]
+// expect-stdout: s6 = [dlrow olleholléh42deddap  kaerb
+// expect-stdout: enil]
+// expect-stdout: l7 = [-17, -19, -3, -25, -26] len 5

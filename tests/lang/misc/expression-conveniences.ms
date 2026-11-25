@@ -396,3 +396,5 @@ test "match composes with inferred callbacks and map literals" {
 	lookup["value"] | expect_equal(3)?
 	(inline_match(null) != 0 or inline_match(5) != 5) | expect_false?
 }
+// expect-exit: 1
+// expect-tests: passed=0 failed=0

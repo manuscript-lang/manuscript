@@ -23,3 +23,5 @@ test "a let keeps an element of a returned list" {
 	first := names("kernels")[0]
 	expect_equal(first, "sieve")?
 }
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

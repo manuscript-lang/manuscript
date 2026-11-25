@@ -79,3 +79,5 @@ test "borrowed String method results outlive their owning source environments" {
 	expect_equal(read_file(log).wait().get().decode_utf8() or "", "1,2,3,4,5,")?
 	expect_equal(fifth, ["payload-5", "payload-5"])?
 }
+// expect-exit: 0
+// expect-tests: passed=1 failed=0
