@@ -39,6 +39,8 @@ typedef struct Scanner {
   size_t boundary_origin;
   uint32_t base_offset, base_line; /* where a slice of a larger file starts */
   bool virtual_paren;
+  bool tolerant;     /* skip a line that fails to lex, restoring the delimiters it found: only the delimiter state matters */
+  bool open_at_end;  /* the input ended inside an unterminated delimiter or multi-line text */
   MsDiag *diag;
 } Scanner;
 
