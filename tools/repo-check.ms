@@ -38,16 +38,19 @@ fn skipped(path String) Bool {
 }
 
 // Sources that stay out of the lint gate on purpose: benchmark ports mirror other
-// languages, everything under tests/ is probes and negative fixtures that pin exact
-// shapes, the demos exist to show diagnostics, and one example needs a package download
-// to check at all.
+// languages, the check probes pin exact allocation counts and loop shapes, the demos
+// exist to show diagnostics, three test inputs are incomplete or wrong on purpose, and
+// one example needs a package download to check at all.
 fn unlinted(path String) Bool {
 	return (
 		path.starts_with("bench/")
-		or path.starts_with("tests/")
+		or path.starts_with("tests/checks/")
 		or path.starts_with("examples/tooling-demo/")
 		or path.starts_with("examples/postgres-service/")
 		or path.starts_with("website/screenshots/screencast/")
+		or path == "tests/docs/diagram/enum-rendering.ms"
+		or path == "tests/docs/syntax.ms"
+		or path == "tests/lsp/workspace/needs.ms"
 		or path == "tools/count-check-selftest/rejected.ms"
 	)
 }

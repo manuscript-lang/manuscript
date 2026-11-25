@@ -93,6 +93,18 @@ bool body_block_exits(const Body *body, MsStmts stmts) {
   return false;
 }
 
+/* Whether the use `expr` is a narrowed local read as its payload: its fact keeps the stored `T?`, and the call it
+ * receives resolves on `T`. */
+bool body_use_is_narrowed(const Body *body, const MsExpr *expr) {
+  for (size_t at = body->facts->conversions.len, seen = 0; at > 0 && seen < 8; at--, seen++) {
+    const MsConversion *earlier = &body->facts->conversions.ptr[at - 1];
+    if (earlier->node == expr->id && earlier->kind == MS_CONV_NARROW) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /* Records that the use `expr` of a narrowed local is stored as `T?` and read as `T`. */
 void body_note_narrowing(Body *body, const MsExpr *expr, MsTy read) {
   const MsLocal *local = body_find_local(body, expr->u.sym);

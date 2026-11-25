@@ -499,7 +499,7 @@ fn var WatchSource.next() FileEvent?! {
 
 		// An empty batch only means nothing changed yet; only null ends the stream.
 		// Paths are spelled as `join` spells them on this host (Windows: backslashes).
-		var batch = next.clone().map(
+		var batch = next.map(
 			event => FileEvent(normalize(event.path), event.kind.clone())
 		)
 		batch.reverse()

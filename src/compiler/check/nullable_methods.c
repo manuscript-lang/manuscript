@@ -233,7 +233,8 @@ void body_reject_nullable_method(Body *body, const MsExpr *call, const Target *t
   }
   const MsTyTable *types = &body->program->types;
   const MsTy receiver = ms_facts_type(body->facts, target->receiver->id);
-  if (receiver == MS_TY_NONE || !ms_ty_is(types, receiver, MS_BUILTIN_Optional) || ms_ty_arg_count(types, receiver) != 1) {
+  if (receiver == MS_TY_NONE || !ms_ty_is(types, receiver, MS_BUILTIN_Optional) || ms_ty_arg_count(types, receiver) != 1 ||
+      body_use_is_narrowed(body, target->receiver)) {
     return;
   }
   const MsSpan name = ms_names_span(body->program->names, callee->u.member.name);
