@@ -165,7 +165,7 @@ bool link_host_finish(LinkJob *job, bool linked, MsStrBuild *why) {
   if (!ms_string_is_empty(&job->scratch)) {
     ms_path_remove_tree(ms_string_span(&job->scratch));
   }
-  return !linked || make_companion(job, why);
+  return !linked || job->request->temporary || make_companion(job, why);
 }
 
 void link_host_advice(MsSpan detail, bool musl, MsStrBuild *out) {
