@@ -9,6 +9,8 @@ The first version of `update` through the general `msrt_map_slot_borrowed` was s
 Verified (2026-11-12): `if not m.contains(k) { m[k] = v }` then `m[k].f += 1` took two probes a round because the join of the two paths cleared the probe table; `fuse_contains` (#3674) carries the entry across the join (String-key loop 730M to about 400M instructions, equal to `update`). That is a MIR rule on probes, not a syntactic match, so it covers any spelling that reaches those calls. Also: `m.get(k)` bypassed the inlinable `_w8` probes (use `word_map_symbol` at every lowering site). A C twin is only a target if it keeps order, grows and removes like `Map` (`bench/perf/structural-gaps/c/ordmap.h`); the presized unordered twins overstated the gap by 1.6x to 2x.
 
 Apply when: a hot idiom costs two lookups; before adding a syntactic fast path to lowering.
+Verified (2026-11-25): the C `ms` called `msrt_map_update` for every `update`, an outlined probe plus an outlined closure call (2M-count loop 417M instructions, 2.1x checked Rust). `update` on an `Int`/`String` key with an `Int`/`Float` value now probes with the inlined `msrt_map_get_ptr` role and calls the thunk on a hit (164M); only an absent key reaches the runtime, which appends. Owning values keep the runtime call (the old value must drop).
+
 Evidence: `bench/perf/results-2026-11-09.md` (last section), `tests/conformance/fixtures/e2e/stdlib/map-update-differential.ms`.
 Verify: `ms test tests/conformance/fixtures/e2e/stdlib/map-update-differential.ms`; compare one program per spelling, minimum of many runs.
 

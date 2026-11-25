@@ -5,6 +5,7 @@
 #include "compiler/own/changes.h"
 #include "compiler/own/closers.h"
 #include "compiler/own/escapes.h"
+#include "compiler/own/look_stores.h"
 #include "compiler/own/result_borrows.h"
 #include "compiler/own/moves.h"
 #include "compiler/own/overlaps.h"
@@ -39,6 +40,7 @@ void ms_own_check(MsCheckProgram *program) {
   ms_own_closers(program);
   ms_own_changes(program);
   ms_own_borrows(program);
+  ms_own_look_stores(program);
   if (checked_clean) {
     ms_own_moves(program);
     if (program->diagnostics.len == 0) {

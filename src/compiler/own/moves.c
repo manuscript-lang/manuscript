@@ -189,6 +189,14 @@ static void check_lambda(const Moves *pass, const MsExpr *lambda) {
     const bool copy = ms_class_of(pass->classes, ty) == MS_CLASS_COPY;
     const MsSpan name = ms_names_span(pass->program->names, first.use->u.sym);
     MsStrBuild text = ms_strbuild_new();
+    if (ms_own_look_record(pass->program, ty)) {
+      /* a look has no copy of its own, so the closure would keep a pointer into a value its owner may free first */
+      ms_strbuild_append_text(&text, "this closure outlives the statement but captures `");
+      ms_strbuild_append(&text, name);
+      ms_strbuild_append_text(&text, "`, which looks at a value another binding owns; capture a `.clone()` of the part it needs, or keep the closure local");
+      ms_check_report(pass->program, pass->module, lambda->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+      continue;
+    }
     const MsUseLive *use = ms_live_map_get(&pass->live->uses, ms_live_key(lambda->id, first.binding));
     const bool again = use != NULL && !use->last;
     Changes changes = {.facts = pass->facts, .arena = pass->arena, .binding = first.binding};
@@ -719,7 +727,7 @@ static void note_var(void *ctx, const MsStmt *stmt) {
     MsStrBuild text = ms_strbuild_new();
     ms_strbuild_append_text(&text, "`if var` borrows an entry written as `place[key]?` or `map.get(key)`, but `");
     ms_own_expr_text(&text, pass->program->names, stmt->u.branch.cond);
-    ms_strbuild_append_text(&text, "` is not one; read the payload with `if x := value { ... }`, then use `var copy = x.clone()` for an "
+    ms_strbuild_append_text(&text, "` is not one; read the payload by testing `if value != null { ... }`, then use `var copy = x.clone()` for an "
                                    "independent mutable copy, or write the changed value back");
     ms_check_report(pass->program, pass->module, stmt->u.branch.binding->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
   }

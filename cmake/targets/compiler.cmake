@@ -83,14 +83,14 @@ ms_library(ms_check compiler/check
 
 ms_library(ms_own compiler/own
   SOURCES
-    class.c own.c unused.c changes.c borrows.c uses.c escapes.c moves.c closers.c taken.c result_borrows.c look_fields.c bind.c
+    class.c own.c unused.c changes.c borrows.c look_stores.c uses.c escapes.c moves.c closers.c taken.c result_borrows.c look_fields.c bind.c
     live_expr.c live_set.c live_stmt.c places.c overlaps.c relays.c expr_text.c
   LINK ms_base ms_syntax ms_project ms_check ms_native_sigs)
 
 ms_library(ms_opt compiler/opt
   SOURCES
     opt_appendfast.c opt_bytesfast.c opt_bytetake.c opt_copyelim.c opt_copyelim_local.c opt_copyelim_move.c
-    opt_copyelim_unbox.c opt_exit_drops.c opt_ifconv.c opt_twins.c opt_thread.c opt_inline.c opt_inline_args.c opt_inline_capture.c opt_inline_closure.c
+    opt_copyelim_unbox.c opt_exit_drops.c opt_fieldload.c opt_ifconv.c opt_twins.c opt_thread.c opt_inline.c opt_inline_args.c opt_inline_capture.c opt_inline_closure.c
     opt_fuse.c opt_inline_dead.c opt_lastuse.c opt_lastuse_region.c opt_loopslot.c opt_optparam.c opt_pipeline.c opt_probe.c
     opt_range.c opt_range_eval.c opt_range_len.c opt_range_prove.c opt_range_refine.c opt_reserve.c opt_simplify.c
     opt_simplify_cfg.c opt_simplify_dead.c opt_simplify_fold.c opt_simplify_mutate.c opt_simplify_phis.c opt_simplify_probes.c

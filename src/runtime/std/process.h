@@ -42,6 +42,10 @@ typedef struct MsProcessCounts {
 
 /* ms-sig: msstd_process_send_signal(pid: i64, signal: i64, err: ErrSlot) -> u8 @domain=process */
 uint8_t msstd_process_send_signal(int64_t pid, int64_t signal, MsString *err);
+/* ms-sig: msstd_process_kill(pid: i64, signal: i64, err: ErrSlot) -> u8 @domain=process */
+uint8_t msstd_process_kill(int64_t pid, int64_t signal, MsString *err);
+/* Ends a native that sent a signal: `code` is a libuv status, and no such process is NotFound. */
+uint8_t msstd_process_finish_kill(int code, MsString *err);
 /* ms-sig: msstd_process_groups(out: *mut VecVal, err: ErrSlot) -> u8 @domain=process */
 uint8_t msstd_process_groups(MsList *out, MsString *err);
 /* ms-sig: msstd_process_set_groups(groups: *const VecVal, err: ErrSlot) -> u8 @domain=process */

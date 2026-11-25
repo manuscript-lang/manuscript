@@ -17,7 +17,7 @@ licenses: build
 licenses-check: repo-check
 
 # Each of these runs tools/<name>.ms with the built ms; the tool's header comment says what it checks.
-TOOLS := doctor view-matrix scaling-check leak-check cancel-sweep perf-counts resource-matrix close-matrix copy-check removed-check
+TOOLS := doctor view-matrix scaling-check leak-check cancel-sweep perf-counts resource-matrix close-matrix copy-check memcpy-check removed-check
 
 .PHONY: build conform conform-release verify verify-full repo-check licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check bench-check stdlib-bench poison-check ownership-fuzz count-check vscode-package vscode-install $(TOOLS)
 

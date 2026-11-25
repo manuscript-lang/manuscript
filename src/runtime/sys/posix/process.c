@@ -151,6 +151,21 @@ struct MsSysGroup {
   pid_t pid;
 };
 
+static int host_signal(MsSysKill signal) {
+  static const int numbers[MS_SYS_KILL_COUNT] = {
+      [MS_SYS_KILL_HANGUP] = SIGHUP,  [MS_SYS_KILL_INTERRUPT] = SIGINT, [MS_SYS_KILL_QUIT] = SIGQUIT,
+      [MS_SYS_KILL_TERMINATE] = SIGTERM, [MS_SYS_KILL_KILL] = SIGKILL,   [MS_SYS_KILL_STOP] = SIGSTOP,
+      [MS_SYS_KILL_CONTINUE] = SIGCONT, [MS_SYS_KILL_USER1] = SIGUSR1,  [MS_SYS_KILL_USER2] = SIGUSR2,
+  };
+  return numbers[signal];
+}
+
+int ms_sys_kill_send(int64_t pid, MsSysKill signal) { return uv_kill((int)pid, host_signal(signal)); }
+
+int ms_sys_group_kill_send(MsSysGroup *group, MsSysKill signal) {
+  return uv_kill(-(int)group->pid, host_signal(signal));
+}
+
 MsSysGroup *ms_sys_group_new(int64_t pid, void *process_handle) {
   (void)process_handle;
   MsSysGroup *group = ms_alloc(sizeof *group);

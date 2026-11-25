@@ -49,7 +49,12 @@ export extern fn msstd_process_subprocess_max_resident(handle NativeSubprocess) 
 
 export extern fn msstd_process_subprocess_terminate(handle NativeSubprocess) Void
 
-export extern fn msstd_process_subprocess_kill(handle NativeSubprocess) Void
+export extern fn msstd_process_subprocess_pid(handle NativeSubprocess) Int
+
+export extern fn msstd_process_subprocess_signal(
+	handle NativeSubprocess,
+	signal Int,
+) Void!
 
 export extern fn msstd_process_subprocess_close(handle NativeSubprocess) Void
 
@@ -62,6 +67,8 @@ export extern fn msstd_process_initialize_groups(username String, gid Int) Void!
 export extern fn msstd_process_resource_usage() ResourceUsage!
 
 export extern fn msstd_process_send_signal(pid, signal Int) Void!
+
+export extern fn msstd_process_kill(pid, signal Int) Void!
 
 export extern fn msstd_process_set_groups(groups List[Int]) Void!
 

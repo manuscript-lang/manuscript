@@ -176,6 +176,8 @@ typedef struct LowerFn {
   uint32_t native_arg_moves; /* the source operands of the native call that its declaration takes (`move`) */
   MirTy native_value_ty; /* the element or value type of the collection the native being called reads, else MIR_NONE */
   uint32_t native_moves; /* the operands of the runtime call being built that the runtime takes, by position */
+  uint32_t update_thunk; /* the `Map.update` thunk of the call being built (MIR_NONE: none) */
+  MirTy update_map; /* the map type that call updates */
   bool temps; /* a statement scope is open for the temporaries its calls borrow */
   const MsStmt *sink_stmt; /* a bench body's last statement: when it is a call, its value goes to the bench sink */
   uint32_t bind_scope; /* with `temps` on a bind: the scope the name it binds belongs to, plus one; zero when none */

@@ -48,6 +48,16 @@ void ms_child_signal(MsChild *child, bool force) {
   ms_child_unlock(child);
 }
 
+int ms_child_send(MsChild *child, MsSysKill signal) {
+  int code = 0;
+  ms_child_lock(child);
+  if (!child->exited && child->started) {
+    code = ms_sys_group_kill_send(child->group, signal);
+  }
+  ms_child_unlock(child);
+  return code;
+}
+
 void ms_child_kill_group(MsChild *child) {
   if (child->group != NULL) {
     ms_sys_group_kill(child->group);
