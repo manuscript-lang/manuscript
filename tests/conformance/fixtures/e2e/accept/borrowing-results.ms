@@ -23,7 +23,7 @@ fn pick(hold a Person, hold b Person, left Bool) &String {
 	return b.name
 }
 
-fn head(rows List[List[Int]]) List[Int] {
+fn head(hold rows List[List[Int]]) &List[Int] {
 	h := rows[0]
 	return h
 }
