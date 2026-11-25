@@ -79,7 +79,7 @@ fn expectation(line String) Bool {
 
 // The lines of `text` without its trailing expectation block.
 fn program_lines(text String) List[String] {
-	var lines = text.split("\n").map(line => line.clone())
+	var lines = text.split("\n").collect().map(line => line.clone())
 
 	// A final newline leaves one empty element.
 	while not lines.is_empty() and lines[lines.length() - 1].trim() == "" {
@@ -95,8 +95,8 @@ fn program_lines(text String) List[String] {
 // program, so line numbers in them are the file's own.
 export fn inline_lines(text String) List[String] {
 	var lines = List[String]()
-	var at = text.split("\n").length()
-	all := text.split("\n").map(line => line.clone())
+	var at = text.split("\n").collect().length()
+	all := text.split("\n").collect().map(line => line.clone())
 
 	while at > 0 {
 		at -= 1
