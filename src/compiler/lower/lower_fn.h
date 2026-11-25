@@ -95,6 +95,10 @@ typedef struct LowerFn {
   /* Index keys of a `var` place evaluated early, in written order: the place's later uses read these, not the keys again. */
   struct { const MsExpr *expr; MirValue value; } presolved[8];
   uint32_t npresolved;
+  /* A call's borrowing-variant result and the ordinary Result every reader sees it as (`alt.plain`): a return or a binding
+   * that hands the call on needs the owner. */
+  struct { MirValue plain, owner; } viewed[8];
+  uint32_t nviewed;
   bool keeps_scoped; /* this function keeps the closures it is given (the flag of its MIR function) */
   uint32_t module_index;
   uint32_t file; /* the MIR file id of the module */
@@ -272,6 +276,10 @@ MirValue fn_emit(LowerFn *fn, MirOp op, const MirValue *args, uint32_t nargs, Mi
 MirValue fn_implicit_clone(LowerFn *fn, MirValue value, bool own);
 /* Makes the innermost scope own `result`, the result of the instruction just emitted, when it is owned. */
 void fn_own_result(LowerFn *fn, MirValue result);
+MirValue fn_view_as_plain(LowerFn *fn, MirValue result, MirTy plain);
+MirValue fn_view_owner(const LowerFn *fn, MirValue value);
+bool fn_returns_view(const LowerFn *fn);
+bool fn_return_view(LowerFn *fn, const MsExpr *expr, MirValue *out);
 
 /* Whether `value` is the owned result of the instruction just emitted, held by the innermost scope. */
 /* Whether `value` is the result of the instruction just emitted and a borrowed view of something that owns it. */

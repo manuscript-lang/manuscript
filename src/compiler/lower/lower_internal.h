@@ -111,6 +111,7 @@ typedef struct Lower {
   bool copy_probe; /* MS_COPY_PROBE: print each copy no `.clone()` asked for (tools/copy-check.ms) */
   bool failed; /* a type with no MIR form reached lowering: the program does not compile, whatever else lowers */
   LowerTyMap types;            /* type (after substitution) -> MIR type */
+  LowerTyMap views;            /* a Result type -> its borrowing variant: the `ok` payload is borrowed (written `&T!`) */
   MsNames instance_keys;       /* instance key text -> dense id, the index into `instances` */
   LowerInstanceList instances;
   LowerLambdaList lambdas;
@@ -176,6 +177,7 @@ uint32_t lower_file(Lower *cx, uint32_t module);
 
 /* The MIR type of `ty` once `subst` is applied; MIR_VOID after reporting when the type has no MIR form. */
 MirTy lower_type(Lower *cx, const LowerSubst *subst, MsTy ty);
+MirTy lower_result_view(Lower *cx, const LowerSubst *subst, MsTy ty);
 
 /* The source text of `ty` after substitution, as MIR names it (`Box[Int]`). */
 void lower_type_text(Lower *cx, const LowerSubst *subst, MsTy ty, MsStrBuild *out);
