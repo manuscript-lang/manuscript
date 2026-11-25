@@ -30,8 +30,9 @@ static MirRole string_role(MsSpan name) {
   return MR_NONE;
 }
 
-/* The probe role of a lookup in a map or set whose slots the optimiser can read (`opt_probe`): an `Int`
- * key and, for a map, an eight-byte `Int` or `Float` value. The runtime function says what is asked, the first
+/* The probe role of a lookup in a map or set whose slots the optimiser can read (`opt_probe`): an `Int` or `String`
+ * key and, for a map, a value of any type for a lookup that answers an address or presence, an eight-byte `Int` or
+ * `Float` value for one that copies it out. The runtime function says what is asked, the first
  * operand's type which shape the map has. */
 static MirRole probe_role(const MirModule *module, MsSpan name, MirTy first) {
   const bool set = ms_span_is_text(name, "msrt_set_contains");
@@ -48,8 +49,10 @@ static MirRole probe_role(const MirModule *module, MsSpan name, MirTy first) {
     }
     return data->args[0] == MIR_INT ? MR_SET_PROBE_INT : data->args[0] == MIR_STR ? MR_SET_PROBE_STR : MR_NONE;
   }
+  /* A lookup that answers an address or a presence reads no value; one that copies the value out reads a word. */
   const MirTy value = data->args[1];
-  if (data->nargs != 2 || (value != MIR_INT && value != MIR_FLOAT)) {
+  const bool reads_word = ms_span_is_text(name, "msrt_map_get") || ms_span_is_text(name, "msrt_map_get_or");
+  if (data->nargs != 2 || (reads_word && value != MIR_INT && value != MIR_FLOAT)) {
     return MR_NONE;
   }
   return data->args[0] == MIR_INT ? MR_MAP_PROBE_INT : data->args[0] == MIR_STR ? MR_MAP_PROBE_STR : MR_NONE;

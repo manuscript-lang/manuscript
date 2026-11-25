@@ -11,6 +11,8 @@ Verified (2026-11-12): `if not m.contains(k) { m[k] = v }` then `m[k].f += 1` to
 Apply when: a hot idiom costs two lookups; before adding a syntactic fast path to lowering.
 Verified (2026-11-25): the C `ms` called `msrt_map_update` for every `update`, an outlined probe plus an outlined closure call (2M-count loop 417M instructions, 2.1x checked Rust). `update` on an `Int`/`String` key with an `Int`/`Float` value now probes with the inlined `msrt_map_get_ptr` role and calls the thunk on a hit (164M); only an absent key reaches the runtime, which appends. Owning values keep the runtime call (the old value must drop).
 
+Verified (2026-11-25): the in-line probe no longer assumes a one-word value. `opt_probe` reads the value's size and alignment from the call's value descriptor (`MOP_TypeDesc`) and lays the slot out as `ms_map_layout_of` does, so `contains`, `get_ptr` (hence `m[k].f`) and `update` probe in line for any value of alignment up to a word (`Map[Int, Pt]` presence 135 to about 65 instructions per lookup). A lookup that copies the value out (`get`, `get_or`) still needs a one-word `Int` or `Float`. Two different roles on one extern signature are two declarations (#6993).
+
 Evidence: `bench/perf/results-2026-11-09.md` (last section), `tests/conformance/fixtures/e2e/stdlib/map-update-differential.ms`.
 Verify: `ms test tests/conformance/fixtures/e2e/stdlib/map-update-differential.ms`; compare one program per spelling, minimum of many runs.
 

@@ -16,6 +16,7 @@
  * for a live entry. The hash functions are those of src/runtime/core/map_hash.c. */
 
 #include "compiler/mir/mir_builder.h"
+#include "compiler/mir/mir_layout.h"
 #include "compiler/opt/opt_pass.h"
 #include "compiler/mir/mir_pass.h"
 #include "compiler/opt/opt_build.h"
@@ -42,6 +43,41 @@ static bool pb_shape(uint8_t role, PbShape *out) {
   case MR_SET_PROBE_STR: *out = (PbShape){24, 8, true}; return true;
   default: return false;
   }
+}
+
+/* The type a value operand names when it is a type descriptor made in `f`, else MIR_NONE. */
+static MirTy pb_desc_type(const MirFunc *f, MirValue desc) {
+  for (uint32_t bi = 0; bi < f->blocks.len; bi++) {
+    for (uint32_t ii = 0; ii < f->blocks.ptr[bi].insts.len; ii++) {
+      const MirInst *inst = &f->blocks.ptr[bi].insts.ptr[ii];
+      if (inst->res == desc) {
+        return inst->op == MOP_TypeDesc && inst->imm.tag == MI_TY ? (MirTy)inst->imm.a : MIR_NONE;
+      }
+    }
+  }
+  return MIR_NONE;
+}
+
+/* Fits `shape` (the key's part, from the role) to the map's value: a slot is the hash word, the key, then the value at its
+ * own alignment, the whole padded to a word, as `ms_map_layout_of` lays it out. False when the value is not described by a
+ * type made in the function or is aligned wider than a word. A set has no value operand. */
+static bool pb_fit_value(MirLayouts *layouts, const MirFunc *f, const MirInst *call, bool set, PbShape *shape) {
+  if (set) {
+    return true;
+  }
+  const MirTy value = pb_desc_type(f, call->args[2]);
+  if (value == MIR_NONE) {
+    return false;
+  }
+  const MirMemLayout mem = mir_type_mem(layouts, value);
+  if (mem.align > 8) {
+    return false;
+  }
+  const int64_t key_end = shape->text ? 24 : 16;
+  const int64_t at = (key_end + (int64_t)mem.align - 1) / (int64_t)mem.align * (int64_t)mem.align;
+  shape->value_at = at;
+  shape->stride = (at + (int64_t)mem.size + 7) / 8 * 8;
+  return true;
 }
 
 static MirValue pb_fold(MirBuilder *b, MirValue x, int64_t m) {
@@ -321,6 +357,7 @@ static bool pb_probe_of(const MirModule *m, uint32_t e, PbShape *shape, PbAnswer
 }
 
 typedef struct PbHelper {
+  int64_t stride, value_at;
   uint8_t role;
   PbAnswer answer;
   MirTy map_ty, key_ty, ret;
@@ -332,6 +369,8 @@ bool opt_probe(MirModule *m) {
   PbHelper *helpers = NULL;
   uint32_t nhelpers = 0, chelpers = 0;
   bool changed = false;
+  MirLayouts layouts;
+  bool layouts_ready = false;
   for (uint32_t fi = 0; fi < original; fi++) {
     for (uint32_t bi = 0; bi < m->funcs.ptr[fi].blocks.len; bi++) {
       for (uint32_t ii = 0; ii < m->funcs.ptr[fi].blocks.ptr[bi].insts.len; ii++) {
@@ -342,6 +381,14 @@ bool opt_probe(MirModule *m) {
           continue;
         }
         const uint8_t role = m->externs.ptr[inst->imm.a].role;
+        if (!layouts_ready) {
+          mir_layouts_init(&layouts, m);
+          layouts_ready = true;
+        }
+        const bool set = role == MR_SET_PROBE_INT || role == MR_SET_PROBE_STR;
+        if (!pb_fit_value(&layouts, &m->funcs.ptr[fi], inst, set, &shape)) {
+          continue;
+        }
         const MirTy map_ty = mir_value_ty(&m->funcs.ptr[fi], inst->args[0]);
         const MirTy key_ty = mir_value_ty(&m->funcs.ptr[fi], inst->args[inst->nargs == 3 ? 2 : 3]);
         if (key_ty != MIR_PTR && !(shape.text && key_ty == MIR_STR)) {
@@ -349,7 +396,7 @@ bool opt_probe(MirModule *m) {
         }
         uint32_t helper = MIR_NONE;
         for (uint32_t h = 0; h < nhelpers; h++) {
-          if (helpers[h].role == role && helpers[h].answer == answer && helpers[h].map_ty == map_ty && helpers[h].key_ty == key_ty &&
+          if (helpers[h].stride == shape.stride && helpers[h].value_at == shape.value_at && helpers[h].role == role && helpers[h].answer == answer && helpers[h].map_ty == map_ty && helpers[h].key_ty == key_ty &&
               helpers[h].ret == m->externs.ptr[inst->imm.a].ret) {
             helper = helpers[h].func;
           }
@@ -359,7 +406,7 @@ bool opt_probe(MirModule *m) {
           if (helper == MIR_NONE) {
             continue;
           }
-          OPT_PUSH(&m->arena, helpers, nhelpers, chelpers, PbHelper, ((PbHelper){role, answer, map_ty, key_ty, m->externs.ptr[inst->imm.a].ret, helper}));
+          OPT_PUSH(&m->arena, helpers, nhelpers, chelpers, PbHelper, ((PbHelper){shape.stride, shape.value_at, role, answer, map_ty, key_ty, m->externs.ptr[inst->imm.a].ret, helper}));
           inst = &m->funcs.ptr[fi].blocks.ptr[bi].insts.ptr[ii]; /* the function array may have moved */
         }
         /* The descriptors are unused: the helper takes the map, the key, and for a get the
@@ -381,6 +428,9 @@ bool opt_probe(MirModule *m) {
         changed = true;
       }
     }
+  }
+  if (layouts_ready) {
+    mir_layouts_free(&layouts);
   }
   return changed;
 }

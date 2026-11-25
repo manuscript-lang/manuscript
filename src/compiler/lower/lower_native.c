@@ -316,7 +316,7 @@ static bool update_in_line(LowerFn *fn, MsName name, const MirValue *wanted, uin
   }
   const MsSpan probe_text = ms_span_of_text("msrt_map_get_ptr");
   const MirRole role = fn_native_role(fn->cx->module, probe_text, map_ty);
-  if (role == MR_NONE) {
+  if (role == MR_NONE || mir_needs_drop(fn->cx->module, mir_ty_data(fn->cx->module, map_ty)->args[1])) {
     return false;
   }
   MirParam *params = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirParam, 4);
