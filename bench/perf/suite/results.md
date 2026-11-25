@@ -7,14 +7,12 @@ Release `ms` built from `8ddeac9b65`, 4 vCPU Xeon VM, min of 7, wall time in ms,
 | program | instructions before | after | change |
 |---|---:|---:|---:|
 | report | 2,225 M | 1,672 M | -25% |
-| wordfreq | 3,150 M | 2,330 M | -26% |
-| grep | 221 M | 159 M | -28% |
 | interp | 3,092 M | 2,744 M | -11% |
 | graph | 691 M | 644 M | -6.7% |
 | sim | 2,034 M | 1,945 M | -4.4% |
 | workers | 1,205 M | 1,129 M | -6.4% |
 
-The `split` pre-count of #7084 (+24% grep on 22 MB) was limited to texts of 4 KiB or less in #7100. `pargroup`, `wordfreq` and `grep` run at or below Rust's instruction count; their wall-time gap is page faults from materialized lists (`wordfreq` 55.7k faults against 19.9k) and, for `pargroup`, the libuv pool hand-off per file.
+#7065 (take-twin pass and `read_all`) measured grep -28%, wordfreq -26%, report -24% and logstats -14% in its own run; `report` above includes it. The `split` pre-count of #7084 (+24% grep on 22 MB) was limited to texts of 4 KiB or less in #7100. `pargroup`, `wordfreq` and `grep` run at or below Rust's instruction count; their wall-time gap is page faults from materialized lists (`wordfreq` 55.7k faults against 19.9k) and, for `pargroup`, the libuv pool hand-off per file.
 
 | program | ms | Rust | Go | Node | C | ms / Rust |
 |---|---:|---:|---:|---:|---:|---:|
