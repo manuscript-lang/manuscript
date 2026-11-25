@@ -43,13 +43,6 @@ void lsp_normalize_uris(MsArena *arena, MsJson *node) {
   }
 }
 
-static int hex_value(uint8_t c) {
-  if (c >= '0' && c <= '9') return c - '0';
-  if (c >= 'a' && c <= 'f') return c - 'a' + 10;
-  if (c >= 'A' && c <= 'F') return c - 'A' + 10;
-  return -1;
-}
-
 /* Percent-decodes `text` into `out`; false for a bad escape or bytes that are not UTF-8. */
 static bool unescape(MsSpan text, MsStrBuild *out) {
   for (size_t at = 0; at < text.len;) {
@@ -58,7 +51,7 @@ static bool unescape(MsSpan text, MsStrBuild *out) {
       continue;
     }
     if (at + 3 > text.len) return false;
-    const int high = hex_value(text.ptr[at + 1]), low = hex_value(text.ptr[at + 2]);
+    const int high = ms_hex_value(text.ptr[at + 1]), low = ms_hex_value(text.ptr[at + 2]);
     if (high < 0 || low < 0) return false;
     ms_strbuild_append_byte(out, (uint8_t)(high * 16 + low));
     at += 3;

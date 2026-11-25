@@ -90,6 +90,12 @@ MS_NODISCARD static inline bool ms_hex_digit_value(uint8_t b, uint32_t *value) {
   return true;
 }
 
+/* The value 0..15 of a hex digit (either case), or -1 for any other byte. */
+static inline int ms_hex_value(uint8_t b) {
+  uint32_t value = 0;
+  return ms_hex_digit_value(b, &value) ? (int)value : -1;
+}
+
 /* ---- UTF-8 ---- */
 
 /* Whether the byte is a continuation byte (10xxxxxx), not the first byte of a scalar. */

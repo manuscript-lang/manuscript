@@ -25,16 +25,6 @@ bool ms_http_valid_authority(MsSpan value) {
   return true;
 }
 
-static int hex_value(uint8_t b) {
-  if (b >= '0' && b <= '9') {
-    return b - '0';
-  }
-  if (b >= 'a' && b <= 'f') {
-    return b - 'a' + 10;
-  }
-  return b >= 'A' && b <= 'F' ? b - 'A' + 10 : -1;
-}
-
 /* Percent-decodes `raw` into *out (owned); false when an escape is malformed. */
 static bool ms_http_unescape(MsSpan raw, MsString *out) {
   MsStrBuild text = ms_strbuild_new();
@@ -43,8 +33,8 @@ static bool ms_http_unescape(MsSpan raw, MsString *out) {
       ms_strbuild_append_byte(&text, raw.ptr[i++]);
       continue;
     }
-    const int hi = i + 1 < raw.len ? hex_value(raw.ptr[i + 1]) : -1;
-    const int lo = i + 2 < raw.len ? hex_value(raw.ptr[i + 2]) : -1;
+    const int hi = i + 1 < raw.len ? ms_hex_value(raw.ptr[i + 1]) : -1;
+    const int lo = i + 2 < raw.len ? ms_hex_value(raw.ptr[i + 2]) : -1;
     if (hi < 0 || lo < 0) {
       ms_strbuild_free(&text);
       return false;
