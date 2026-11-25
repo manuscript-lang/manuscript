@@ -45,8 +45,8 @@ cmake --build --preset ci --target conform
 
 replays the corpus with the ms built here (`tools/conform-run.ms`, a Manuscript program that ms runs) and prints
 `phase: passed/total` for `parse`, `check`, `run` and `test`, then `commands: passed/total` for the command
-fixtures, with each failure above the counts. The command fixtures must all pass; the corpus phases are reported
-until the port is complete (`-DMS_CONFORM_ENFORCE=ON` fails the target on any difference). A PR that lowers a
+fixtures, with each failure above the counts. The command fixtures must all pass; a difference in a corpus phase also fails
+the target in the `ci` preset (`MS_CONFORM_ENFORCE=ON`; other presets report it). A PR that lowers a
 count is not merged.
 
 Fixtures are recorded from the `ms` built here: `ms run tools/conform-run.ms -- --record <fixture id>`. The Rust
