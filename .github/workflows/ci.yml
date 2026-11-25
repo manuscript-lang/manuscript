@@ -55,6 +55,15 @@ jobs:
       # The pinned shared LLVM library: ms compiles programs through it in this process. The step exports MS_LLVM to the steps after it.
       - run: cmake --build --preset ci --target llvm-lib
       - run: ctest --preset ci
+      - name: Probe kernel run time by backend
+        shell: bash
+        run: |
+          ms=$(find .artifacts/build/ci -maxdepth 3 \( -name ms.exe -o -name ms \) -type f | head -1); ms=$PWD/$ms
+          mkdir -p .artifacts/probe
+          echo "== cranelift (debug)"; "$ms" build --build-type debug -o .artifacts/probe/kd bench/perf/kernels/ms/src/main.ms; for i in 1 2 3; do ./.artifacts/probe/kd | tr '\n' ' '; echo; done
+          echo "== llvm debug"; MS_CRANELIFT=off "$ms" build --build-type debug -o .artifacts/probe/kl bench/perf/kernels/ms/src/main.ms; for i in 1 2 3; do ./.artifacts/probe/kl | tr '\n' ' '; echo; done
+          echo "== llvm release"; "$ms" build --build-type release -o .artifacts/probe/kr bench/perf/kernels/ms/src/main.ms; for i in 1 2 3; do ./.artifacts/probe/kr | tr '\n' ' '; echo; done
+          echo "== lld startup"; lld --version || true; which lld ld64.lld ld.lld lld-link || true
       # Each check below reports on its own: a failing test run does not hide the lint, package and repository results.
       - if: ${{ !cancelled() }}
         run: cmake --build --preset ci --target lint
