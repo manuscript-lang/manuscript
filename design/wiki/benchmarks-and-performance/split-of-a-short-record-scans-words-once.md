@@ -6,4 +6,4 @@ Verified (2026-11-14, `bench/perf/suite/pargroup`, 400k log lines of 8 fields): 
 
 Rejected for now: a `split` read only by constant indexes without building the list. Each piece costs about 90 instructions, but every index would repeat its searches, so the estimated saving is under 15% on this program.
 
-Apply when: changing `split_into` in `crates/ms-rt/src/string.rs`. Measure `valgrind --tool=callgrind` totals for a record, a two-field text, a sparse 450-byte text and a long text together.
+Apply when: changing `split_into` in `src/runtime/core/string_split.c`. Measure `valgrind --tool=callgrind` totals for a record, a two-field text, a sparse 450-byte text and a long text together.

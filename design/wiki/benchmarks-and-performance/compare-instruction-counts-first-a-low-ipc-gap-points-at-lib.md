@@ -6,4 +6,4 @@ Verified: wall-clock on a shared VM moves by 2x between runs, so compare `valgri
 
 Apply when: a Manuscript program is slower than Rust with similar or fewer instructions, or before replacing a libc routine.
 Evidence: mem routines, std heap.
-Verify: callgrind totals and a wall-clock min of at least five runs before and after; the unit tests in `mem.rs`; no self-call in the disassembly of the replaced symbols.
+Verify: callgrind totals and a wall-clock min of at least five runs before and after; the runtime memory unit tests; no self-call in the disassembly of the replaced symbols.
