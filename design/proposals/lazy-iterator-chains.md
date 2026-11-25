@@ -99,7 +99,7 @@ Skeptical review (2026-11-25): go with changes. The measured gaps are real (`ben
 1. Compiler fixes (bound `var` receiver, carrier through a type variable) with fixtures. Gate: `ctest`, `conform`.
 2. Prototype lazy `fields_by`, `lines` and `split` as look records, measure `wordfreq`, `grep`, `report` and `pargroup` (min of 9, callgrind) against the current numbers. Go on only if none is slower; the per-item `next` through `&String?` must inline to the current offset walk.
 3. Migrate callers (`.collect()` or a `for`; counted with `grep -F`, about 700 `.split(`), delete `source_split`.
-4. Only if stage 2 shows the adapter form matches the fused loops: `Seq`, `Mapped`, `Filtered`, lazy `List.map` and `List.filter` (about 1,400 call sites), then retire the scalar fusion lowering.
+4. Next stage, not conditional (lazy is the default design, `.collect()` the opt-in); it ships once the adapter form matches the fused loops, and a gap is fixed at the root: `Seq`, `Mapped`, `Filtered`, lazy `List.map` and `List.filter` (about 1,400 call sites), then retire the scalar fusion lowering.
 
 ## Open questions
 
