@@ -10,7 +10,7 @@ fn byte_sum(values List[UInt8]) Int {
 	var i = 0
 
 	while i < values.length() {
-		total += values.get(i).to_int()
+		total += values[i].to_int()
 		i += 1
 	}
 
@@ -22,7 +22,7 @@ fn signed_sum(values List[Int8]) Int {
 	var i = 0
 
 	while i < values.length() {
-		total += values.get(i).to_int()
+		total += values[i].to_int()
 		i += 1
 	}
 

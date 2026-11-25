@@ -35,7 +35,7 @@ fn table(n Int) List[Int] {
 		j = 0
 
 		while j < prev.length() {
-			cur.append(prev.get(j) + k)
+			cur.append(prev[j] + k)
 			j += 1
 		}
 
@@ -56,5 +56,5 @@ test "lists filled by counted loops keep their items" {
 test "a list grows past the reserved size" {
 	wide := row(1100000, 0)
 	wide.length() | expect_equal(1100001)?
-	wide.get(1099999) | expect_equal(1099998)?
+	wide[1099999] | expect_equal(1099998)?
 }

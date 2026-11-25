@@ -58,7 +58,7 @@ export fn main() Int {
 
 	say(f"gcd(2420, 3893) = {gcd(2420, 3893)}")
 
-	i9 := ((778187142396 + l4.get(0)) + (i2 - l5.length()))
+	i9 := ((778187142396 + l4[0]) + (i2 - l5.length()))
 	say(f"i9 = {i9}")
 
 	i10 := s6.scalar_length()

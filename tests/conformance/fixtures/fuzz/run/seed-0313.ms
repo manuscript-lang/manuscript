@@ -63,7 +63,7 @@ export fn main() Int {
 	say(f"i9 = {i9}")
 	say(f"fact(14) = {fact(14)}")
 
-	i10 := l4.get(0)
+	i10 := l4[0]
 	say(f"i10 = {i10}")
 
 	s11 := (s2 + s3.replace(s3, s2)).upper()

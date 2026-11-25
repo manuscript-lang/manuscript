@@ -7,4 +7,4 @@
  28 | }
     | ^
 2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)
-ms: applied 7 fixes in 1 file
+ms: applied 6 fixes in 1 file

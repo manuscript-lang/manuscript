@@ -32,7 +32,7 @@ test "list callbacks" {
 	}
 
 	doubled := items.map(fn(value Int) Int => value * 2)
-	expect_true((doubled.get(index: 4) == 8))?
+	expect_true((doubled[4] == 8))?
 
 	even := items.filter(fn(value Int) Bool => value % 2 == 0)
 	expect_true((even.length() == 3))?
@@ -76,5 +76,5 @@ test "list callbacks" {
 		seen.append(value: grow(list: grown, value: value))
 	}
 	expect_true((seen.length() == 2 and grown.length() == 4))?
-	expect_true((nested(items: items).get(index: 2) == 7))?
+	expect_true((nested(items: items)[2] == 7))?
 }

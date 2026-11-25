@@ -28,9 +28,9 @@ fn worker(url String, nanos Int) Int {
 // Runs `conns` fetching promises; the runtime spreads them over its threads.
 fn main() Void {
 	args := arguments()
-	url := args.get(0)
-	conns := args.get(1).parse_int() or panic("called Optional.get() on null")
-	secs := args.get(2).parse_int() or panic("called Optional.get() on null")
+	url := args[0]
+	conns := args[1].parse_int() or panic("called Optional.get() on null")
+	secs := args[2].parse_int() or panic("called Optional.get() on null")
 	var total = 0
 	var running List[Promise[Int]] = []
 	for i in 0..conns {

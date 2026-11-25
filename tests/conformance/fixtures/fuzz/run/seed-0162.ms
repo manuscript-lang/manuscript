@@ -67,6 +67,6 @@ export fn main() Int {
 		say("line\nbreak")
 	}
 
-	say(f"{l4.get(4)}")
+	say(f"{l4[4]}")
 	return 0
 }

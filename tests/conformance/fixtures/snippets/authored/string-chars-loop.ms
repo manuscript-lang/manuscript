@@ -44,7 +44,7 @@ fn main() Void {
 		}
 	}
 
-	_j := stdout().write(f"{kept.length()} {kept.get(1)}\n")
+	_j := stdout().write(f"{kept.length()} {kept[1]}\n")
 	var total = 0
 
 	for a in "ab".chars() {

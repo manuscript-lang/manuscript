@@ -39,7 +39,7 @@ test "map literals and positional identifier arguments" {
 	expect_false(values.length() != 2 or values["a"] != 3)?
 
 	keys := values.keys()
-	expect_false(keys.get(0) != "a" or keys.get(1) != "b")?
+	expect_false(keys[0] != "a" or keys[1] != "b")?
 
 	empty Map[String, Int] := {}
 	expect_false((not empty.is_empty() or size({}) != 0 or optional_size({}) != 0))?

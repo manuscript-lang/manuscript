@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown or ambiguous member freeze on List[String]; available starting with 'f': fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each; 70 members in total",
+        "message": "unknown or ambiguous member freeze on List[String]; available starting with 'f': fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each; 69 members in total",
         "position": {
           "file": "golden-1403.ms",
           "line": 12,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1403.ms:12:14: resolution: unknown or ambiguous member freeze on List[String]; available starting with 'f': fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each; 70 members in total\n    |\n 12 |     return b.freeze()\n    |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1403.ms:12:14: resolution: unknown or ambiguous member freeze on List[String]; available starting with 'f': fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each; 69 members in total\n    |\n 12 |     return b.freeze()\n    |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

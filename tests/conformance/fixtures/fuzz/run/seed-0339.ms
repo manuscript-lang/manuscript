@@ -80,6 +80,6 @@ export fn main() Int {
 		acc13 += i * 9
 	}
 	say(f"acc13 = {acc13}")
-	say(f"{l8.get(5)}")
+	say(f"{l8[5]}")
 	return 0
 }

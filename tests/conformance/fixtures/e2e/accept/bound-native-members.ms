@@ -27,8 +27,8 @@ test "string members" {
 test "list members" {
 	var xs = [1, 2, 3]
 	xs.set(index: -1, value: 9)
-	(xs.get(index: 2) == 9) | expect_true?
-	(replace_first(xs: xs, value: 5).get(index: 0) == 5) | expect_true?
+	(xs[2] == 9) | expect_true?
+	(replace_first(xs: xs, value: 5)[0] == 5) | expect_true?
 	(xs.contains(value: 9)) | expect_true?
 }
 
@@ -101,15 +101,15 @@ test "sorted as a value" {
 	view IntList := [3, 1, 2]
 	sort := view.sorted
 	ordered := sort(compare: (a, b) => a - b)
-	(ordered.get(index: 0) == 1) | expect_true?
-	(ordered.get(index: 2) == 3) | expect_true?
+	(ordered[0] == 1) | expect_true?
+	(ordered[2] == 3) | expect_true?
 }
 
 test "take as a value" {
 	take := [3, 1, 2].take
 	first := take(2)
 	(first.length() == 2) | expect_true?
-	(first.get(index: 0) == 3) | expect_true?
+	(first[0] == 3) | expect_true?
 }
 
 type EqualProbe {
@@ -185,6 +185,6 @@ test "native calls pass as Equal" {
 test "native contract methods through an interface value" {
 	view IntList := [3, 1, 2]
 	(view.take(2).length() == 2) | expect_true?
-	(view.reversed().get(index: 0) == 2) | expect_true?
+	(view.reversed()[0] == 2) | expect_true?
 	(view.clone().length() == 3) | expect_true?
 }

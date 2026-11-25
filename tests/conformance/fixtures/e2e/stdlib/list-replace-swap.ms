@@ -18,7 +18,7 @@ test "replace moves owned records" {
 	var entries = [Entry(name: "a", weight: 1), Entry(name: "b", weight: 2)]
 	old := entries.replace(0, Entry(name: "c", weight: 3))
 	expect_equal(old.name, "a")?
-	expect_equal(entries.get(0).name, "c")?
+	expect_equal(entries[0].name, "c")?
 	expect_equal(entries.length(), 2)?
 }
 
@@ -42,8 +42,8 @@ test "swap exchanges two elements" {
 test "swap moves records without copying" {
 	var entries = [Entry(name: "a", weight: 1), Entry(name: "b", weight: 2)]
 	entries.swap(0, 1)
-	expect_equal(entries.get(0).name, "b")?
-	expect_equal(entries.get(1).weight, 1)?
+	expect_equal(entries[0].name, "b")?
+	expect_equal(entries[1].weight, 1)?
 }
 
 test "replace takes a scalar optional slot" {

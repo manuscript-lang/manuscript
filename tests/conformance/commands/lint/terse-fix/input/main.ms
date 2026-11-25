@@ -11,7 +11,7 @@ fn empties(xs List[Int], m Map[String, Int], text String) Bool {
 }
 
 fn first(xs List[Int]) Int {
-	return xs.get(0)
+	return xs[0]
 }
 
 fn counts(var m Map[String, Int], k String) Void {

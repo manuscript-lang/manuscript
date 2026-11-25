@@ -50,7 +50,7 @@ export fn main() Int {
 	say(f"l8 = {l8} len {l8.length()}")
 	say(f"fib(48) = {fib(48)}")
 
-	i9 := ((-41) + (l8.get(0) * i1))
+	i9 := ((-41) + (l8[0] * i1))
 	say(f"i9 = {i9}")
 
 	s10 := ("brace{s}" + s4.trim())

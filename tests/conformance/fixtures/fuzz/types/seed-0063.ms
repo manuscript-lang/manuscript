@@ -16,6 +16,6 @@ export fn main() Int {
 	l2 := l1.filter(x => x > 2)
 	say(f"l2 = {l2} len {l2.length()}")
 
-	bad := [1, 2].get("x")
+	bad := [1, 2]["x"]
 	return 0
 }

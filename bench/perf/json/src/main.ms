@@ -22,7 +22,7 @@ fn median_ns(body fn() Int, budget, runs Int) Int {
 	}
 
 	sorted := samples.sorted(fn(a, b Int) Int => a.compare(b))
-	return sorted.get(sorted.length() / 2)
+	return sorted[sorted.length() / 2]
 }
 
 fn say(text String) Void {
@@ -150,8 +150,8 @@ fn main() Void {
 		} else {
 			parts := arg.split(":")
 			var op = "both"
-			if parts.length() > 1 { op = parts.get(1).clone() }
-			bench_one(parts.get(0), op, budget, runs)
+			if parts.length() > 1 { op = parts[1].clone() }
+			bench_one(parts[0], op, budget, runs)
 		}
 	}
 }

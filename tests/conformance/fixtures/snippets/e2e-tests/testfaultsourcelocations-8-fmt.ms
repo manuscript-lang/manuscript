@@ -2,7 +2,7 @@
 // conform: phase=parse
 // conform: origin=tests/e2e/fault_locations_test.go:87 TestFaultSourceLocations
 fn pick(values List[Int], index Int) Int {
-	return values.get(index)
+	return values[index]
 }
 
 export fn main() Int {

@@ -60,7 +60,7 @@ export fn main() Int {
 	b10 := b3
 	say(f"b10 = {b10}")
 
-	i11 := (((33 % i7) * l2.get(0)) + l2.length())
+	i11 := (((33 % i7) * l2[0]) + l2.length())
 	say(f"i11 = {i11}")
 
 	if true {

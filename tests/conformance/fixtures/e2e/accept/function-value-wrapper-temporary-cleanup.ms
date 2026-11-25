@@ -35,7 +35,7 @@ fn rejected() Int! => error(Error("expected"))
 
 fn accepted() Int! => ok(1)
 
-fn faulted() Int => [1].get(3)
+fn faulted() Int => [1][past_end()]
 
 fn later_error(reader fn(Resource?, Resource?, Int) Bool, path String) Void! {
 	_used := reader(present(path, 10), present(path, 11), rejected()?)
@@ -110,7 +110,7 @@ test "function dispatch errors and faults retain temporary cleanup" {
 	}
 
 	broken := fn(value Resource?) Void {
-		if value != null { _bad := [1].get(3) }
+		if value != null { _bad := [1][past_end()] }
 	}
 	expect_equal(reject(present(path, 20)).is_error(), true)?
 
@@ -187,3 +187,6 @@ test "function Optional transport from a named payload remains a borrow" {
 	named_conversion_calls(path)?
 	expect_equal(log_text(path)?, "110,")?
 }
+
+// An index no check can see is out of range, so the fault happens at run time.
+fn past_end() Int => 3

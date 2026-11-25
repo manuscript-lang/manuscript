@@ -80,32 +80,6 @@
       }
     },
     {
-      "code": "MSL119",
-      "severity": "error",
-      "message": "Index the list with xs[i] instead of xs.get(i)",
-      "position": {
-        "file": "main.ms",
-        "line": 14,
-        "column": 15,
-        "offset": 285
-      },
-      "fix": {
-        "position": {
-          "file": "main.ms",
-          "line": 14,
-          "column": 11,
-          "offset": 284
-        },
-        "end": {
-          "file": "main.ms",
-          "line": 14,
-          "column": 18,
-          "offset": 291
-        },
-        "replacement": "[0]"
-      }
-    },
-    {
       "code": "MSL116",
       "severity": "warning",
       "message": "`counts` reaches std.console.write: counts -\u003e print; permit it with `// ms: allow_effect std.console.write`, move the call to the caller, or take a capability parameter",
@@ -113,7 +87,7 @@
         "file": "main.ms",
         "line": 21,
         "column": 5,
-        "offset": 458
+        "offset": 454
       }
     },
     {
@@ -124,20 +98,20 @@
         "file": "main.ms",
         "line": 25,
         "column": 5,
-        "offset": 500
+        "offset": 496
       },
       "fix": {
         "position": {
           "file": "main.ms",
           "line": 25,
           "column": 2,
-          "offset": 500
+          "offset": 496
         },
         "end": {
           "file": "main.ms",
           "line": 27,
           "column": 8,
-          "offset": 528
+          "offset": 524
         },
         "replacement": "x := if flag: 2 else: 1"
       }
@@ -150,20 +124,20 @@
         "file": "main.ms",
         "line": 33,
         "column": 5,
-        "offset": 567
+        "offset": 563
       },
       "fix": {
         "position": {
           "file": "main.ms",
           "line": 33,
           "column": 2,
-          "offset": 567
+          "offset": 563
         },
         "end": {
           "file": "main.ms",
           "line": 34,
           "column": 10,
-          "offset": 587
+          "offset": 583
         },
         "replacement": "return n + 1"
       }
@@ -176,7 +150,7 @@
         "file": "main.ms",
         "line": 46,
         "column": 5,
-        "offset": 685
+        "offset": 681
       }
     },
     {
@@ -187,7 +161,7 @@
         "file": "main.ms",
         "line": 50,
         "column": 5,
-        "offset": 731
+        "offset": 727
       }
     },
     {
@@ -198,7 +172,7 @@
         "file": "main.ms",
         "line": 51,
         "column": 5,
-        "offset": 755
+        "offset": 751
       }
     },
     {
@@ -209,7 +183,7 @@
         "file": "main.ms",
         "line": 58,
         "column": 14,
-        "offset": 848
+        "offset": 844
       }
     },
     {
@@ -220,7 +194,7 @@
         "file": "main.ms",
         "line": 59,
         "column": 5,
-        "offset": 856
+        "offset": 852
       }
     },
     {
@@ -231,7 +205,7 @@
         "file": "main.ms",
         "line": 59,
         "column": 14,
-        "offset": 865
+        "offset": 861
       }
     },
     {
@@ -242,7 +216,7 @@
         "file": "main.ms",
         "line": 64,
         "column": 5,
-        "offset": 912
+        "offset": 908
       }
     },
     {
@@ -253,7 +227,7 @@
         "file": "main.ms",
         "line": 69,
         "column": 14,
-        "offset": 981
+        "offset": 977
       }
     },
     {
@@ -264,7 +238,7 @@
         "file": "main.ms",
         "line": 81,
         "column": 35,
-        "offset": 1143
+        "offset": 1139
       }
     },
     {
@@ -275,7 +249,7 @@
         "file": "main.ms",
         "line": 86,
         "column": 7,
-        "offset": 1194
+        "offset": 1190
       }
     },
     {
@@ -286,20 +260,20 @@
         "file": "main.ms",
         "line": 87,
         "column": 12,
-        "offset": 1208
+        "offset": 1204
       },
       "fix": {
         "position": {
           "file": "main.ms",
           "line": 87,
           "column": 2,
-          "offset": 1201
+          "offset": 1197
         },
         "end": {
           "file": "main.ms",
           "line": 87,
           "column": 21,
-          "offset": 1220
+          "offset": 1216
         },
         "replacement": "void unit()"
       }
@@ -312,7 +286,7 @@
         "file": "main.ms",
         "line": 88,
         "column": 5,
-        "offset": 1222
+        "offset": 1218
       }
     },
     {
@@ -323,7 +297,7 @@
         "file": "main.ms",
         "line": 88,
         "column": 5,
-        "offset": 1222
+        "offset": 1218
       }
     }
   ]

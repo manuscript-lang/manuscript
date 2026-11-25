@@ -78,7 +78,7 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
 		)?
 	)
 	entries.length() | expect_equal(1)?
-	entries.get(0).path | expect_equal("a.txt")?
+	entries[0].path | expect_equal("a.txt")?
 	options.patterns | expect_equal(["*.txt"])?
 }
 

@@ -39,7 +39,7 @@ export fn main() Int {
 	i7 := ((((-6) / i1) + ((-39) % i4)) * i1)
 	say(f"i7 = {i7}")
 	say(
-		f"{l5.get(1)} {l3.get(0)} {(l5.get(1) < l3.get(0))} sum {l5.get(1) + l3.get(0)}"
+		f"{l5[1]} {l3[0]} {(l5[1] < l3[0])} sum {l5[1] + l3[0]}"
 	)
 
 	var acc8 = 0

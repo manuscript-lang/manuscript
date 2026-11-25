@@ -71,6 +71,6 @@ export fn main() Int {
 
 	i10 := (-l9.length())
 	say(f"i10 = {i10}")
-	say(f"{l4.get(0)} {5} {(l4.get(0) < 5)} sum {l4.get(0) + 5}")
+	say(f"{l4[0]} {5} {(l4[0] < 5)} sum {l4[0] + 5}")
 	return 0
 }

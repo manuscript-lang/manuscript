@@ -121,9 +121,9 @@ test "optional labels on methods and native functions" {
 	chain_2.append(3)
 	chain_2 | expect_equal([1, 2, 3])?
 
-	lookup := [4, 5].get
-	lookup(1) | expect_equal(5)?
-	[4, 5].get(0) | expect_equal(4)?
+	lookup := [4, 5].get_or
+	lookup(1, 0) | expect_equal(5)?
+	[4, 5][0] | expect_equal(4)?
 }
 
 test "omitted labels preserve evaluation order" {

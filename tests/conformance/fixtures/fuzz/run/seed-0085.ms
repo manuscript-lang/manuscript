@@ -47,7 +47,7 @@ export fn main() Int {
 	i7 := i3
 	say(f"i7 = {i7}")
 
-	i8 := l2.get(1)
+	i8 := l2[1]
 	say(f"i8 = {i8}")
 	return 0
 }

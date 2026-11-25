@@ -1,7 +1,7 @@
 // conform: tags=diagnostics
 // conform: phase=check
 fn pick(values List[Int], index Int) Int {
-	return values.get(index)
+	return values[index]
 }
 
 export fn main() Int {

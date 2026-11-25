@@ -38,8 +38,6 @@ const MsLintRule MS_LINT_RULES[] = {
      "drop the `f` so braces are plain text, or write `\\{4\\}` for literal braces in `f\"...\"` text; delete the braces to write the number"},
     {"MSL118", "Length compared with zero", MS_LINT_ERROR,
      "write `xs.is_empty()` or `not xs.is_empty()`; `ms lint --fix` does it"},
-    {"MSL119", "List read with get(i)", MS_LINT_ERROR,
-     "write `xs[i]`; `ms lint --fix` does it"},
     {"MSL120", "Optional chained after a map get", MS_LINT_ERROR,
      "write `map.get_or(key, default)`; `ms lint --fix` does it"},
     {"MSL121", "Default overridden by a one-line if", MS_LINT_ERROR,

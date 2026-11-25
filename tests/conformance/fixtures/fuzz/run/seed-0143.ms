@@ -100,6 +100,6 @@ export fn main() Int {
 
 	s16 := ((f"{i7}:" + "日本語".reverse()) + (f"{(-36)}:" + "  padded  "))
 	say(f"s16 = [{s16}]")
-	say(f"{l14.get(3)}")
+	say(f"{l14[3]}")
 	return 0
 }

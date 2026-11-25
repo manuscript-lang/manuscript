@@ -13,7 +13,7 @@ export fn main() Int {
 	i1 := (-(21 / ((-48) + (-15))))
 	say(f"i1 = {i1}")
 
-	bad := [1, 2].get("x")
+	bad := [1, 2]["x"]
 	var acc2 = 0
 	for i in 0..5 {
 		acc2 += i * 0

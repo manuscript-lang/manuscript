@@ -62,7 +62,7 @@ test "ties-even rounding and sign helpers preserve IEEE sign distinctions" {
 	values := [0.5, 1.5, 2.5, -0.5, -1.5, -2.5]
 	expected := [0.0, 2.0, 2.0, 0.0, -2.0, -2.0]
 	for i in 0..values.length() {
-		expect_equal(round_to_even(values.get(i)), expected.get(i))?
+		expect_equal(round_to_even(values[i]), expected[i])?
 	}
 	expect_true(sign_bit(round_to_even(-0.5)))?
 	expect_true(sign_bit(round_to_even(-0.0)))?

@@ -31,7 +31,7 @@ type Ring {
 
 fn Ring.at(index Int) Counter? {
 	if index < 0 or index >= self.size { return null }
-	return self.slots.get(index)
+	return self.slots[index]
 }
 
 fn maybe(n Int) Counter? {

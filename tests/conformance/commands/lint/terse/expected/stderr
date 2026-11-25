@@ -10,10 +10,6 @@
     |
  10 |     return text.length() == 0
     |                          ^
-<DIR>/main.ms:14:15: MSL119: Index the list with xs[i] instead of xs.get(i)
-    |
- 14 |     return xs.get(0)
-    |               ^
 <DIR>/main.ms:21:5: warning MSL116: `counts` reaches std.console.write: counts -> print; permit it with `// ms: allow_effect std.console.write`, move the call to the caller, or take a capability parameter
     |
  21 |     print(total)

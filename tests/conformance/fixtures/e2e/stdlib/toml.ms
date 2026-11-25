@@ -63,7 +63,7 @@ test "TOML multiline strings Unicode escapes arrays and inline tables" {
 	array := (items(root.get("array") or panic("called Optional.get() on null"))?)
 	array.length() | expect_equal(3)?
 
-	person := (entries(array.get(2).clone())?)
+	person := (entries(array[2].clone())?)
 	person["name"] | expect_equal(TomlValue.StringValue("Ada"))?
 	expect_false(
 		(
@@ -170,7 +170,7 @@ test "TOML parses a long array of tables in order" {
 	rows := items(root.get("items") or panic("called Optional.get() on null"))?
 	rows.length() | expect_equal(30000)?
 
-	last := entries(rows.get(29999).clone())?
+	last := entries(rows[29999].clone())?
 	last["id"] | expect_equal(TomlValue.IntValue(29999))?
 }
 

@@ -62,11 +62,11 @@ export fn main() Int {
 
 	say(f"acc14 = {acc14}")
 
-	i15 := (i9 / (l2.get(0) - (-542123)))
+	i15 := (i9 / (l2[0] - (-542123)))
 	say(f"i15 = {i15}")
 
 	l16 := [0, 26]
 	say(f"l16 = {l16} len {l16.length()}")
-	say(f"{l2.get(6)}")
+	say(f"{l2[6]}")
 	return 0
 }

@@ -19,7 +19,7 @@ export fn main() Int {
 		say(("gamma" + "beta"))
 	}
 
-	bad := [1, 2].get("x")
+	bad := [1, 2]["x"]
 	b2 := (false and ((false or false) or (190.739 == 28.237)))
 	say(f"b2 = {b2}")
 

@@ -206,7 +206,7 @@ A List keeps its identity and backing kind through generics, types, Optional, Re
 | `Set[T]` | `find_last` uses the same predicate and payload result, searching from the end |
 | `Set[T]` | `any(predicate fn(T) Bool) Bool`; `all` uses the same predicate |
 
-An empty constructor needs explicit type arguments or a complete expected application, and creates fresh storage. `values[index]` equals `values.get(index)`: the element at an index, where negative indexes count from the end. An index out of range faults. Pass a default to avoid the fault: `values.get_or(0, 0)` needs no length check. Bytes and String `get` work the same way, and a String element is a one-scalar String. A size above the maximum `Int` faults.
+An empty constructor needs explicit type arguments or a complete expected application, and creates fresh storage. `values[index]` is the element at an index, where negative indexes count from the end. An index out of range faults. Pass a default to avoid the fault: `values.get_or(0, 0)` needs no length check. `Bytes.get` and `String.get` work the same way, and a String element is a one-scalar String. A size above the maximum `Int` faults.
 
 `Map.add(key, value)` inserts or replaces and returns Void. Replacing an equal map key keeps its original key and position; adding an existing set element changes nothing. Removing an entry and adding it again moves it to the end. Equality ignores insertion order.
 

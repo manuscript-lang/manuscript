@@ -10,7 +10,7 @@ fn total_indexed(rows List[List[Int]], slot Int) Int {
 }
 
 fn total_get(rows List[List[Int]], slot Int) Int {
-	var total = rows.get(slot).sum()
+	var total = rows[slot].sum()
 	return total
 }
 

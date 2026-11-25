@@ -53,7 +53,7 @@ export fn main() Int {
 	i13 := (34 - (-i6))
 	say(f"i13 = {i13}")
 
-	i14 := (l7.get(0) % (i10 - i6))
+	i14 := (l7[0] % (i10 - i6))
 	say(f"i14 = {i14}")
 
 	i15 := i14
@@ -65,7 +65,7 @@ export fn main() Int {
 	}
 	say(f"acc16 = {acc16}")
 	say(
-		f"{((i12 + i8) * l9.get(1))} {i14} {(((i12 + i8) * l9.get(1)) < i14)} sum {((i12 + i8) * l9.get(1)) + i14}"
+		f"{((i12 + i8) * l9[1])} {i14} {(((i12 + i8) * l9[1]) < i14)} sum {((i12 + i8) * l9[1]) + i14}"
 	)
 
 	s17 := (f"{(i8 + i10)}:" + "日本語".trim())

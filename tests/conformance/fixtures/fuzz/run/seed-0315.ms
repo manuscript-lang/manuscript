@@ -68,7 +68,7 @@ export fn main() Int {
 	l14 := [(-21), (-23), (-14)]
 	say(f"l14 = {l14} len {l14.length()}")
 
-	i15 := l14.get(1)
+	i15 := l14[1]
 	say(f"i15 = {i15}")
 
 	i16 := (188118 + 36)

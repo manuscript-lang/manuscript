@@ -37,8 +37,8 @@ fn text_content(node HtmlNode) String {
 }
 
 fn body_nodes(node HtmlNode) List[HtmlNode] {
-	html := children(node).get(0).clone()
-	return children(children(html).get(1))
+	html := children(node)[0].clone()
+	return children(children(html)[1])
 }
 
 test "HTML escaping preserves Unicode and escapes all markup characters" {
@@ -51,7 +51,7 @@ test "HTML parses nested elements attributes entities and comments" {
 	doc := parse(
 		"<DIV id='main' title='A &amp; B' hidden>Hello <b>é🙂</b> &lt;world&gt;<!--note--><br></DIV>"
 	)?
-	div := body_nodes(doc.clone()).get(0).clone()
+	div := body_nodes(doc.clone())[0].clone()
 
 	match div {
 		Element(tag, namespace, attributes, items) => {
@@ -67,14 +67,14 @@ test "HTML parses nested elements attributes entities and comments" {
 			)?
 			expect_false(
 				(
-					items.get(0) != HtmlNode.Text("Hello ")
-					or items.get(2) != HtmlNode.Text(" <world>")
+					items[0] != HtmlNode.Text("Hello ")
+					or items[2] != HtmlNode.Text(" <world>")
 				)
 			)?
-			expect_equal(items.get(3), HtmlNode.Comment("note"))?
+			expect_equal(items[3], HtmlNode.Comment("note"))?
 			expect_false(
 				(
-					items.get(4) != HtmlNode.Element(
+					items[4] != HtmlNode.Element(
 						tag: "br",
 						namespace: "",
 						attributes: [],
@@ -92,26 +92,26 @@ test "HTML parses nested elements attributes entities and comments" {
 test "HTML recovers unclosed tags and inserts document and table structure" {
 	doc := parse("<ul><li>one<li>two</ul><table><tr><td>cell")?
 	nodes := body_nodes(doc)
-	entries := children(nodes.get(0).clone())
+	entries := children(nodes[0].clone())
 	expect_false(
 		(
 			entries.length() != 2
-			or text_content(entries.get(0).clone()) != "one"
-			or text_content(entries.get(1).clone()) != "two"
+			or text_content(entries[0].clone()) != "one"
+			or text_content(entries[1].clone()) != "two"
 		)
 	)?
 
-	match children(nodes.get(1).clone()).get(0).clone() {
+	match children(nodes[1].clone())[0].clone() {
 		Element(tag, _, _, _) => {
 			expect_equal(tag, "tbody")?
 		}
 		_ => return fail("expected tbody")
 	}
 
-	expect_equal(text_content(nodes.get(1).clone()), "cell")?
+	expect_equal(text_content(nodes[1].clone()), "cell")?
 
 	empty := parse("")?
-	expect_equal(children(children(empty).get(0)).length(), 2)?
+	expect_equal(children(children(empty)[0]).length(), 2)?
 }
 
 test "HTML preserves doctypes foreign namespaces and raw script text" {
@@ -121,18 +121,18 @@ test "HTML preserves doctypes foreign namespaces and raw script text" {
 	nodes := children(doc)
 	expect_false(
 		(
-			nodes.get(0) != HtmlNode.Doctype(
+			nodes[0] != HtmlNode.Doctype(
 				name: "html",
 				public_id: "public",
 				system_id: "system",
 			)
 		)
 	)?
-	expect_equal(nodes.get(1), HtmlNode.Comment("before"))?
+	expect_equal(nodes[1], HtmlNode.Comment("before"))?
 
-	body := children(children(nodes.get(2).clone()).get(1).clone())
+	body := children(children(nodes[2].clone())[1].clone())
 
-	svg_items := match body.get(0) {
+	svg_items := match body[0] {
 		Element(tag, namespace, _, items) => {
 			expect_false(tag != "svg" or namespace != "svg")?
 			items.clone()
@@ -140,12 +140,12 @@ test "HTML preserves doctypes foreign namespaces and raw script text" {
 		_ => return fail("expected SVG")
 	}
 
-	match svg_items.get(0) {
+	match svg_items[0] {
 		Element(_, child_namespace, attributes, _) => {
 			expect_false(
 				(
 					child_namespace != "svg"
-					or attributes.get(0) != HtmlAttribute(
+					or attributes[0] != HtmlAttribute(
 						"href",
 						"xlink",
 						"#icon",
@@ -156,7 +156,7 @@ test "HTML preserves doctypes foreign namespaces and raw script text" {
 		_ => return fail("expected SVG anchor")
 	}
 
-	expect_equal(text_content(body.get(1).clone()), "if (a < b) x = '&amp;';")?
+	expect_equal(text_content(body[1].clone()), "if (a < b) x = '&amp;';")?
 }
 
 test "HTML honors optional byte depth and node limits" {

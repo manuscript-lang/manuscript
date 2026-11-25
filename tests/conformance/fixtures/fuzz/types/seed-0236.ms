@@ -16,7 +16,7 @@ export fn main() Int {
 	i3 := (-34)
 	say(f"i3 = {i3}")
 
-	i4 := (i3 * l2.get(0))
+	i4 := (i3 * l2[0])
 	say(f"i4 = {i4}")
 
 	bad := (1 < 2) < 3

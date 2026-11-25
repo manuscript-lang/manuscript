@@ -400,7 +400,7 @@ test "JSON parse decodes records by field name with defaults and optional fields
 	expect_equal(profile.name, "Ada")?
 	expect_equal(profile.age, 18)?
 	expect_false(profile.nickname != null)?
-	expect_false(profile.scores.length() != 2 or profile.scores.get(1) != 2.5)?
+	expect_false(profile.scores.length() != 2 or profile.scores[1] != 2.5)?
 
 	full := "{\"name\":\"B\",\"age\":30,\"nickname\":\"bee\",\"scores\":[]}"
 	other Profile := parse[Profile](full)?
@@ -453,7 +453,7 @@ test "JSON parse decodes alternatives and generic records" {
 	scene Scene := parse[Scene](
 		"{\"shape\":\"Dot\",\"shapes\":[{\"Rect\":{\"width\":1,\"height\":2}}]}"
 	)?
-	expect_equal(scene.shapes.get(0), Shape.Rect(1, 2))?
+	expect_equal(scene.shapes[0], Shape.Rect(1, 2))?
 
 	wrapper Wrapper[Int] := parse[Wrapper[Int]]("{\"first\":1}")?
 	expect_false((wrapper.first != 1 or (wrapper.second != null) or wrapper.extra != 7))?
@@ -474,7 +474,7 @@ test "JSON parse decodes recursive types exact numbers and passthrough values" {
 	tree Tree := parse[Tree](
 		"{\"label\":\"r\",\"children\":[{\"label\":\"c\",\"children\":[]}]}"
 	)?
-	expect_equal(tree.children.get(0).label, "c")?
+	expect_equal(tree.children[0].label, "c")?
 
 	price Price := parse[Price](
 		"{\"amount\":1.5,\"cents\":123456789012345678901234567890}"
@@ -489,7 +489,7 @@ test "JSON parse decodes recursive types exact numbers and passthrough values" {
 	expect_equal(boxed.first, raw)?
 
 	list List[Int?] := parse[List[Int?]]("[1,null]")?
-	expect_false(list.get(1) != null)?
+	expect_false(list[1] != null)?
 }
 
 test "JSON parse inverts stringify and works in generic code" {
@@ -501,7 +501,7 @@ test "JSON parse inverts stringify and works in generic code" {
 
 	shapes List[Shape] := [Shape.Dot, Shape.Rect(3, 4)]
 	shapesBack List[Shape] := decoded[List[Shape]](stringify(shapes)?)?
-	expect_equal(shapesBack.get(1), Shape.Rect(3, 4))?
+	expect_equal(shapesBack[1], Shape.Rect(3, 4))?
 }
 
 fn load_profile(text String) Profile! {

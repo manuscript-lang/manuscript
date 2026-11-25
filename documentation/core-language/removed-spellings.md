@@ -22,5 +22,6 @@ When Manuscript removes or renames something, the old spelling does not fail qui
 | `filesystem()` and other host getters | import the operation, such as `read_file` from `@std/os/fs.ms` |
 | `@std/concurrency/flow.ms` | `@std/concurrency/resilience.ms` |
 | `text.byte_length()` | `text.length()`, which counts bytes |
+| `list.get(i)` | `list[i]`: negative indexes count from the end and an index out of range faults, as `get` did; `list.get_or(i, default)` supplies a fallback |
 
-`ms check --fix` rewrites every row except four (braced blocks, closures with parameters, `impl` blocks and host getters), because the new spelling depends on the program. Each row has a test in `tests/checks/removed/`, run by `make removed-check`, which checks both the error and the fix. A change that removes or renames a spelling adds its row and its test.
+`ms check --fix` rewrites every row except five (braced blocks, closures with parameters, `impl` blocks, host getters and `list.get(i)`), because the new spelling depends on the program. Each row has a test in `tests/checks/removed/`, run by `make removed-check`, which checks both the error and the fix. A change that removes or renames a spelling adds its row and its test.

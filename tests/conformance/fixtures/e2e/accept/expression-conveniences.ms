@@ -191,7 +191,7 @@ test "indexes read elements and get supplies defaults" {
 	values.get_or(2, 0) | expect_equal(0)?
 	values.get_or(-3, 0) | expect_equal(0)?
 	values.get_or(-9223372036854775808, 0) | expect_equal(0)?
-	(values[0] != values.get(0) or values[-1] != values.get(-1)) | expect_false?
+	(values[0] != values[0] or values[-1] != values[-1]) | expect_false?
 	List[Int]().get_or(0, 7) | expect_equal(7)?
 }
 

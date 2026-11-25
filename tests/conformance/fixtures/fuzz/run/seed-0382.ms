@@ -36,7 +36,7 @@ export fn main() Int {
 	l2 := [30, 28, 15]
 	say(f"l2 = {l2} len {l2.length()}")
 
-	i3 := (l2.get(1) + (((-41) + i1) - (i1 + (-42))))
+	i3 := (l2[1] + (((-41) + i1) - (i1 + (-42))))
 	say(f"i3 = {i3}")
 	say(f"collatz(1871) = {collatz(1871)}")
 
@@ -71,7 +71,7 @@ export fn main() Int {
 		say(s5.replace("a", s5))
 	}
 
-	say(f"{(-24)} {l2.get(0)} {((-24) < l2.get(0))} sum {(-24) + l2.get(0)}")
+	say(f"{(-24)} {l2[0]} {((-24) < l2[0])} sum {(-24) + l2[0]}")
 
 	if ("gamma".is_empty() or s5.is_empty()) {
 		say("Tab\there".upper())

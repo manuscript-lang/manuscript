@@ -52,7 +52,7 @@ export fn main() Int {
 	l13 := [22, 26, 19, 7]
 	say(f"l13 = {l13} len {l13.length()}")
 	say(
-		f"{(29 + l13.get(3))} {i4} {((29 + l13.get(3)) < i4)} sum {(29 + l13.get(3)) + i4}"
+		f"{(29 + l13[3])} {i4} {((29 + l13[3]) < i4)} sum {(29 + l13[3]) + i4}"
 	)
 	return 0
 }

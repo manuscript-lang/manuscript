@@ -10,7 +10,7 @@ fn move Handle.close() Void! {
 }
 
 fn from_list(xs List[Handle]) Int {
-	h := xs.get(0)
+	h := xs[0]
 	return h.id
 }
 

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn pick(values List[Int], index Int) Int {\n\treturn values.get(index)\n}\n\nexport fn main() Int {\n\treturn pick([1, 2, 3], 3)\n}\n"
+    "fmt": "fn pick(values List[Int], index Int) Int {\n\treturn values[index]\n}\n\nexport fn main() Int {\n\treturn pick([1, 2, 3], 3)\n}\n"
   }
 }

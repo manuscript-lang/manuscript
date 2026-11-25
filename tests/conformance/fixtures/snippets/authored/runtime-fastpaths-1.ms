@@ -63,13 +63,13 @@ fn main() Void {
 	}
 
 	sorted := xs.sorted(compare)
-	say(f"{sorted.get(0)} {sorted.get(100)} {sorted.get(199)}\n")
+	say(f"{sorted[0]} {sorted[100]} {sorted[199]}\n")
 
 	var ordered = true
 	var j = 1
 
 	while j < sorted.length() {
-		if sorted.get(j - 1) > sorted.get(j) {
+		if sorted[j - 1] > sorted[j] {
 			ordered = false
 		}
 		j += 1

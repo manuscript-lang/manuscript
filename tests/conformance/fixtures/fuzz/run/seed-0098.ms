@@ -49,7 +49,7 @@ export fn main() Int {
 	l6 := l2.take(0)
 	say(f"l6 = {l6} len {l6.length()}")
 
-	i7 := (l6.length() - l2.get(3))
+	i7 := (l6.length() - l2[3])
 	say(f"i7 = {i7}")
 
 	f8 := 0.0

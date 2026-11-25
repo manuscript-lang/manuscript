@@ -53,7 +53,7 @@ export fn main() Int {
 	i11 := (i9 + i9)
 	say(f"i11 = {i11}")
 
-	b12 := ((l10.get(0) < l10.length()) or ("日本語" + s1).starts_with(s8))
+	b12 := ((l10[0] < l10.length()) or ("日本語" + s1).starts_with(s8))
 	say(f"b12 = {b12}")
 
 	l13 := l10.concat(l10)

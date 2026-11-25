@@ -49,7 +49,7 @@ export fn main() Int {
 	s6 := "x"
 	say(f"s6 = [{s6}]")
 
-	i7 := (((i1 / i1) + (16 * i1)) + (l2.get(0) + i1))
+	i7 := (((i1 / i1) + (16 * i1)) + (l2[0] + i1))
 	say(f"i7 = {i7}")
 
 	l8 := l2.drop(0)

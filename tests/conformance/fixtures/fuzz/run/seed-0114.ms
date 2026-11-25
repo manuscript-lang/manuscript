@@ -77,7 +77,7 @@ export fn main() Int {
 	l11 := l3.concat(l3)
 	say(f"l11 = {l11} len {l11.length()}")
 
-	i12 := ((l3.get(1) / i5) + ((-i5) + i5))
+	i12 := ((l3[1] / i5) + ((-i5) + i5))
 	say(f"i12 = {i12}")
 
 	var acc13 = 0

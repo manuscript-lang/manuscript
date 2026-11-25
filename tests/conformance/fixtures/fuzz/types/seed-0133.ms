@@ -32,7 +32,7 @@ export fn main() Int {
 	l1 := [(-19), (-10), (-13), (-5), 0]
 	say(f"l1 = {l1} len {l1.length()}")
 
-	bad := [1, 2].get("x")
+	bad := [1, 2]["x"]
 	s2 := (("hello world" + "x").replace("MiXeD CaSe", "back\\slash") + "a".lower())
 	say(f"s2 = [{s2}]")
 	say(f"{192931} {35} {(192931 < 35)} sum {192931 + 35}")

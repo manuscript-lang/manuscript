@@ -16,44 +16,44 @@ test "direct append preserves checked argument conversions" {
 	append_generic(values, 8)
 	values.append(null)
 	expect_false(
-		(values.get(0) or panic("called Optional.get() on null")) != 7 or (
-			values.get(1)
+		(values[0] or panic("called Optional.get() on null")) != 7 or (
+			values[1]
 			or panic("called Optional.get() on null")
 		) != 8
 	)?
-	expect_false(not (values.get(2) == null))?
+	expect_false(not (values[2] == null))?
 
 	var flags List[Bool?] = []
 	flags.append(false)
 	expect_false(
-		(flags.get(0) == null) or (
-			flags.get(0)
+		(flags[0] == null) or (
+			flags[0]
 			or panic("called Optional.get() on null")
 		)
 	)?
 
 	var units List[Void?] = []
 	units.append(void)
-	expect_false(units.get(0) == null)?
+	expect_false(units[0] == null)?
 
 	inner Int? := null
 	var nested List[Int??] = []
 	nested.append(inner)
-	expect_true(nested.get(0) == null)?
+	expect_true(nested[0] == null)?
 
 	var callbacks List[(fn(Int) Int)?] = []
 	callbacks.append(value => value + 1)
-	expect_equal((callbacks.get(0) or panic("called Optional.get() on null"))(7), 8)?
+	expect_equal((callbacks[0] or panic("called Optional.get() on null"))(7), 8)?
 
 	var errors List[Error] = []
 	errors.append(Error("failure"))
-	expect_equal(errors.get(0).message, "failure")?
+	expect_equal(errors[0].message, "failure")?
 
 	var results List[Int!?] = []
 	failed Int! := error(Error("failure"))
 	results.append(failed)
 
-	widened := results.get(0) or panic("called Optional.get() on null")
+	widened := results[0] or panic("called Optional.get() on null")
 	expect_false(widened.is_ok())?
 	expect_equal(widened.err().message, "failure")?
 }

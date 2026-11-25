@@ -49,7 +49,7 @@ test "record defaults and explicit overrides" {
 	(
 		(
 			data.number != 5
-			or data.values.get(0) != 5
+			or data.values[0] != 5
 			or data.callback() != 5
 		) | expect_false?
 	)
@@ -59,7 +59,7 @@ test "record defaults and explicit overrides" {
 		(
 			(
 				changed.number != 0
-				or changed.values.get(0) != 0
+				or changed.values[0] != 0
 				or changed.callback() != 0
 			)
 		) | expect_false?

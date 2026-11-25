@@ -117,7 +117,7 @@ fn JsonValue.get_index(index Int) JsonValue? {
 	match self {
 		ArrayValue(values) => {
 			if index >= values.length() or index < 0 - values.length() { return null }
-			return values.get(index)
+			return values[index]
 		}
 		_ => return null
 	}

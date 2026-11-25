@@ -46,7 +46,7 @@ export fn main() Int {
 	b9 := (s2 == ("Tab\there" + s2).lower())
 	say(f"b9 = {b9}")
 
-	b10 := ((l1.get(1) + 963306) < ((50 * i4) + (i6 + i4)))
+	b10 := ((l1[1] + 963306) < ((50 * i4) + (i6 + i4)))
 	say(f"b10 = {b10}")
 	return 0
 }

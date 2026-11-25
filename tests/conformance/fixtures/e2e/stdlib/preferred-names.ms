@@ -94,7 +94,7 @@ test "list names mutate in place and retain shallow copies" {
 
 	var optional List[Int?] = [1]
 	optional.set(0, 7)
-	expect_equal(optional.get(0), 7)?
+	expect_equal(optional[0], 7)?
 
 	var nested = [[1]]
 	outer_copy := nested.clone()
@@ -284,7 +284,7 @@ test "list reversal names distinguish receiver mutation and shallow copies" {
 	nested := [Cell(1), Cell(2)]
 	var shallow = nested.reversed()
 	shallow.set(1, Cell(7))
-	expect_false(nested.get(0).value != 1 or nested.get(1).value != 2)?
+	expect_false(nested[0].value != 1 or nested[1].value != 2)?
 
 	var viewed = ListAdapter([4, 5])
 	var view ListMutation = viewed

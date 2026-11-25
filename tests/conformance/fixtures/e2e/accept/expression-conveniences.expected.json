@@ -29,7 +29,7 @@
             "file": "expression-conveniences.ms",
             "line": 235,
             "column": 6,
-            "offset": 5015
+            "offset": 5007
           }
         },
         {
@@ -40,7 +40,7 @@
             "file": "expression-conveniences.ms",
             "line": 231,
             "column": 22,
-            "offset": 4962
+            "offset": 4954
           }
         },
         {
@@ -51,7 +51,7 @@
             "file": "expression-conveniences.ms",
             "line": 235,
             "column": 75,
-            "offset": 5084
+            "offset": 5076
           }
         },
         {
@@ -62,7 +62,7 @@
             "file": "expression-conveniences.ms",
             "line": 372,
             "column": 6,
-            "offset": 7555
+            "offset": 7547
           }
         },
         {
@@ -73,7 +73,7 @@
             "file": "expression-conveniences.ms",
             "line": 362,
             "column": 15,
-            "offset": 7417
+            "offset": 7409
           }
         }
       ]

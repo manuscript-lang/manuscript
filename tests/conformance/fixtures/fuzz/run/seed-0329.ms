@@ -48,7 +48,7 @@ export fn main() Int {
 	s8 := "x"
 	say(f"s8 = [{s8}]")
 	say(
-		f"{(l3.get(0) + i2)} {i2} {((l3.get(0) + i2) < i2)} sum {(l3.get(0) + i2) + i2}"
+		f"{(l3[0] + i2)} {i2} {((l3[0] + i2) < i2)} sum {(l3[0] + i2) + i2}"
 	)
 
 	b9 := (("42" == "gamma".replace("ms", s1)) or false)

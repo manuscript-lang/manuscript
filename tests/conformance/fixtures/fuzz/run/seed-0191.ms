@@ -59,6 +59,6 @@ export fn main() Int {
 	say(f"s14 = [{s14}]")
 
 	big15 := [1, 2, 3]
-	say(f"{big15.get(8)}")
+	say(f"{big15[8]}")
 	return 0
 }

@@ -32,9 +32,9 @@ test "sorting a large list is ordered and leaves the source unchanged" {
 	sorted := values.sorted(ascending)
 	expect_equal(sorted.length(), 20000)?
 	for i in 1..20000 {
-		expect_equal(sorted.get(i - 1) <= sorted.get(i), true)?
+		expect_equal(sorted[i - 1] <= sorted[i], true)?
 	}
-	expect_equal(values.get(1), 7919)?
+	expect_equal(values[1], 7919)?
 }
 
 test "sorting is stable for equal keys" {
@@ -44,18 +44,18 @@ test "sorting is stable for equal keys" {
 	}
 
 	sorted := entries.sorted(by_key)
-	var previous = sorted.get(0).clone()
+	var previous = sorted[0].clone()
 
 	for i in 1..1000 {
-		current := sorted.get(i)
+		current := sorted[i]
 		if current.key == previous.key {
 			expect_equal(previous.label.length() <= current.label.length(), true)?
 		}
 		previous = current.clone()
 	}
 
-	expect_equal(sorted.get(0).label, "e0")?
-	expect_equal(sorted.get(1).label, "e7")?
+	expect_equal(sorted[0].label, "e0")?
+	expect_equal(sorted[1].label, "e7")?
 }
 
 test "strings, empty and single element lists sort" {

@@ -26,7 +26,7 @@ export fn main() Int {
 	l5.append(18)
 	say(f"l5 = {l5} len {l5.length()}")
 	say(
-		f"{i3} {(899306 + l5.get(2))} {(i3 < (899306 + l5.get(2)))} sum {i3 + (899306 + l5.get(2))}"
+		f"{i3} {(899306 + l5[2])} {(i3 < (899306 + l5[2]))} sum {i3 + (899306 + l5[2])}"
 	)
 
 	s6 := "42"

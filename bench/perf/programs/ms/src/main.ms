@@ -196,7 +196,7 @@ fn bench_match() Int {
 	var ma = 0
 
 	while i < 100000000 {
-		ma += area(shapes.get(i % 3))
+		ma += area(shapes[i % 3])
 		i += 1
 	}
 

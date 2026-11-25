@@ -63,8 +63,8 @@ test "range is half open and spans chunks" {
 
 	hits := map.range(1000, 1010)
 	expect_equal(hits.length(), 5)?
-	expect_equal(hits.get(0).key, 1000)?
-	expect_equal(hits.get(4).key, 1008)?
+	expect_equal(hits[0].key, 1000)?
+	expect_equal(hits[4].key, 1008)?
 	expect_equal(map.range(0, 6000).length(), 3000)?
 	expect_equal(map.range(5999, 7000).length(), 0)?
 	expect_equal(map.range(10, 10).length(), 0)?

@@ -45,7 +45,7 @@ fn checked(value Resource?) Int! {
 
 fn broken(value Resource?) Void {
 	if value != null {
-		_invalid := [1].get(3)
+		_invalid := [1][past_end()]
 	}
 }
 
@@ -252,7 +252,7 @@ fn pair_observed(first Resource?, second Resource?) Bool {
 	return (first != null) and (second != null)
 }
 
-fn bad_default() Int => [1].get(3)
+fn bad_default() Int => [1][past_end()]
 
 fn observes_with_default(value Resource?, count Int = bad_default()) Bool {
 	return (value != null) and count > 0
@@ -356,7 +356,7 @@ fn borrowed_conversion_error(path String) Void! {
 
 fn borrowed_conversion_fault(path String) Void {
 	named := Resource(124, path.clone())
-	_used := pair(named, present(path, [1].get(3)))
+	_used := pair(named, present(path, [1][past_end()]))
 }
 
 test "borrowed optional transport copies leave fault cleanup with original owner" {
@@ -375,7 +375,7 @@ fn with_borrowed_default(value Resource?, same Resource? = value) Bool {
 	return (value != null) or (same != null)
 }
 
-fn with_faulting_default(value Resource?, tail Int = [1].get(3)) Bool {
+fn with_faulting_default(value Resource?, tail Int = [1][past_end()]) Bool {
 	return (value != null) or tail > 0
 }
 
@@ -408,3 +408,6 @@ test "optional conversion provenance distinguishes retained moves from borrowed 
 	named_default_reads(path)?
 	expect_equal(log_text(path)?, "130,131,132,")?
 }
+
+// An index no check can see is out of range, so the fault happens at run time.
+fn past_end() Int => 3

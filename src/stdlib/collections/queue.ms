@@ -53,7 +53,7 @@ fn var Queue[T].dequeue() T? {
 // Returns the oldest value without removing it, or `null` when the queue is empty.
 fn Queue[T].peek() T? {
 	if self.head >= self.items.length() { return null }
-	return self.items.get(self.head)
+	return self.items[self.head]
 }
 
 // Reports whether `dequeue` and `peek` would return `null`.
@@ -67,12 +67,12 @@ fn Queue[T].length() Int {
 }
 
 // Returns the value `index` places after the oldest, or `null` when out of range;
-// negative indexes count from the newest, as `List.get` does.
+// negative indexes count from the newest, as `xs[i]` does.
 fn Queue[T].get(index Int) T? {
 	at := if index < 0 { index + self.length() } else { index }
 	if at < 0 or at >= self.length() { return null }
 
-	return self.items.get(self.head + at)
+	return self.items[self.head + at]
 }
 
 // Internal: orders two values: negative when `left` dequeues first, zero when equal

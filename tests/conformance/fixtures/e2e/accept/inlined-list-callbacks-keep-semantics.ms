@@ -18,16 +18,16 @@ test "inlined callbacks" {
 
 	offset := 10
 	shifted := items.map(fn(v Int) Int => v + offset)
-	expect_true((shifted.length() == 5 and shifted.get(index: 4) == 14))?
+	expect_true((shifted.length() == 5 and shifted[4] == 14))?
 
 	labels := items.map(fn(v Int) String => f"n{v}")
-	expect_true((labels.get(index: 2) == "n2"))?
+	expect_true((labels[2] == "n2"))?
 
 	floats := items.map(fn(v Int) Float => 0.5)
 	expect_true((floats.length() == 5))?
 
 	points := items.map(fn(v Int) Point => Point(x: v))
-	expect_true((points.get(index: 3) == Point(x: 3)))?
+	expect_true((points[3] == Point(x: 3)))?
 
 	evens := items.filter(fn(v Int) Bool => v % 2 == 0)
 	expect_true((evens.length() == 3))?

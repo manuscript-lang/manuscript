@@ -49,7 +49,7 @@ export fn main() Int {
 	s8 := (s7 + (f"{37}:" + "Tab\there"))
 	say(f"s8 = [{s8}]")
 	say(
-		f"{((2 + i2) / i6)} {l1.get(1)} {(((2 + i2) / i6) < l1.get(1))} sum {((2 + i2) / i6) + l1.get(1)}"
+		f"{((2 + i2) / i6)} {l1[1]} {(((2 + i2) / i6) < l1[1])} sum {((2 + i2) / i6) + l1[1]}"
 	)
 
 	s9 := "beta".replace("", s8)

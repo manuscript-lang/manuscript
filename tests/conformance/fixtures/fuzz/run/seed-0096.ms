@@ -28,7 +28,7 @@ export fn main() Int {
 	i5 := (31 * (75780 * l1.length()))
 	say(f"i5 = {i5}")
 
-	i6 := l1.get(0)
+	i6 := l1[0]
 	say(f"i6 = {i6}")
 
 	s7 := (f"{(50 * i5)}:" + "日本語".reverse().upper())

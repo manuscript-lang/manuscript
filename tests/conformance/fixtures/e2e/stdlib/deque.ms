@@ -47,7 +47,7 @@ test "wraps around and grows past the first buffer" {
 		expected.prepend(-i)
 
 		if i % 3 == 0 {
-			expect_equal(d.pop_front(), expected.get(0))?
+			expect_equal(d.pop_front(), expected[0])?
 			expected = expected.drop(1)
 			expect_equal(
 				d.pop_back(),

@@ -55,7 +55,7 @@ test "YAML collection mapping keys remain unsupported" {
 fn object(keys List[String], values List[YamlValue]) YamlValue {
 	var result = Map[String, YamlValue]()
 	for i in 0..keys.length() {
-		result.add(keys.get(i).clone(), values.get(i).clone())
+		result.add(keys[i].clone(), values[i].clone())
 	}
 	return YamlValue.ObjectValue(result)
 }
