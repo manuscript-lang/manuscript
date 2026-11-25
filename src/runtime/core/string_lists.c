@@ -106,26 +106,36 @@ static bool space_at(MsSpan rest, size_t *width) {
   return ms_utf8_is_space(rune.rune);
 }
 
-/* `String.fields`: the runs of text between Unicode White_Space, none empty. */
-void msrt_string_fields(const MsString *s, MsList *out) {
-  const MsSpan text = msrt_text(s);
-  MsStringList list = {0};
-  size_t field_start = 0;
+/* `String.fields` is declared `hold ... List[&String]`: the runs of text between Unicode White_Space, none empty, each
+ * viewing the text in place (a short one is inline). The fields are counted first, so the list is sized once. */
+static size_t count_fields(MsSpan text) {
+  size_t count = 0;
   bool in_field = false;
   for (size_t at = 0; at < text.len;) {
     size_t width = 0;
     const bool space = space_at(ms_span_of(text.ptr + at, text.len - at), &width);
-    if (space && in_field) {
-      ms_string_list_push(&list, msrt_string_make(ms_span_of(text.ptr + field_start, at - field_start)));
-      in_field = false;
-    } else if (!space && !in_field) {
-      in_field = true;
-      field_start = at;
-    }
+    count += !space && !in_field;
+    in_field = !space;
     at += width;
   }
-  if (in_field) {
-    ms_string_list_push(&list, msrt_string_make(ms_span_of(text.ptr + field_start, text.len - field_start)));
+  return count;
+}
+
+void msrt_string_fields(const MsString *s, MsList *out) {
+  const MsSpan text = msrt_text(s);
+  MsStringList list = {0};
+  const size_t count = count_fields(text);
+  ms_string_list_reserve(&list, count);
+  for (size_t at = 0, start = 0; at < text.len && list.len < count;) {
+    size_t width = 0;
+    while (at < text.len && space_at(ms_span_of(text.ptr + at, text.len - at), &width)) {
+      at += width;
+    }
+    start = at;
+    while (at < text.len && !space_at(ms_span_of(text.ptr + at, text.len - at), &width)) {
+      at += width;
+    }
+    ms_string_list_push(&list, msrt_string_view_of(ms_span_of(text.ptr + start, at - start)));
   }
   out_list(list, out);
 }
