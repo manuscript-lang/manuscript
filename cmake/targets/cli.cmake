@@ -59,9 +59,8 @@ add_test(NAME std_full COMMAND ms check ${CMAKE_BINARY_DIR}/src/cli/std-full/mai
 
 # A standard-library file opened from a checkout is the bundled module, not a second copy of it: no type is declared
 # twice, and the file follows the library's rules (reserved natives, prelude methods) rather than a program's.
-set(MS_STD_DIR ${CMAKE_SOURCE_DIR}/src/stdlib)
-add_test(NAME std_checkout COMMAND ms check ${MS_STD_DIR}/math/math.ms ${MS_STD_DIR}/core/core.ms ${MS_STD_DIR}/os/fs.ms
-  ${MS_STD_DIR}/internal/net.ms ${MS_STD_DIR}/time.ms ${MS_STD_DIR}/bytes.ms)
+file(GLOB_RECURSE MS_STD_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/src/stdlib/*.ms)
+add_test(NAME std_checkout COMMAND ms check ${MS_STD_FILES})
 
 # `ms add`, `ms install` and `ms remove` against a local git repository.
 add_test(NAME package_run COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWORK=${CMAKE_BINARY_DIR}/src/cli/package
