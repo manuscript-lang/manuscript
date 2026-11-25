@@ -238,6 +238,59 @@ bool cpe_borrow_local_copies(MsArena *arena, const MirModule *m, MirFunc *f) {
   return true;
 }
 
+static bool *cpe_stable_values(MsArena *arena, const MirFunc *f);
+
+/* The extern `<name>_view` of the copying native `external`, declared when the module has none: same operands, a result
+ * that views the first operand. MIR_NONE when the twin is no view. */
+static uint32_t cpe_view_twin(MirModule *m, uint32_t external) {
+  const MirExtern *copying = &m->externs.ptr[external];
+  const MsName name = mir_name_suffixed(m, copying->name, ms_span_of_text("_view"));
+  const MirExtern def = {.name = name, .params = copying->params, .nparams = copying->nparams, .ret = copying->ret,
+                         .leaf = copying->leaf, .role = (uint8_t)MR_VIEW_RESULT};
+  return mir_extern_intern(m, &def);
+}
+
+/* Replaces `r = call.rt copy(v)` by `r = call.rt copy_view(v)` when the span only borrows `r` and `v`
+ * stays alive, as for a copy of `v` itself: `s.trim().length()` then makes no string. Only a String result, which is
+ * immutable, so the view differs from the copy only once the owner of `v` releases or replaces it. */
+bool cpe_view_twins(MsArena *arena, MirModule *m, MirFunc *f) {
+  CpeLocal l = cpe_local(arena, m, f);
+  const bool *stable = cpe_stable_values(arena, f);
+  bool changed = false;
+  for (uint32_t bi = 0; bi < f->blocks.len; bi++) {
+    for (uint32_t i = 0; i < f->blocks.ptr[bi].insts.len; i++) {
+      MirInst *inst = &f->blocks.ptr[bi].insts.ptr[i];
+      if (inst->op != MOP_CallRt || inst->imm.tag != MI_EXT || inst->res == MIR_NONE || inst->nargs != 1 ||
+          m->externs.ptr[inst->imm.a].twin != MTW_VIEW || mir_value_ty(f, inst->res) != MIR_STR ||
+          mir_value_ty(f, inst->args[0]) != MIR_STR) {
+        continue;
+      }
+      uint32_t j = 0;
+      if (!cpe_first_drop(&l, inst->res, bi, i, &j)) {
+        continue;
+      }
+      /* A borrowed parameter (or a part of one) lives through the whole function, so only the result's own uses count. */
+      const MirInst *def = cpe_def_inst(f, l.defs, inst->args[0]);
+      /* A string a clone or a runtime call made is an owner of its own: only its release ends it. */
+      const bool owned = def != NULL && (def->op == MOP_Clone || (def->op == MOP_CallRt && def->imm.tag == MI_EXT &&
+                                                                    m->externs.ptr[def->imm.a].fresh));
+      const bool kept = stable[inst->args[0]] || owned
+                            ? cpe_uses_between(&l, inst->res, bi, i, j) + 1 == l.uses[inst->res] &&
+                                  !cpe_consumes(&l, inst->res, bi, i, j) &&
+                                  (stable[inst->args[0]] || !cpe_consumes(&l, inst->args[0], bi, i, j))
+                            : cpe_local_copy_ok(&l, inst->args[0], inst->res, bi, i, j);
+      if (!kept) {
+        continue;
+      }
+      const uint32_t twin = cpe_view_twin(m, inst->imm.a);
+      inst = &f->blocks.ptr[bi].insts.ptr[i];
+      inst->imm = mir_imm_ext(twin);
+      changed = true; /* the drop stays: a view is an owned value whose release frees nothing */
+    }
+  }
+  return changed;
+}
+
 /* ---- a copy of a value that never changes ---- */
 
 /* Values that stay valid and unchanged for the whole function: borrowed parameters and borrowed

@@ -349,6 +349,7 @@ bool opt_copyelim_func(MirModule *m, MirFunc *f) {
   changed |= cpe_move_dead_sources(&arena, m, f);
   changed |= cpe_move_across(&arena, m, f);
   changed |= cpe_borrow_local_copies(&arena, m, f);
+  changed |= cpe_view_twins(&arena, m, f);
   changed |= cpe_unbox_dead_sources(&arena, m, f);
   changed |= cpe_unbox_dead_options(&arena, m, f);
   changed |= cpe_unbox_across(&arena, m, f);
