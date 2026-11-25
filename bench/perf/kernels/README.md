@@ -1,6 +1,6 @@
 # Whole-program kernels
 
-`programs/` measures one operation per loop and several of its results come from proofs that fit those exact loops. These kernels are ordinary programs written the way a user would write them (no attempt to match a compiler proof), each compared with hand-written Go that uses a slice, struct or map directly. Every sample must report the same checksum. Reproduce with `MS=./target/release/ms GO=go ms run bench/tools/kernels.ms -- kernels 5`; compare only runs from the same machine.
+`programs/` measures one operation per loop and several of its results come from proofs that fit those exact loops. These kernels are ordinary programs written the way a user would write them (no attempt to match a compiler proof), each compared with hand-written Go that uses a slice, struct or map directly. Every sample must report the same checksum. Reproduce with `MS=./target/release/ms GO=go ms run bench/perf/tools/kernels.ms -- kernels 5`; compare only runs from the same machine.
 
 The current runner reports the minimum of N rotating runs. It checks each producer's exit status and requires every kernel a version implements exactly once per successful trial (plain C has no map_count: a hand-rolled int64 table is not comparable with the general `Map`, so its cell is `n/a`), all requested versions, exactly N trials, nonnegative integer microseconds, and matching checksums before printing any comparison. `ABLATE=1` requires the four additional C variants too. A sub-two-microsecond time is displayed as `folded`, including zero from clock resolution. Build time and process startup are outside the kernels' internal timers. The shared reporter applies the same checks to `competence/` with its fourteen kernels. Run its regression tests without native toolchains with `python3 -m unittest discover -s bench/perf -p test_kernel_trials.py`.
 
@@ -65,7 +65,7 @@ The `c-ms` column pays a poll on every loop back edge, which the Manuscript back
 
 ## main at b4b25a2b (2026-11-18)
 
-linux/amd64, four shared vCPUs, Go 1.24.7, rustc 1.99.1, gcc `-O2`, `ms` Release build with LLVM; minimum of 5 rotating runs, microseconds. `MS=./target/release/ms GO=go ms run bench/tools/kernels.ms -- kernels 5`.
+linux/amd64, four shared vCPUs, Go 1.24.7, rustc 1.99.1, gcc `-O2`, `ms` Release build with LLVM; minimum of 5 rotating runs, microseconds. `MS=./target/release/ms GO=go ms run bench/perf/tools/kernels.ms -- kernels 5`.
 
 | kernel | go us | ms us | ms / go | rust us | rust-checked us | c us | c-ms us | ms / rust | ms / rust-checked |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|

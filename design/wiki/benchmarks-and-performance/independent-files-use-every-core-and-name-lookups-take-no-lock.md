@@ -7,5 +7,5 @@ Verified (2026-11-18): `ms fmt` over 8 files took 3.28 s on one core and stopped
 Verified: `ms fmt`, `ms diagram --format html` and LSP completion each repeated work another step had done (a second compile, a re-parse of every sibling per keystroke, parses of text just parsed). Profile a tool with callgrind and read the inclusive tree before tuning inner loops: the call counts of `parse` and `compile_file` showed all three.
 
 Apply when: adding a tool pass that parses or compiles, or a loop over workspace files.
-Evidence: [measurements](../../../bench/perf/tool-speed/README.md), interner, parallel format.
+Evidence: [measurements](https://github.com/manuscript-lang/manuscript/blob/48b25d38/bench/perf/tool-speed/README.md), interner, parallel format.
 Verify: `taskset -c 0,1,2,3 ms fmt --check <dir of 8 large files>` is about 3x faster than `taskset -c 0`.

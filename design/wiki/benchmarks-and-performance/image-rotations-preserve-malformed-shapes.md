@@ -12,6 +12,6 @@ the original compositions for malformed shapes: even an empty shape can reach an
 overflow check in the old vertical flip. Short and extra buffers are controls too.
 
 Verify with the `e2e/stdlib/image-rotations` conformance fixture and
-[`bench/perf/image-rotations`](../../../bench/perf/image-rotations/README.md).
+[`bench/perf/image-rotations`](https://github.com/manuscript-lang/manuscript/blob/48b25d38/bench/perf/image-rotations/README.md).
 Measure tiny images and every channel count, and select benchmark functions before
 starting the timer so dispatch order cannot manufacture a small-image win.

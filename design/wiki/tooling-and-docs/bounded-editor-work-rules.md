@@ -21,7 +21,7 @@ as long-flow workloads before it is retained.
 
 Compare complete baseline output around the cutoff and stop boundaries, and
 measure tiny ordinary calls and lists as well as long flows. A fast long case
-does not excuse common-path regressions. See the [measured matrix](../../../bench/perf/formatter-flow/results-2026-10-31.md).
+does not excuse common-path regressions. See the [measured matrix](https://github.com/manuscript-lang/manuscript/blob/48b25d38/bench/perf/formatter-flow/results-2026-10-31.md).
 
 Restore multiline literal and block-comment placeholders in source order with a
 forward cursor and an append-only output. Searching and replacing each marker
@@ -40,14 +40,14 @@ and idempotence for both block comments and multiline text, with LF and CRLF.
 Verified: converting every expression or reference offset by rescanning source prefixes makes navigation quadratic. Resolve a cursor once for exact single-line token matches; preserve the UTF-16 fallback for invalid or mismatched snapshots. Batch result positions with a shared line index, bounded by the last needed offset so an early reference does not scan an unrelated file suffix.
 
 Apply when: changing hover, navigation, references, or batches of source-coordinate conversions.
-Evidence: navigation, fallback regressions, reference ranges, [measurements](../../../bench/perf/lsp/results-2026-10-31.md).
+Evidence: navigation, fallback regressions, reference ranges, [measurements](https://github.com/manuscript-lang/manuscript/blob/48b25d38/bench/perf/lsp/results-2026-10-31.md).
 Verify: LF/CRLF, same-line emoji, half-open ranges, truncated/invalid snapshots, alternating files and missing modules; interleave tiny, common, large and early-reference controls.
 
 Freeze the complete analyzed source world for comparisons, including embedded
 standard declarations and dependencies. An old-main index fingerprint mismatch
 must stop the run. Reconstruct a same-main baseline by reversing only the measured
 production patches; retain output assertions rather than filtering changed facts.
-The [matched preflight](../../../bench/perf/tooling-preflight-2026-10-31/README.md)
+The [matched preflight](https://github.com/manuscript-lang/manuscript/blob/48b25d38/bench/perf/tooling-preflight-2026-10-31/README.md)
 records this correction and keeps the rejected comparison separate. Required CI
 and an actual merged-main replay still gate completion.
 
@@ -60,7 +60,7 @@ The name-table limit counts growth past the size settled after the last start, n
 Verified: computing an outline's EOF boundary for every declaration, then replacing it with the next declaration's boundary, rescans the same whitespace suffix for discarded results. Select the needed offset first, then trim once. Caching an expensive default before branching can preserve correct output while multiplying unnecessary work.
 
 Apply when: deriving declaration ranges or simplifying expensive fallback expressions.
-Evidence: outline, [suffix measurements and full JSON fingerprints](../../../bench/perf/lsp-outline/results-2026-10-31.md).
+Evidence: outline, [suffix measurements and full JSON fingerprints](https://github.com/manuscript-lang/manuscript/blob/48b25d38/bench/perf/lsp-outline/results-2026-10-31.md).
 Verify: last/nonlast declarations, existing outline snapshots, tiny/ordinary inputs, and whitespace/comment suffix controls; no output-range policy change.
 
 ## Stream coordinates for ordered token batches
@@ -68,5 +68,5 @@ Verify: last/nonlast declarations, existing outline snapshots, tiny/ordinary inp
 Verified: indexing line starts still recounts each line's UTF-16 prefix for every token, making long-line highlighting quadratic. A forward cursor scans only newly visited bytes. Its anchor must stay at an exact character boundary: backward and partial-byte queries use the original conversion without moving the anchor, so invalid-byte widths cannot contaminate the next valid position.
 
 Apply when: rendering ordered batches of source positions or changing semantic tokens.
-Evidence: coordinate cursor and oracle test, strict/forgiving JSON regressions, [measurements](../../../bench/perf/lsp-semantic/results-2026-10-31.md).
+Evidence: coordinate cursor and oracle test, strict/forgiving JSON regressions, [measurements](https://github.com/manuscript-lang/manuscript/blob/48b25d38/bench/perf/lsp-semantic/results-2026-10-31.md).
 Verify: every byte offset, partial UTF-8, oversize/backward/alternating queries, LF/CRLF, complete semantic JSON, and tiny/common/long-line controls.

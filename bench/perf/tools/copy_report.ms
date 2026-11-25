@@ -1,0 +1,99 @@
+// Counts `copy` instructions in the optimized MIR (what gets compiled; MS_EMIT_OPT=1 ms
+// emit) by operand type and by the op that defined the copied value. Every copy of a
+// String retains its object today and would allocate if strings became uniquely owned
+// values, so this is the budget for that change. Copies of `str` literals are static
+// and free in that model (cap 0); the rest are the budget. Set RAW=1 for the
+// unoptimized lowering. Loop membership is not reported. Usage: ms run
+// bench/perf/tools/copy_report.ms -- <project ms.toml|file.ms>... (MS picks the
+// compiler)
+import (
+	arguments, set_environment from "@std/os/env.ms",
+	temporary from "@std/os/fs.ms",
+
+	capture, env, finish, ms_binary, must, read_text, right, usage from "./lib.ms",
+)
+
+// The type text of every `%N: type` block parameter on a `b<N>(...)` header line, keyed
+// by `%N`.
+fn block_params(line String, defs Map[String, String]) Map[String, String] {
+	var out = defs.clone()
+	open := line.index_of("(") or (-1)
+	close := line.last_index_of(")") or (-1)
+	if open < 0 or close < open { return out }
+
+	for part in line.slice(open + 1, close).split(", ") {
+		colon := part.index_of(":") or (-1)
+		if colon > 0 and part.starts_with("%") {
+			out.add(part.slice(0, colon), "param")
+		}
+	}
+
+	return out
+}
+
+fn report(mir String) List[String] {
+	var counts = Map[String, Int]()
+	var defs = Map[String, String]()
+
+	for line in mir.split("\n") {
+		if line.starts_with("fn ") {
+			defs = Map[String, String]()
+		} else if line.starts_with("b") and line.contains("(") {
+			defs = block_params(line, defs)
+		} else if line.starts_with("  %") and line.contains(" = ") {
+			colon := line.index_of(":") or (-1)
+			id := line.slice(2, colon)
+			eq := line.index_of(" = ") or (-1)
+			words := line.slice(eq + 3, line.length()).split(" ")
+			op := words[0].clone()
+			defs.add(id.clone(), op.clone())
+
+			if op == "copy" {
+				ty := line.slice(colon + 2, line.length())
+				shown := ty.slice(0, ty.index_of(" = copy") or ty.length())
+				src := if words.length() > 1 { words[1].clone() } else { "" }
+				key := f"{shown} <- {defs.get_or(src, "?")}"
+				counts.add(key.clone(), counts.get_or(key, 0) + 1)
+			}
+		}
+	}
+
+	// uniq -c | sort -rn: count descending, ties in descending text order.
+	var rows = counts.keys().map(k => Row(counts.get_or(k, 0), k.clone()))
+	rows = rows.sorted(
+		fn(a, b Row) Int => if a.count != b.count {
+			b.count - a.count
+		} else {
+			b.text.compare(a.text)
+		}
+	)
+	return rows.map(r => right(f"{r.count}", 7) + " " + r.text)
+}
+
+type Row {
+	count Int
+	text String
+}
+
+fn main() Int {
+	targets := arguments()
+	if targets.is_empty() {
+		return usage("usage: copy_report.ms -- <ms.toml|file.ms>...")
+	}
+
+	tmp := temporary("copy-report-").get()
+	out := f"{tmp.path()}/out.mir"
+	if env("RAW", "0") != "1" { set_environment("MS_EMIT_OPT", "1").get() }
+
+	for target in targets {
+		ran := capture(ms_binary(), ["emit", target.clone(), "-o", out.clone()])
+		if not ran.ok or ran.code != 0 { return finish(must(f"ms emit {target}", ran)) }
+
+		print(f"== {target}")
+		for row in report(read_text(out)) {
+			print(row)
+		}
+	}
+
+	return 0
+}

@@ -57,7 +57,7 @@ SCENES = [
          sub="Call graph here; --format html writes an offline interactive code map.",
          src=None, steps=[("ms diagram par.ms --format ascii", first(6))]),
 ]
-# Time relative to C compiled with bounds checks (1.0 = same), from bench/perf/results-2026-11-09.md: ms us / c-bounds us per kernel.
+# Time relative to C compiled with bounds checks (1.0 = same), from bench/perf/results-2026-11-09.md at 48b25d38: ms us / c-bounds us per kernel.
 KERNELS = [("sieve", 28410 / 28204), ("nbody", 9024 / 8942), ("life", 4958 / 37967), ("matmul", 9098 / 10188),
            ("trees", 25892 / 25855), ("collatz", 244873 / 286587)]
 URL = "manuscript-lang.github.io/manuscript"

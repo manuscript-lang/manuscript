@@ -8,7 +8,7 @@
 
 ## Status
 
-Proposal, 2026-11-12, checked against `fff26e41`. Evidence: [`bench/perf/structural-gaps`](../../bench/perf/structural-gaps/README.md). Builds on `borrowed-results.md`, `string-view.md`, `owned-parameters.md`, `stdlib-combinators-in-manuscript.md` and `declared-compiler-facts.md`. Skeptical review (2026-11-12): build with changes. Applied: lending re-ranked below inlinable code after a rerun showed it is worth 12% to 15% on `split`; the invisible entry choice withdrawn as a recommendation; cited numbers corrected; cheap stages moved first.
+Proposal, 2026-11-12, checked against `fff26e41`. Evidence: [`bench/perf/structural-gaps`](https://github.com/manuscript-lang/manuscript/blob/48b25d38/bench/perf/structural-gaps/README.md). Builds on `borrowed-results.md`, `string-view.md`, `owned-parameters.md`, `stdlib-combinators-in-manuscript.md` and `declared-compiler-facts.md`. Skeptical review (2026-11-12): build with changes. Applied: lending re-ranked below inlinable code after a rerun showed it is worth 12% to 15% on `split`; the invisible entry choice withdrawn as a recommendation; cited numbers corrected; cheap stages moved first.
 
 ## Problem (measured)
 
@@ -71,11 +71,11 @@ fn keep(line: String) Row:
 ### Later, not proposed here
 
 - A combinator chain as one loop (`filter(..).map(..).sum()` is 3.0x a hand loop): follows track 1, and changes the order closures are called in.
-- A four-byte text cell: `chars()` is 16 bytes a cell and `c16-maze-bfs` is 2.8x Rust on page faults ([codegen page](../../bench/perf/codegen-2026-11-12.md)); needs a language decision.
+- A four-byte text cell: `chars()` is 16 bytes a cell and `c16-maze-bfs` is 2.8x Rust on page faults ([codegen page](https://github.com/manuscript-lang/manuscript/blob/48b25d38/bench/perf/codegen-2026-11-12.md)); needs a language decision.
 
 ### Second pass: loops, calls, exit and file work
 
-Measured after the tracks above were started ([second pass](../../bench/perf/structural-gaps/README.md)); ranked after them.
+Measured after the tracks above were started ([second pass](https://github.com/manuscript-lang/manuscript/blob/48b25d38/bench/perf/structural-gaps/README.md)); ranked after them.
 
 | # | Opportunity | Measured | Change | Cost |
 | --- | --- | --- | --- | --- |

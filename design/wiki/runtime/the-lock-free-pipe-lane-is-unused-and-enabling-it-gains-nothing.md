@@ -9,7 +9,7 @@ It also fails: `claim_reader` loads `waiting` and swaps it later, so a reader th
 Also measured and not worth it: spinning 2 us before a cross-thread read or flush parks (request and reply 1100 to 620 ms, throughput unchanged), and scalar values inline in the queue item (no change). Real worker pools with 0.4 us of work per item run at Go's speed.
 
 Apply when: changing pipe synchronization, or tempted to speed up cross-thread `Pipe` throughput.
-Evidence: [`bench/perf/perf-bash-2026-11-18-concurrency.md`](../../../bench/perf/perf-bash-2026-11-18-concurrency.md), `src/runtime/core/pipe.c`.
+Evidence: [`bench/perf/perf-bash-2026-11-18-concurrency.md`](https://github.com/manuscript-lang/manuscript/blob/48b25d38/bench/perf/perf-bash-2026-11-18-concurrency.md), `src/runtime/core/pipe.c`.
 Verify: 4M `Int` through one writer and one reader on two threads (`MS_THREADS=2`) against `MS_THREADS=1`.
 
 Update (same day): the cross-thread cost was lock contention, not cache lines alone. The reader copied a batch under the lock and polled it three times per empty read, so the writer spun and called `sched_yield`. Swapping buffers under the lock, an unlocked empty poll, a cache line for the queue length and inline scalar items took the 4M `Int` median from 698 to 546 ms (Go 310). What is left: a reader that keeps catching up parks and wakes per value (request and reply 1177 ms across threads, 320 on one; Go 180 either way because it keeps the pair on one thread), and spinning before the park trades that against throughput.

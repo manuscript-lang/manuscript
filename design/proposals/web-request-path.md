@@ -8,7 +8,7 @@
 
 ## Status
 
-- Stages 1 and the Linux, one-thread part of 3 landed 2026-11-23 (24.4k to 14.3k instructions per request; `bench/perf/web/results.md`); stage 2's handler-in-connection-task, multi-thread edge reads, kqueue and Windows remain. Proposal, 2026-11-23, main at 642ba74c. Direction (Chinmay, 2026-11-23): beat the Rust ms and reach C speed, with better data structures and algorithms, no patch fixes.
+- Stages 1 and the Linux, one-thread part of 3 landed 2026-11-23 (24.4k to 14.3k instructions per request; `bench/perf/results.md#web`); stage 2's handler-in-connection-task, multi-thread edge reads, kqueue and Windows remain. Proposal, 2026-11-23, main at 642ba74c. Direction (Chinmay, 2026-11-23): beat the Rust ms and reach C speed, with better data structures and algorithms, no patch fixes.
 
 ## Problem
 
@@ -54,7 +54,7 @@ Targets, measured per request with callgrind, strace and context-switch counts, 
 ## Alternatives
 
 - Do nothing: 0.5x of C and 0.55x of hyper at one core; the stated goal is C speed.
-- Trim the current path (fewer cleanup pushes, pooled lists): measured gains of 4-6% per cut (bench/perf/web/results.md, 2026-11-12); the C ceiling needs the structure above, not 30 cuts.
+- Trim the current path (fewer cleanup pushes, pooled lists): measured gains of 4-6% per cut (bench/perf/results.md#web, 2026-11-12); the C ceiling needs the structure above, not 30 cuts.
 - Keep the libuv loop thread and add direct reads and writes (#6682, #6684): fixed 2 and 4 CPUs (73k to 156k and 228k) and cannot help one CPU, where the cost is the loop handoff and 24k instructions.
 - io_uring: Linux only, no parity; the portable poller gives the same syscall count.
 - Run the scheduler's own libuv poll with per-wait registration (tried, WIP branch `claude/runtime-inline-reads`): no gain beyond noise, because each wait is an `epoll_ctl` pair.
@@ -64,7 +64,7 @@ Targets, measured per request with callgrind, strace and context-switch counts, 
 1. Connection buffers, span request table, lazy accessors, single-write response (local to `http_*.c`, no parity risk). Check: allocations and instructions per request.
 2. Handler in the connection task; contiguous cleanup stack. Check: instructions per request, fault and cancel fixtures.
 3. Edge-triggered poller on Linux first (spike behind the existing interface, steal, cancel and close fixtures green), then kqueue and the Windows libuv row. Check: context switches and syscalls per request at 1, 2 and 4 CPUs on every platform.
-4. Dated `bench/perf/web/results.md` section against C and hyper at 1, 2 and 4 CPUs, with the counts.
+4. Dated `bench/perf/results.md#web` section against C and hyper at 1, 2 and 4 CPUs, with the counts.
 
 Each stage lands green and records its counts; the proposal ships in the PR of the first stage. Review (independent, 2026-11-23): build with changes; the changes above (measured switches, reordered stages, steal and hang-up rules, ratio targets) are applied.
 

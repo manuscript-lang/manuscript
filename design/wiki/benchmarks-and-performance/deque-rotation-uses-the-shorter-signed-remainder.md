@@ -4,4 +4,4 @@ Reduce the rotation count modulo the current length before choosing direction. A
 
 Do not negate the original count: Int.min is valid. Exact half-turn ties retain their original direction. Use the existing pop/push moves so payload ownership remains unchanged; ring offsets are internal state, while logical order, length and subsequent mutations must agree.
 
-Validate empty, singleton, full, partial and wrapped rings with signed boundary counts and nested optional payloads. The [rotation benchmark](../../../bench/perf/deque-rotation/README.md) includes near-whole-turn improvements and ordinary unit/half-turn controls.
+Validate empty, singleton, full, partial and wrapped rings with signed boundary counts and nested optional payloads. The [rotation benchmark](https://github.com/manuscript-lang/manuscript/blob/48b25d38/bench/perf/deque-rotation/README.md) includes near-whole-turn improvements and ordinary unit/half-turn controls.

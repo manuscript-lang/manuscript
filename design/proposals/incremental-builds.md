@@ -13,7 +13,7 @@ Proposal, 2026-11-16, checked against `9f09fd55`. Supersedes the earlier mtime w
 
 ## Problem
 
-Measured on 4 cores, `bench/tools/compile_time.ms` workload (40 packages, 1,000 files, 12k functions), release `ms` of `9f09fd55`, `MS_TIMINGS=1`, second run:
+Measured on 4 cores, `bench/perf/tools/compile_time.ms` workload (40 packages, 1,000 files, 12k functions), release `ms` of `9f09fd55`, `MS_TIMINGS=1`, second run:
 
 | Phase | Debug | Release |
 | --- | --- | --- |
@@ -47,7 +47,7 @@ One rule: **backend output is a pure function of the input the backend consumes,
 | `ms-build` (new `cache.rs`, `native.rs`) | Hash, store, evict, read-only fallback, `MS_CACHE`, timings | Unit: key changes with each input; eviction bound; corrupt entry; read-only directory |
 | `ms-mir-llvm`, `ms-build/llvm` | Stage 3 only: per-unit metadata, names, cuts, unit cache | Stage 3 gates |
 | `ms-cli`, `ms-driver` | Cache location, `ms clean` | CLI test |
-| `bench/compile-time/`, `crates/DESIGN.md`, `documentation/contributing/`, `design/wiki/` | Edit-scenario benchmark; cache layout and key inputs | `make docs-check` |
+| `bench/perf/compile-time/`, `crates/DESIGN.md`, `documentation/contributing/`, `design/wiki/` | Edit-scenario benchmark; cache layout and key inputs | `make docs-check` |
 
 ## Alternatives
 
@@ -60,7 +60,7 @@ One rule: **backend output is a pure function of the input the backend consumes,
 
 ## Stages
 
-0. **Measure.** `bench/compile-time/incremental.ms`: cold, no change, edit a body, add a statement, add a function, edit a widely imported module, on the generated workload and on a real project (the repository's `.ms` tools); several runs; per-phase time, Cranelift keys changed, LLVM units changed and how much of the diff is metadata, names or boundaries. Dated results page.
+0. **Measure.** `bench/perf/compile-time/incremental.ms`: cold, no change, edit a body, add a statement, add a function, edit a widely imported module, on the generated workload and on a real project (the repository's `.ms` tools); several runs; per-phase time, Cranelift keys changed, LLVM units changed and how much of the diff is metadata, names or boundaries. Dated results page.
 1. **Cranelift key stability.** 64-bit identity hash and deterministic collision suffix; test that an unrelated edit leaves other functions' keys unchanged. Gate: scenarios change only the edited function's key.
 2. **Cranelift function cache** with eviction. Gate: one-edit Debug at most 3.5 s here (floor: front end 2.3 s, MIR 0.2 s, lowering about 0.5 s, plus the edited function); executable byte-identical with cache on, off and `verify`; cold Debug within 3%.
 3. **LLVM unit cache.** Starts only if Stage 0 shows the prerequisites above reach a one-edit Release rebuild at most 10 s with `bench/perf` runtime within 2% and cold Release within 3%; otherwise record the numbers and stop here.

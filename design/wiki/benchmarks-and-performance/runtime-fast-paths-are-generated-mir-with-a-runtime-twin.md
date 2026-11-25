@@ -16,5 +16,5 @@ Verified (2026-11-14, `bench/perf/rt-hot-retired/README.md`): the Rust `ms-rt-ho
 
 
 Apply when: moving a scan, compare, checksum or lookup between the runtime and generated MIR, or adding a runtime function with a hot common case.
-Evidence: `src/compiler/opt/opt_strfast.c`, `opt_viewfast.c`, `opt_bytesfast.c`, `opt_probe.c`, [rt-hot-retired](../../../bench/perf/rt-hot-retired/README.md).
+Evidence: `src/compiler/opt/opt_strfast.c`, `opt_viewfast.c`, `opt_bytesfast.c`, `opt_probe.c`, [rt-hot-retired](https://github.com/manuscript-lang/manuscript/blob/48b25d38/bench/perf/rt-hot-retired/README.md).
 Verify: a callgrind per-function instruction diff against `main` on the program that uses the path; `make conform`.
