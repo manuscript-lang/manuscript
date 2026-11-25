@@ -16,6 +16,9 @@ MS_NODISCARD MS_NONNULL bool ms_install_root(MsStrBuild *root);
 MS_NONNULL void ms_install_tool(MsSpan root, const char *name, MsStrBuild *out);
 /* Appends the path of the shared LLVM library under `root` (`lib/libLLVM.so`, `lib/libLLVM.dylib` or `bin/LLVM-C.dll`). */
 MS_NONNULL void ms_install_llvm(MsSpan root, MsStrBuild *out);
+/* Appends the path of the shared Cranelift library under `root` (`lib/libcranelift.so`, `lib/libcranelift.dylib` or
+ * `bin/cranelift.dll`). */
+MS_NONNULL void ms_install_cranelift(MsSpan root, MsStrBuild *out);
 /* Appends the absolute archive paths of the dynamic or static runtime under `root`, separated like MS_RUNTIME. */
 MS_NODISCARD MS_NONNULL bool ms_install_runtime(MsSpan root, bool static_libc, MsStrBuild *out);
 

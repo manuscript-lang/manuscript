@@ -241,9 +241,40 @@ static bool make_objects(const MsLinkRequest *request, const BackendProgram *pro
   return ok;
 }
 
-static MsSpan cranelift_from_environment(void) {
-  const char *path = getenv("MS_CRANELIFT");
-  return path != NULL ? ms_span_of_text(path) : ms_span_of(NULL, 0);
+/* The shared Cranelift library a Debug build generates code with, or empty for LLVM: `MS_CRANELIFT` names one (`off` or
+ * `0` turns the route off), otherwise the one installed beside ms, or in a build tree the one `make build` fetched
+ * (MS_BUILD_CRANELIFT), when the file exists. */
+static MsSpan cranelift_library(void) {
+  static MsString chosen;
+  static bool known;
+  if (known) {
+    return ms_string_span(&chosen);
+  }
+  known = true;
+  chosen = ms_string_empty();
+  MsString named = ms_string_empty();
+  if (ms_env_get("MS_CRANELIFT", &named)) {
+    const MsSpan name = ms_string_span(&named);
+    if (name.len != 0 && !ms_span_is_text(name, "off") && !ms_span_is_text(name, "0")) {
+      chosen = ms_string_from_span(name);
+    }
+    ms_string_release(&named);
+    return ms_string_span(&chosen);
+  }
+  MsStrBuild path = ms_strbuild_new();
+  MsStrBuild root = ms_strbuild_new();
+  if (ms_install_root(&root)) {
+    ms_install_cranelift(ms_strbuild_span(&root), &path);
+  } else {
+    ms_strbuild_append_text(&path, MS_BUILD_CRANELIFT);
+  }
+  if (ms_strbuild_span(&path).len != 0 && ms_file_is_regular(ms_strbuild_span(&path))) {
+    chosen = ms_strbuild_finish(&path);
+  } else {
+    ms_strbuild_free(&path);
+  }
+  ms_strbuild_free(&root);
+  return ms_string_span(&chosen);
 }
 
 BackendOptions ms_pipeline_backend_options(const MsLinkRequest *request) {
@@ -255,7 +286,7 @@ BackendOptions ms_pipeline_backend_options(const MsLinkRequest *request) {
                           .wide_leaves = wide_leaves(request->build_type == MS_BUILD_DEBUG),
                           .wide_hide = request->build_type == MS_BUILD_DEBUG,
                           .poison_slots = poison_from_environment(),
-                          .cranelift = request->build_type == MS_BUILD_DEBUG ? cranelift_from_environment() : ms_span_of(NULL, 0)};
+                          .cranelift = request->build_type == MS_BUILD_DEBUG ? cranelift_library() : ms_span_of(NULL, 0)};
 }
 
 bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {

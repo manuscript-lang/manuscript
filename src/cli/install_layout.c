@@ -9,13 +9,16 @@
 enum { LIST_SEPARATOR = ';' };
 #define TOOL_SUFFIX ".exe"
 #define LLVM_LIBRARY "bin/LLVM-C.dll"
+#define CRANELIFT_LIBRARY "bin/cranelift.dll"
 #else
 enum { LIST_SEPARATOR = ':' };
 #define TOOL_SUFFIX ""
 #ifdef __APPLE__
 #define LLVM_LIBRARY "lib/libLLVM.dylib"
+#define CRANELIFT_LIBRARY "lib/libcranelift.dylib"
 #else
 #define LLVM_LIBRARY "lib/libLLVM.so"
+#define CRANELIFT_LIBRARY "lib/libcranelift.so"
 #endif
 #endif
 
@@ -52,6 +55,10 @@ void ms_install_tool(MsSpan root, const char *name, MsStrBuild *out) {
 
 void ms_install_llvm(MsSpan root, MsStrBuild *out) {
   ms_path_append_joined(out, root, ms_span_of_text(LLVM_LIBRARY));
+}
+
+void ms_install_cranelift(MsSpan root, MsStrBuild *out) {
+  ms_path_append_joined(out, root, ms_span_of_text(CRANELIFT_LIBRARY));
 }
 
 bool ms_install_runtime(MsSpan root, bool static_libc, MsStrBuild *out) {

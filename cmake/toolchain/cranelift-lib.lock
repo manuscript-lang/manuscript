@@ -1,0 +1,5 @@
+# The shared Cranelift library Debug builds generate code with in-process (manuscript-lang/cranelift-bundle).
+# cmake/FetchCraneliftLib.cmake downloads the archive for the host and checks it against these digests; they are the
+# release SHA256SUMS. Update the tag and every digest together.
+tag cranelift-0.136.0-r1
+version 0.136.0
