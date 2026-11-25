@@ -208,9 +208,11 @@ const uint32_t *emit_slot_pool(MsArena *arena, EmitCx *cx, const bool *held) {
   for (uint32_t at = 0; at < norder; at++) {
     const uint32_t object = order[at];
     uint32_t chosen = UINT32_MAX;
+    /* A cell of its own size: a small value that joins a big cell shares storage whose address is passed on, and LLVM
+     * keeps the stores into such a cell, where a cell of its own would have let it delete them. */
     for (uint32_t cell = 0; cell < ncells && chosen == UINT32_MAX; cell++) {
       const uint64_t *row = cell_rows + (size_t)cell * map.words;
-      if ((row[object / 64] >> (object % 64) & 1) == 0) {
+      if ((row[object / 64] >> (object % 64) & 1) == 0 && cell_bytes[cell] == bytes[object]) {
         chosen = cell;
       }
     }
