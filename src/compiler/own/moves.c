@@ -216,7 +216,9 @@ static void check_lambda(const Moves *pass, const MsExpr *lambda) {
       ms_strbuild_append_text(&text, "`, which the caller keeps; bind `own := ");
       ms_strbuild_append(&text, name);
       ms_strbuild_append_text(&text, ".clone()` before the closure and capture `own` instead, or take it by `move`");
-    } else if (!copy && ms_binding_list_contains(&pass->outer, first.binding)) {
+    } else if (!copy && (ms_binding_list_contains(&pass->outer, first.binding) ||
+                  ((ms_binding_list_contains(&pass->borrowed, first.binding) || ms_binding_list_contains(&pass->plainparams, first.binding)) &&
+                   ms_ty_kind(&pass->program->types, ty) != MS_TY_FUNCTION))) { /* a function value is shared: the closure takes its own reference */
       ms_strbuild_append_text(&text, "this closure outlives the statement but captures `");
       ms_strbuild_append(&text, name);
       ms_strbuild_append_text(&text, "`, which is borrowed, not owned; bind `own := ");

@@ -26,7 +26,7 @@ fn id(hold b Big) &Big => b
 
 fn pass[T](hold x T) &T => x
 
-fn cap(b Big) fn() Int {
+fn cap(move b Big) fn() Int {
 	return () => b.items.length()
 }
 

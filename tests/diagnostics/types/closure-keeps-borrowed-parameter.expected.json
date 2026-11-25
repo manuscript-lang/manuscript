@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "this closure outlives the statement but captures `big`, which is borrowed, not owned; bind `own := big.clone()` before the closure and capture `own` instead",
+        "position": {
+          "file": "closure-keeps-borrowed-parameter.ms",
+          "line": 11,
+          "column": 12,
+          "offset": 339
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/closure-keeps-borrowed-parameter.ms:11:12: type: this closure outlives the statement but captures `big`, which is borrowed, not owned; bind `own := big.clone()` before the closure and capture `own` instead\n    |\n 11 |     return () => big.items.length()\n    |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

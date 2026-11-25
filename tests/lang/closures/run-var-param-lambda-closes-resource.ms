@@ -11,7 +11,7 @@ fn var Handlers.add(f fn(var Int, Int) Void!) Void {
 	self.items.append(f)
 }
 
-fn make(p Pipe[Int]) Handlers {
+fn make(move p Pipe[Int]) Handlers {
 	var h = Handlers(items: List[fn(var Int, Int) Void!]())
 
 	h.add(

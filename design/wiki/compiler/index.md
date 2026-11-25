@@ -47,4 +47,5 @@ Checking, lowering, MIR, LLVM emission, build, fault sites.
 - [A bound name belongs to the scope outside its statement](a-bound-name-belongs-to-the-scope-outside-its-statement.md): the narrowed-variable path of `lower_bind` registered its owner with the statement scope (`fn_scope_own_var_in`).
 - [A borrowing native's result handed to a new owner is copied](a-borrowing-native-result-given-to-an-owner-is-copied.md): a `slice` view consumed by `get_or` or a loop is cloned first.
 - [A returned view of a temporary is rejected](a-returned-view-of-a-temporary-is-rejected.md): `x.slice(..).trim()` returned as an owned `String` dangled.
+- [A closure that keeps a borrowed value needs move or clone](a-closure-that-keeps-a-borrowed-value-needs-move-or-clone.md): an escaping closure over a borrowed parameter is a checker error, not a copy.
 - [Lowering tables grow; a fixed cap turns a view into a copy](lowering-tables-grow-instead-of-capping.md): eight entries of borrowed-view tracking silently ran out in a long function.
