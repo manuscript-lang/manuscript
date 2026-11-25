@@ -9,20 +9,9 @@
 #include "compiler/emit/emit_func.h"
 
 #include "base/alloc.h"
-#include "base/cstr.h"
 #include "base/fatal.h"
 #include "compiler/mir/mir_analysis.h"
 #include "compiler/mir/mir_pass.h"
-
-/* A cell-to-cell copy not yet written: an `alt.take` that feeds an `alt.new` straight after it, which may move the same
- * bytes back (see emit_wide_move_leaves). */
-typedef struct EmitPending {
-  bool active;
-  MirValue dst, src, next; /* `next`: the result of the instruction that may undo it */
-  char dcell[24], scell[24];
-  uint32_t dst_at, src_at, size;
-  bool shared;
-} EmitPending;
 
 struct EmitWide {
   bool *held;           /* by value: lives in a cell */
@@ -41,9 +30,6 @@ struct EmitWide {
   uint32_t moved_count;
   const uint32_t *uses; /* by value: the operands and edge arguments that read it */
   uint32_t *base;       /* by value: where it lies in its pooled cell (0 unless emit_wide_alias moved it) */
-  MirValue defer_for;   /* the result of the next instruction, when the copy being written may be undone by it */
-  EmitPending pending;
-  MsStrBuild prelude;   /* text that goes before the loads of the instruction being written */
 };
 
 static EmitWide *active; /* the function being written; the emitter writes one function at a time */
@@ -86,8 +72,6 @@ const bool *emit_wide_plan(EmitCx *cx, MsArena *arena) {
   for (size_t value = 0; value < count; value++) {
     plan->base[value] = 0;
   }
-  plan->defer_for = MIR_NONE;
-  plan->prelude = ms_strbuild_new();
   /* Every parameter, and every value anything reads, is held. */
   for (uint32_t block = 0; block < func->blocks.len; block++) {
     const MirBlockData *data = &func->blocks.ptr[block];
@@ -145,9 +129,6 @@ const bool *emit_wide_plan(EmitCx *cx, MsArena *arena) {
 }
 
 void emit_wide_end(EmitCx *cx) {
-  if (cx->wide != NULL) {
-    ms_strbuild_free(&cx->wide->prelude);
-  }
   cx->wide = NULL;
   active = NULL;
 }
@@ -180,35 +161,8 @@ bool emit_wide_name(MsStrBuild *out, MirValue value, uint32_t leaf) {
   return true;
 }
 
-static void cell_name(const EmitCx *cx, MirValue value, char *out, size_t capacity);
-
-/* Writes the copy that was held back, before the loads of the instruction being written. */
-static void flush_pending(EmitCx *cx) {
-  EmitWide *plan = cx->wide;
-  if (!plan->pending.active) {
-    return;
-  }
-  MsStrBuild *out = cx->out;
-  cx->out = &plan->prelude;
-  const EmitAddr target = emit_address(cx, plan->pending.dcell, plan->pending.dst_at);
-  const EmitAddr source = emit_address(cx, plan->pending.scell, plan->pending.src_at);
-  ms_strbuild_printf(cx->out, "  call void @llvm.%s.p0.p0.i64(ptr %s, ptr %s, i64 %u, i1 false)\n",
-                     plan->pending.shared ? "memmove" : "memcpy", target.text, source.text, plan->pending.size);
-  cx->out = out;
-  plan->pending.active = false;
-}
-
-void emit_wide_defer_for(EmitCx *cx, MirValue next) {
-  if (cx->wide != NULL) {
-    cx->wide->defer_for = next;
-  }
-}
-
 /* Starts the next instruction (or terminator, with `defining` MIR_NONE): its loads get names of their own. */
 void emit_wide_start(EmitCx *cx, MirValue defining) {
-  if (cx->wide != NULL && cx->wide->pending.active && defining != cx->wide->pending.next) {
-    flush_pending(cx);
-  }
   if (cx->wide != NULL) {
     cx->wide->seq++;
     cx->wide->defining = defining;
@@ -331,33 +285,14 @@ bool emit_wide_move_leaves(EmitCx *cx, MirValue dst, uint32_t to, MirValue src, 
   char scell[24];
   cell_name(cx, dst, dcell, sizeof dcell);
   cell_name(cx, src, scell, sizeof scell);
-  const MirValue defer = plan->defer_for;
-  plan->defer_for = MIR_NONE;
   if (same) {
     const bool shared = !plan->incoming[src] && cx->pool[src] == cx->pool[dst];
-    const bool there = shared && plan->base[dst] + doff[to] == plan->base[src] + soff[from];
-    EmitPending *held = &plan->pending;
-    /* The copy just held back moved these bytes from `src`'s cell to `dst`'s; this one moves them back, so the cell is as
-     * it was and neither is written. `src` has no other reader. */
-    const bool undoes = held->active && shared && held->dst == src && held->shared && held->dst_at == soff[from] &&
-                        held->src_at == doff[to] && held->size == size && ms_cstr_equal(held->dcell, scell) &&
-                        ms_cstr_equal(held->scell, dcell);
-    if (there) {
-      flush_pending(cx); /* nothing to write: the bytes already lie where they go */
-    } else if (undoes) {
-      held->active = false;
-    } else {
-      flush_pending(cx);
-      if (shared && defer != MIR_NONE && plan->uses[dst] == 1) {
-        *held = (EmitPending){true, dst, src, defer, {0}, {0}, doff[to], soff[from], size, shared};
-        __builtin_memcpy(held->dcell, dcell, sizeof dcell);
-        __builtin_memcpy(held->scell, scell, sizeof scell);
-      } else {
-        const EmitAddr target = emit_address(cx, dcell, doff[to]);
-        const EmitAddr source = emit_address(cx, scell, soff[from]);
-        ms_strbuild_printf(cx->out, "  call void @llvm.%s.p0.p0.i64(ptr %s, ptr %s, i64 %u, i1 false)\n",
-                           shared ? "memmove" : "memcpy", target.text, source.text, size);
-      }
+    /* A value built where it goes (emit_wide_alias) is already there: nothing to write. */
+    if (!(shared && plan->base[dst] + doff[to] == plan->base[src] + soff[from])) {
+      const EmitAddr target = emit_address(cx, dcell, doff[to]);
+      const EmitAddr source = emit_address(cx, scell, soff[from]);
+      ms_strbuild_printf(cx->out, "  call void @llvm.%s.p0.p0.i64(ptr %s, ptr %s, i64 %u, i1 false)\n",
+                         shared ? "memmove" : "memcpy", target.text, source.text, size);
     }
     plan->moved = dst;
     plan->moved_first = to;
@@ -368,23 +303,12 @@ bool emit_wide_move_leaves(EmitCx *cx, MirValue dst, uint32_t to, MirValue src, 
   return same;
 }
 
-/* A held-back copy its consumer did not undo is written now, and what was held for this instruction goes out first. */
-static void flush_unread(EmitCx *cx) {
-  EmitWide *plan = cx->wide;
-  if (plan->pending.active && plan->defining == plan->pending.next) {
-    flush_pending(cx);
-  }
-  ms_strbuild_append(cx->out, ms_strbuild_span(&plan->prelude));
-  ms_strbuild_clear(&plan->prelude);
-}
-
 /* The loads of every leaf the instruction just written asked for, then the bits are cleared for the next one. */
 void emit_wide_loads(EmitCx *cx) {
   EmitWide *plan = cx->wide;
   if (plan == NULL) {
     return;
   }
-  flush_unread(cx);
   plan->loading = true;
   cx->volatile_loads = cx->wide_hide;
   for (uint32_t index = 0; index < plan->ntouched; index++) {

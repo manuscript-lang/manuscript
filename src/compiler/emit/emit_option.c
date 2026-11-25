@@ -129,7 +129,7 @@ static bool alt_new(EmitCx *cx, const MirInst *inst) {
 }
 
 /* `alt.get`, `alt.take`: the leaves of one payload field, from the registers or from the block. */
-static void alt_get(EmitCx *cx, const MirInst *inst, const EmitSite *site) {
+static void alt_get(EmitCx *cx, const MirInst *inst) {
   const MirShape *shape = mir_shape(cx->layouts, value_type(cx, inst->args[0]));
   const MirAltFields *fields = mir_alt_fields(cx->layouts, inst->imm.a);
   const MirAltField *field = &fields->fields[fields->case_start[inst->imm.b] + inst->imm.c];
@@ -138,15 +138,7 @@ static void alt_get(EmitCx *cx, const MirInst *inst, const EmitSite *site) {
     for (uint32_t leaf = 1; leaf < field->nleaves; leaf++) {
       contiguous = contiguous && field->leaves[leaf] == field->leaves[0] + leaf;
     }
-    /* `alt.take` of a payload that the next instruction wraps again (`alt.new` of the other result type) */
-    const MirBlockData *block = &cx->func->blocks.ptr[site->block];
-    const MirInst *next = site->index + 1 < block->insts.len ? &block->insts.ptr[site->index + 1] : NULL;
-    if (inst->op == MOP_AltTake && next != NULL && next->op == MOP_AltNew && next->nargs == 1 && next->args[0] == inst->res) {
-      emit_wide_defer_for(cx, next->res);
-    }
-    const bool moved = contiguous && emit_wide_move_leaves(cx, inst->res, 0, inst->args[0], field->leaves[0], field->nleaves);
-    emit_wide_defer_for(cx, MIR_NONE);
-    if (moved) {
+    if (contiguous && emit_wide_move_leaves(cx, inst->res, 0, inst->args[0], field->leaves[0], field->nleaves)) {
       return;
     }
     for (uint32_t leaf = 0; leaf < field->nleaves; leaf++) {
@@ -267,6 +259,7 @@ static void opt_get(EmitCx *cx, const MirInst *inst) {
 }
 
 bool emit_option_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *handled) {
+  (void)site;
   *handled = true;
   switch ((MirOp)inst->op) {
   case MOP_AltNew:
@@ -274,7 +267,7 @@ bool emit_option_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool 
     return alt_new(cx, inst);
   case MOP_AltGet:
   case MOP_AltTake:
-    alt_get(cx, inst, site);
+    alt_get(cx, inst);
     return true;
   case MOP_AltTag:
     alt_tag(cx, inst);

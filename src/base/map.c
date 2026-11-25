@@ -101,22 +101,6 @@ void ms_map_reserve(MsMap *map, const MsTypeDesc *key, const MsTypeDesc *value, 
   }
 }
 
-/* A key or value slot is usually one to three words: copying those as words avoids a call per slot. */
-static inline void copy_slot_bytes(uint8_t *to, const uint8_t *from, size_t size) {
-  if (size == 8) {
-    ms_store64(to, ms_load64(from));
-  } else if (size == 16) {
-    ms_store64(to, ms_load64(from));
-    ms_store64(to + 8, ms_load64(from + 8));
-  } else if (size == 24) {
-    ms_store64(to, ms_load64(from));
-    ms_store64(to + 8, ms_load64(from + 8));
-    ms_store64(to + 16, ms_load64(from + 16));
-  } else {
-    __builtin_memcpy(to, from, size);
-  }
-}
-
 /* An `Int` key with an eight-byte plain value, the commonest map: the layout is constant, so the probe,
  * the copies and the publish compile to a few instructions with no descriptor reads. */
 static void insert_int_word(MsMap *map, const uint8_t *key_slot, const uint8_t *value_slot) {
@@ -154,9 +138,9 @@ void ms_map_insert(MsMap *map, const MsTypeDesc *key, const MsTypeDesc *value, u
   }
   uint8_t *entry = ms_table_next_entry(map, &layout);
   ms_store64(entry, probe.hash);
-  copy_slot_bytes(entry + layout.key_offset, key_slot, layout.key_size);
+  ms_copy_slot(entry + layout.key_offset, key_slot, layout.key_size);
   if (value != NULL) {
-    copy_slot_bytes(entry + layout.value_offset, value_slot, layout.value_size);
+    ms_copy_slot(entry + layout.value_offset, value_slot, layout.value_size);
   }
   ms_table_publish(map, probe.hash);
 }

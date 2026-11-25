@@ -186,9 +186,6 @@ void emit_store_value(EmitCx *cx, MirValue value, const char *base);
 bool emit_wide_zero(EmitCx *cx, MirValue value);
 bool emit_wide_fill(EmitCx *cx, MirValue value, const char *from, const uint32_t *at);
 void emit_load_value(EmitCx *cx, MirValue value, const char *base);
-/* The next instruction (its result `next`) may move the payload the following move writes straight back: hold that move
- * until the next instruction has run, and write neither when it does (emit_wide.c). */
-void emit_wide_defer_for(EmitCx *cx, MirValue next);
 void emit_alt_payload_run(EmitCx *cx, const MirInst *inst, uint32_t *first, uint32_t *end, uint32_t *operand,
                           uint32_t *source);
 /* After the cells are pooled: a held value that only becomes the payload of the `alt.new` after it is built where the

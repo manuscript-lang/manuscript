@@ -41,7 +41,7 @@ MS_RETURNS_NONNULL static inline void *ms_list_extend(MsList *list, size_t eleme
 
 /* Appends one element (a copy of `element_size` bytes at `element`). */
 static inline void ms_list_push(MsList *list, size_t element_size, const void *element) {
-  __builtin_memcpy(ms_list_extend(list, element_size, 1), element, element_size);
+  ms_copy_slot(ms_list_extend(list, element_size, 1), element, element_size);
 }
 
 /* Frees the buffer of an owning list and leaves it empty; a view just becomes empty. */
