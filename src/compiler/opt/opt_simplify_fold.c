@@ -635,6 +635,16 @@ static SfAct sf_rule(SfEnv *e, OptInstVec *out, const MirInst *inst) {
   }
 }
 
+/* A `fault.site` tests the fault of the check before it. Once an earlier pass has made that check an operation that
+ * cannot fault (a proven range, a constant divisor), the test is false, and the exit it guards is dead. */
+static SfAct sf_fault_site_rule(const SfEnv *e, const MirInst *inst) {
+  const SfDef *def = sf_def(e, inst->args[0]);
+  if (def != NULL && (mir_op_info[def->op].effects & MIR_E_FAULTS) == 0) {
+    return sf_const_bool(false);
+  }
+  return sf_keep();
+}
+
 /* ---- folding ---- */
 
 /* Records what instruction `i` defines: its constant value and its definition. */
@@ -731,7 +741,7 @@ static bool sf_fold_inst(SfFold *fold, OptInstVec *out, MirInst *inst) {
       return false;
     }
   }
-  const SfAct act = sf_rule(e, out, inst);
+  const SfAct act = inst->op == MOP_FaultSite ? sf_fault_site_rule(e, inst) : sf_rule(e, out, inst);
   if (!sf_apply(fold, &act, inst)) {
     return false;
   }
