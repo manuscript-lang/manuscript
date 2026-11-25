@@ -21,7 +21,7 @@ fn count_or_keep(lines List[String]) Map[String, Int] {
 	var counts Map[String, Int] = {}
 
 	for line in lines {
-		key := line.trim()
+		key := line.trim().clone()
 
 		if line.length() > 3 {
 			counts.update(key, 0, n => n + 1)
