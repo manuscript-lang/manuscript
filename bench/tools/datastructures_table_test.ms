@@ -71,7 +71,7 @@ test "rejects invalid evidence" {
 	go_end := good.index_of("go # end") or 0
 	var cases = Map[String, List[String]]()
 	cases.add("empty", List[String]())
-	cases.add("unfinished", good.slice(0, good.length() - 1).get_or([]))
+	cases.add("unfinished", good.slice(0, good.length() - 1).get_or([]).clone())
 	cases.add("extra trial", good.concat(trial("ms", 100)))
 	cases.add("missing everywhere", good.filter(l => not l.contains("list_append")))
 	cases.add("duplicate", [good[0].clone()].concat(good))

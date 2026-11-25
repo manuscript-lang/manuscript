@@ -1,14 +1,8 @@
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
 	Source, stdout from "@std/io/io.ms",
-	collect,
-	filter,
-	fold,
-	from_bytes,
-	from_list,
-	lines,
-	map,
-	take from "@std/io/steps.ms",
+	filter, lines, map, take from "@std/io/steps.ms",
+	collect, fold, from_bytes, from_list from "@std/io/streams.ms",
 	Instant, monotonic from "@std/time.ms",
 )
 
@@ -16,7 +10,7 @@ import (
 // `name ns checksum`.
 
 fn say(text String) Void {
-	_ignored := stdout().write(text)
+	_ignored := stdout().write(text.clone())
 }
 
 fn report(name String, n Int, start Instant, sum Int) Void {
@@ -67,7 +61,7 @@ fn plain(xs List[Int]) Int {
 	return total
 }
 
-fn drain(source Source[Int]) Int! {
+fn drain(move source Source[Int]) Int! {
 	var s = source
 	var total = 0
 
