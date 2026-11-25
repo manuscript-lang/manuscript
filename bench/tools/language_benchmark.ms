@@ -5,8 +5,8 @@
 // ms: allow_effect std.process.run
 // ms: allow_effect std.system.read
 
-// Builds checked native workloads (bench/language/*.ms) with two Manuscript CLIs and
-// compares them, alternating the first runner. Usage: ms run
+// Builds checked native workloads (bench/perf/language/*.ms) with two Manuscript CLIs
+// and compares them, alternating the first runner. Usage: ms run
 // bench/tools/language_benchmark.ms -- --before MS --after MS --output DIR [--runs 3]
 // [--cpu N]
 // --cpu pins every execution to one CPU through `taskset` (Linux).
@@ -57,7 +57,7 @@ fn run(opts Map[String, String], runs Int) Result[String, Error] {
 	for name in workloads {
 		for label in ["before", "after"] {
 			cli := clis.get_or(label, "")
-			source := f"bench/language/{name}.ms"
+			source := f"bench/perf/language/{name}.ms"
 			_bin := must(
 				f"ms build {name}",
 				capture(

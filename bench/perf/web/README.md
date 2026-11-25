@@ -24,4 +24,4 @@ ms run bench/tools/web_bench.ms -- run 5
 
 `ms run bench/tools/web_bench.ms -- fetch [seconds]` measures the client side the same way: `fetch` against Go's `net/http` client on small and 8 MiB bodies, plus one 8 MiB body sent chunked and one gzip-compressed (`/chunked/big`, `/gzip/text`), one request through a 302 hop (`/redirect`), and one with a cookie jar (`/cookie`).
 
-Compare numbers only within one run on one machine. Shared virtual machines vary by 10 to 15% between runs; run twice and report both. [`results.md`](results.md) records the latest numbers.
+Compare numbers only within one run on one machine. Shared virtual machines vary by 10 to 15% between runs; run twice and report both. [`results.md`](../results.md#web) records the latest numbers.

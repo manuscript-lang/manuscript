@@ -8,5 +8,5 @@ Verified (2026-11-12): `while i + 32 <= n { ... }` with an inner `for j in 0..32
 - `Bytes.int64_le` and the other fixed-width readers inline now (generated MIR in `src/compiler/opt/opt_bytesfast.c`; `msrt_bytes_read_word` remains the fallback twin). Check the LLVM IR (`ms emit`) for a remaining `call` and `declare`.
 
 Apply when: moving a scan, compare or checksum from the runtime into `.ms`.
-Evidence: [results](../../../bench/perf/native-fallbacks/README.md), range pass, fixture.
+Evidence: [results](https://github.com/manuscript-lang/manuscript/blob/48b25d38/bench/perf/native-fallbacks/README.md), range pass, fixture.
 Verify: `MS_EMIT_OPT=1 ms emit` shows `list.get.u` in the block and no `list.get.nn`; `gaps.ms` blocked cases within 3x of native.

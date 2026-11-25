@@ -9,7 +9,7 @@ MS=./target/release/ms sh bench/perf/suite/run.sh 5            # every program, 
 MS=./target/release/ms sh bench/perf/suite/run.sh 5 lz graph   # chosen programs
 ```
 
-Times are the minimum wall time in ms of N samples with process start and output included and compilation excluded. `SCALE=2` doubles the generated input. `BENCH_OUTPUT=<dir>` keeps inputs, binaries and outputs. Compare numbers only from one machine, and add dated sections to [`results.md`](results.md) rather than editing old ones. This suite is not part of pull request CI; it runs by hand, on `main` and on the bench schedule.
+Times are the minimum wall time in ms of N samples with process start and output included and compilation excluded. `SCALE=2` doubles the generated input. `BENCH_OUTPUT=<dir>` keeps inputs, binaries and outputs. Compare numbers only from one machine, and add dated sections to [`results.md`](../results.md#suite) rather than editing old ones. This suite is not part of pull request CI; it runs by hand, on `main` and on the bench schedule.
 
 | Program | Area | What it stresses |
 | --- | --- | --- |

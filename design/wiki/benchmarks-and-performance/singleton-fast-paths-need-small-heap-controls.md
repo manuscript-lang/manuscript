@@ -8,6 +8,6 @@ a median 22% slower, with all 16 longer pairs slower. Unchanged Queue controls a
 regressed; an identical-binary A/A replay stayed near flat. Both patches were rejected.
 
 Apply when: adding a tiny-collection shortcut or accepting a locally measured win.
-Evidence: [rejected candidates and complete controls](../../../bench/perf/priority-queue-singleton/README.md).
+Evidence: [rejected candidates and complete controls](https://github.com/manuscript-lang/manuscript/blob/48b25d38/bench/perf/priority-queue-singleton/README.md).
 Verify: include empty/singleton/small/large heaps, unchanged workloads, balanced
 before/after and A/A trials; preserve regressions and do not tune code placement.

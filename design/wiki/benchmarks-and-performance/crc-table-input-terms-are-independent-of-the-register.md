@@ -9,6 +9,6 @@ native disassembly and improved compiled whole-input calls by about 25%.
 
 Apply when: changing the shared checksum primitive. Source order alone does not
 constrain the optimizer; confirm native assembly and tiny/tail/seeded controls.
-Evidence: [same-algorithm C, paired MS and A/A measurements](../../../bench/perf/checksum-dependency/README.md).
+Evidence: [same-algorithm C, paired MS and A/A measurements](https://github.com/manuscript-lang/manuscript/blob/48b25d38/bench/perf/checksum-dependency/README.md).
 Verify: unchanged bitwise-oracle/continuation tests and explicit little-endian
 loads; retain all UInt32 seeds and empty-update identity.

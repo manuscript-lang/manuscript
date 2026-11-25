@@ -4,7 +4,7 @@ import (
 	argv, layout_problems, parse_groups from "./perf_groups.ms",
 )
 
-TEXT := "# c\nsuite | time | sh run.sh {n} | suite/results.md\nweb | time | ms run a.ms -- {n} | -\nx | probe | - | x/README.md\n"
+TEXT := "# c\nsuite | programs | time | sh run.sh {n} | suite/results.md\nweb | io | time | ms run a.ms -- {n} | -\nx | io | probe | - | x/README.md\n"
 
 test "parse and argv" {
 	groups := expect_ok(parse_groups(TEXT))?
@@ -15,16 +15,16 @@ test "parse and argv" {
 }
 
 test "bad lines" {
-	_a := expect_error(parse_groups("a | time | x"))?
-	_b := expect_error(parse_groups("a | fast | x | -"))?
-	_c := expect_error(parse_groups("a | probe | - | -\na | probe | - | -"))?
+	_a := expect_error(parse_groups("a | io | time | x"))?
+	_b := expect_error(parse_groups("a | io | fast | x | -"))?
+	_c := expect_error(parse_groups("a | io | probe | - | -\na | io | probe | - | -"))?
 }
 
 test "layout" {
 	groups := expect_ok(parse_groups(TEXT))?
-	ok := layout_problems(groups, ["old"], ["README.md", "suite", "old", "web", "x"])
+	ok := layout_problems(groups, ["README.md", "groups.txt", "suite", "web", "x"])
 	expect_equal(ok.length(), 0)?
 
-	bad := layout_problems(groups, ["gone"], ["suite", "stray", "web", "x"])
-	expect_equal(bad.length(), 2)?
+	bad := layout_problems(groups, ["suite", "stray", "web", "x"])
+	expect_equal(bad.length(), 1)?
 }

@@ -10,5 +10,5 @@ as controls when changing a Set helper, and distinguish fewer hash calls from a
 wall-clock claim.
 
 Apply when: changing a shared collection lookup or copy helper.
-Evidence: [collection-copy measurements and rejected variants](../../../bench/perf/list-distinct/README.md).
+Evidence: [collection-copy measurements and rejected variants](https://github.com/manuscript-lang/manuscript/blob/48b25d38/bench/perf/list-distinct/README.md).
 Verify: paired unique/duplicate and small/large workloads, exact producer status and checksums, whole-producer instruction counts, and the Set hash-count regression.

@@ -6,8 +6,8 @@
 // ms: allow_effect std.process.run
 
 // Builds Release Manuscript reproductions of the List workloads
-// (bench/lists/program.ms) and measures native wall time and peak RSS. Usage: ms run
-// bench/tools/lists_native.ms -- --cli MS --output DIR [--runs 3] [--cpu N]
+// (bench/perf/lists/program.ms) and measures native wall time and peak RSS. Usage: ms
+// run bench/tools/lists_native.ms -- --cli MS --output DIR [--runs 3] [--cpu N]
 // --cpu pins executions with `taskset` (Linux).
 import (
 	JsonValue from "@std/data/json.ms",
@@ -54,7 +54,7 @@ fn run(opts Map[String, String], runs Int) Result[String, Error] {
 
 	cli := absolute(opts.get_or("cli", ""))
 	cpu := opts.get_or("cpu", "")
-	source := read_text("bench/lists/program.ms")
+	source := read_text("bench/perf/lists/program.ms")
 	var results = List[JsonValue]()
 
 	for w in [

@@ -10,12 +10,12 @@
 
 ## Status
 
-Proposal, revised 2026-10-30 after a skeptic review (verdict: revise; its corrections are folded in), checked against `f6755dfd`. Direction (Chinmay, 2026-10-30): "i see that's wrong ... we need to design it ground up" (about the `shared` listener); earlier: "does that mean server requests will fan out on all cores?" Direction (Chinmay, 2026-10-30): "let's do round robin"; "okay build the threads first" (processes later). Stage 1 and 2 built: `Listener.accept_raw`, `Network.serve_connections`, `HttpServer.adopt` (below), measured in `bench/perf/web/results.md` (2026-10-30). Stage 3 built: `serve_cores(listener, entry, cores)` and `serve_core(handler, options)` in `@std/net/net.ms`, on `WorkerGroup.spawn_many(entry, count)`. `spawn_many` needed one checker change: the worker start native borrows its entry (it copies the code pointer of a capture-free fn), so one entry can start several workers. A `cores` option on `serve` is a possible wrapper, not built.
+Proposal, revised 2026-10-30 after a skeptic review (verdict: revise; its corrections are folded in), checked against `f6755dfd`. Direction (Chinmay, 2026-10-30): "i see that's wrong ... we need to design it ground up" (about the `shared` listener); earlier: "does that mean server requests will fan out on all cores?" Direction (Chinmay, 2026-10-30): "let's do round robin"; "okay build the threads first" (processes later). Stage 1 and 2 built: `Listener.accept_raw`, `Network.serve_connections`, `HttpServer.adopt` (below), measured in `bench/perf/results.md#web` (2026-10-30). Stage 3 built: `serve_cores(listener, entry, cores)` and `serve_core(handler, options)` in `@std/net/net.ms`, on `WorkerGroup.spawn_many(entry, count)`. `spawn_many` needed one checker change: the worker start native borrows its entry (it copies the code pointer of a capture-free fn), so one entry can start several workers. A `cores` option on `serve` is a possible wrapper, not built.
 
 ## Problem
 
 - One `serve` is one reactor on one thread (`ms-std-net/src/http/server.rs`; handlers run as scope tasks since `design/proposals/http-server-request-tasks.md`, still on that thread). A 4-core machine serves with 1 core.
-- Measured, `bench/perf/web/results.md` section "2026-10-26, server on several cores" (server on 2 CPUs): `/top?n=10` (CPU-bound handler) 26k req/s on one thread, 58k with two shared-listener workers. A handler that does real work scales, so the cores are worth using.
+- Measured, `bench/perf/results.md#web` section "2026-10-26, server on several cores" (server on 2 CPUs): `/top?n=10` (CPU-bound handler) 26k req/s on one thread, 58k with two shared-listener workers. A handler that does real work scales, so the cores are worth using.
 - The old way did not distribute connections evenly. Measured on main `f6755dfd`, 4 workers on one duplicated listener (4-CPU VM, keep-alive Python client, 200 requests per connection, per-worker reply counts):
 
   | Connections | Opened | Requests per worker (w0, w1, w2, w3) |
@@ -126,7 +126,7 @@ Not missing: the accept loop, round robin, worker lifecycle, `cores`/`max_reques
 1. Spike (gate): accept_raw/adopt, `serve_connections` and the Manuscript accept loop (done: `results.md`, 2026-10-30; gate (a) on skewed load and the 4-core rows still to run on a 4-core client box); measure on 4 CPUs with the client on separate cores (`bench/perf/web`, script committed): (a) uneven load, 4 busy connections plus 60 light ones, per-isolate CPU and request counts; even-count balance alone passes trivially; (b) `/top` on all 4 cores at least 3x one core, `/health` not below one core; (c) `Connection: close` requests per second, at least 70% of the single-thread server's rate, and the acceptor isolate's CPU share. No-go if (a) shows an isolate idle while another queues, or (c) misses its bar; then try a dedicated acceptor or the `SO_REUSEPORT` fallback before dropping.
 2. `ms-std-net`: accept_raw/adopt and `serve_connections` (done on Linux; macOS and Windows run in CI).
 3. Worker function value, `serve_cores`, `cores`, stop/fault/SIGINT semantics in `stdlib`; balance, shutdown, fault and restricted-network fixtures.
-4. Bench page: a dated section in `bench/perf/web/results.md` and the doc chapter; `serve` closure form documented as single-core.
+4. Bench page: a dated section in `bench/perf/results.md#web` and the doc chapter; `serve` closure form documented as single-core.
 
 Each stage lands green on the three platforms; no test is disabled per platform.
 

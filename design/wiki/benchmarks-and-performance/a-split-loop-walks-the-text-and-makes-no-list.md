@@ -7,5 +7,5 @@ Wall time, min of 9 (22 MB `access.log`): grep 44.5 to 35.1 ms (Rust 26.8), repo
 The list form stays for everything else: `parts := text.split(..)` kept in a variable, `.split(..)` passed on, and every other producer (`fields_by`, `lines`, `map`, `filter`). Those need the builder-loop fusion of #7039.
 
 Apply when: a list is built by a runtime call and read once by a counted loop; look for the same split of the producer into a state that fits in one integer.
-Evidence: `src/compiler/lower/lower_for.c`, `src/runtime/core/string_split.c`, `e2e/accept/split-loop-reads-pieces-in-place`, `bench/perf/suite/results.md`.
+Evidence: `src/compiler/lower/lower_for.c`, `src/runtime/core/string_split.c`, `e2e/accept/split-loop-reads-pieces-in-place`, `bench/perf/results.md` (suite).
 Verify: `ctest`, `conform`, valgrind on a loop whose receiver is a temporary; page faults and wall time of grep and report.
