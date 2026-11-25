@@ -1,6 +1,5 @@
 /* tooling/occurrence.h: the occurrence index: every resolved declaration and use in the user's modules, keyed by
- * identity so that references, hover and type hints group by what a name denotes. Port of the occurrence index of
- * crates/ms-lsp/src/index.rs, read from the checker's facts. The key spelling (`symbol:<file>:<offset>`, `field:`,
+ * identity so that references, hover and type hints group by what a name denotes. The key spelling (`symbol:<file>:<offset>`, `field:`,
  * `case:`, `method:`, `operation:`, `parameter:`, `binding:`) is the oracle's, so entries sort as it sorts them.
  *
  * Ownership: every text lives in the arena the caller gives; the program must outlive the index. */

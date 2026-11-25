@@ -1,4 +1,4 @@
-/* compiler/project/semver.c: port of crates/ms-driver/src/project/semver.rs. */
+/* compiler/project/semver.c: semantic versions and version ranges. */
 #include "compiler/project/semver.h"
 
 #include "base/chars.h"

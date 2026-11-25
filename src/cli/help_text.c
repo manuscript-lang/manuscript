@@ -1,5 +1,4 @@
-/* Owns the `ms help` texts (help_text.h): the command list and one usage page per command, as in
- * crates/ms-cli/src/help_text.rs, fetch.rs and profile.rs. */
+/* Owns the `ms help` texts (help_text.h): the command list and one usage page per command. */
 #include "cli/help_text.h"
 
 #include <stddef.h>

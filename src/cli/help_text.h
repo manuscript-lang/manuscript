@@ -1,5 +1,5 @@
-/* cli/help_text.h: the `ms help` texts, a table of pages. Port of crates/ms-cli/src/help_text.rs, fetch.rs and
- * profile.rs. Page 0 is the command list; the other pages are one command each, in help order. */
+/* cli/help_text.h: the `ms help` texts, a table of pages.
+ * Page 0 is the command list; the other pages are one command each, in help order. */
 #ifndef MS_CLI_HELP_TEXT_H
 #define MS_CLI_HELP_TEXT_H
 

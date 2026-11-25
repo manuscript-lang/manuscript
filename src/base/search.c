@@ -1,5 +1,5 @@
-/* Substring search over bytes. The short-text paths are ported from crates/ms-rt/src/string.rs; the long
- * path replaces the Rust memchr::memmem with a rare-byte memchr scan that falls back to Two-Way
+/* Substring search over bytes. The short-text paths are hand-written; the long
+ * path uses a rare-byte memchr scan that falls back to Two-Way
  * (Crochemore-Perrin) once false candidates cost more than a few units per byte, so the worst case is
  * linear. Offsets are bytes; SIZE_MAX means absent. */
 #include "base/search.h"

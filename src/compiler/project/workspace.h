@@ -1,6 +1,6 @@
 /* compiler/project/workspace.h: workspaces. A root `ms.toml` with `[workspace] members` names directories that each
  * hold a project. Members import one another through `{ path = "../util" }` dependencies and share the root's
- * `ms.lock`. Port of crates/ms-driver/src/project/workspace.rs. */
+ * `ms.lock`. */
 #ifndef MS_PROJECT_WORKSPACE_H
 #define MS_PROJECT_WORKSPACE_H
 

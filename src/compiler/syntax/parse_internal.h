@@ -22,7 +22,7 @@ MS_LIST_DEFINE(OffsetList, offset_list, MsOffsetRange)
 
 /* What a speculative parse restores when it fails: the shared scratch stacks and the parser flags that the
  * abandoned frames had changed. Node ids and queued statements are deliberately not restored, so a
- * backtrack consumes ids exactly as the Rust parser does. */
+ * backtrack consumes ids exactly. */
 typedef struct Checkpoint {
   size_t scratch, bytes;
   size_t depth;

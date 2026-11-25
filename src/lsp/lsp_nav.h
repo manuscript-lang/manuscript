@@ -1,5 +1,4 @@
-/* lsp/lsp_nav.h: navigation over the occurrence index: definition, references, highlights and rename. Port of
- * crates/ms-lsp/src/{nav,rename}.rs for the files of the document's own graph. Each writes its JSON result into `out`. */
+/* lsp/lsp_nav.h: navigation over the occurrence index: definition, references, highlights and rename. Each writes its JSON result into `out`. */
 #ifndef MS_CLI_LSP_NAV_H
 #define MS_CLI_LSP_NAV_H
 

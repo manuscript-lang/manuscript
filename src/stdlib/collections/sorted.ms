@@ -364,24 +364,13 @@ fn hold SortedMap[K, V].entries() List[SortedRef[K, V]] {
 	return out
 }
 
-// Calls `operation(key, value)` for each entry in ascending key order. It iterates
-// over a snapshot of copies, so `operation` may change the map.
-fn SortedMap[K Comparable & Clonable, V Clonable].for_each(
-	operation fn(K, V) Void
-) Void {
-	var snapshot List[SortedEntry[K, V]] = []
+// Calls `operation(key, value)` for each entry in ascending key order. `operation`
+// reads the entries in place, so it cannot change the map it is called on.
+fn SortedMap[K Comparable, V].for_each(operation fn(K, V) Void) Void {
 	for c in 0..self.key_chunks.length() {
 		for at in 0..self.key_chunks[c].length() {
-			snapshot.append(
-				SortedEntry(
-					self.key_chunks[c][at].clone(),
-					self.value_chunks[c][at].clone(),
-				)
-			)
+			operation(self.key_chunks[c][at], self.value_chunks[c][at])
 		}
-	}
-	for entry in snapshot {
-		operation(entry.key, entry.value)
 	}
 }
 

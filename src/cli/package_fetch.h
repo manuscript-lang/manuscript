@@ -1,5 +1,5 @@
 /* cli/package_fetch.h: the network and the cache as the resolver sees them: tags from `git ls-remote`, packages
- * downloaded with git into the content-addressed cache. Port of the `Git` remote of crates/ms-cli/src/fetch.rs. */
+ * downloaded with git into the content-addressed cache. */
 #ifndef MS_CLI_PACKAGE_FETCH_H
 #define MS_CLI_PACKAGE_FETCH_H
 

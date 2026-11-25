@@ -1,4 +1,4 @@
-/* compiler/check/drop_labels.h: `ms fmt --drop-labels`. Port of crates/ms-tooling/src/labels.rs. */
+/* compiler/check/drop_labels.h: `ms fmt --drop-labels`. */
 #ifndef MS_COMPILER_CHECK_DROP_LABELS_H
 #define MS_COMPILER_CHECK_DROP_LABELS_H
 

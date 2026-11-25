@@ -1,4 +1,4 @@
-/* cli/diagram_command.c: `ms diagram`. Port of `diagram` in crates/ms-cli/src/engine/tooling.rs. */
+/* cli/diagram_command.c: `ms diagram`. */
 #include "cli/files.h"
 #include "cli/diagram_command.h"
 

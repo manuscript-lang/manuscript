@@ -1,6 +1,5 @@
 /* cli/fault_record.h: the fault record a test process leaves in the file MS_FAULT_RECORD names (written by
- * runtime/core/record.c, version 2), as the `fault` object of a `--json` test result. Port of the reader in
- * crates/ms-cli/src/fault.rs. */
+ * runtime/core/record.c, version 2), as the `fault` object of a `--json` test result. */
 #ifndef MS_CLI_FAULT_RECORD_H
 #define MS_CLI_FAULT_RECORD_H
 

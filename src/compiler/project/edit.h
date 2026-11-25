@@ -1,5 +1,5 @@
 /* compiler/project/edit.h: edits to ms.toml for `ms add` and `ms remove`. They change the dependency tables and keep
- * every comment and the formatting of the rest of the file. Port of crates/ms-driver/src/project/edit.rs. */
+ * every comment and the formatting of the rest of the file. */
 #ifndef MS_PROJECT_EDIT_H
 #define MS_PROJECT_EDIT_H
 

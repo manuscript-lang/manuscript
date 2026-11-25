@@ -1,5 +1,4 @@
-/* cli/search_symbol_command.c: `ms search_symbol`. Port of crates/ms-cli/src/engine/search.rs: the
- * project's declarations (search_project.c) then the standard library's. */
+/* cli/search_symbol_command.c: `ms search_symbol`. */
 #include "cli/search_symbol_command.h"
 
 #include <stdio.h>

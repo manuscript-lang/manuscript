@@ -1,4 +1,4 @@
-/* Owns flow.h: port of crates/ms-tooling/src/flow.rs. */
+/* Owns flow.h. */
 #include "tooling/flow.h"
 
 #include "compiler/syntax/walk.h"

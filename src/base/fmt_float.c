@@ -6,7 +6,7 @@
 
 typedef unsigned __int128 MsU128;
 
-/* ---- shortest digits: Schubfach (Giulietti, 2020), as crates/ms-rt/src/float_digits.rs ---- */
+/* ---- shortest digits: Schubfach (Giulietti, 2020) ---- */
 
 #define MASK63 ((UINT64_C(1) << 63) - 1)
 

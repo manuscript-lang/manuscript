@@ -1,5 +1,5 @@
 /* compiler/project/manifest_packages.c: the [dependencies], [effects] and [workspace] tables and the project keys
- * that go with them. Port of the matching parts of crates/ms-driver/src/project/manifest.rs. */
+ * that go with them. */
 #include <errno.h>
 
 #include "base/file.h"

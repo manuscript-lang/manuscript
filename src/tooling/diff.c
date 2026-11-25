@@ -1,4 +1,4 @@
-/* Owns diff.h: port of crates/ms-tooling/src/diff.rs. */
+/* Owns diff.h. */
 #include "tooling/diff.h"
 
 static MsSpan text(const char *literal) {

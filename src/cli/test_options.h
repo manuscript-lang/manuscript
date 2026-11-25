@@ -1,5 +1,4 @@
-/* cli/test_options.h: the selection options `ms test` forwards in the invocation's arguments. Port of
- * `parse_options` in crates/ms-cli/src/engine/testing.rs. */
+/* cli/test_options.h: the selection options `ms test` forwards in the invocation's arguments. */
 #ifndef MS_CLI_TEST_OPTIONS_H
 #define MS_CLI_TEST_OPTIONS_H
 

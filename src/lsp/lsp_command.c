@@ -1,5 +1,5 @@
 /* lsp/lsp_command.c: the language server session: framed JSON-RPC on standard input and output, one thread, every
- * document in memory. Port of the session in crates/ms-lsp/src/server.rs. Each handler reads the checked program of the
+ * document in memory. Each handler reads the checked program of the
  * open documents (lsp/lsp_analysis.c) and answers in LSP's UTF-16 positions. */
 #include "lsp/lsp_command.h"
 

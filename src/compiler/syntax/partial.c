@@ -1,5 +1,5 @@
 /* Owns editor recovery parsing: retains the declarations of a file that parse independently and reports
- * the diagnostics of those that do not. Port of crates/ms-syntax/src/partial.rs. */
+ * the diagnostics of those that do not. */
 #include "base/sort.h"
 #include "compiler/syntax/partial_internal.h"
 
@@ -48,14 +48,41 @@ static void split_lines(Split *split) {
   }
 }
 
-/* Whether lexing `prefix` fails with an unterminated delimiter or multi-line text. */
+/* Blanks the physical line of `text` that holds `offset`, keeping every offset and line break. */
+static void blank_line_at(uint8_t *text, size_t length, size_t offset) {
+  size_t start = offset < length ? offset : length;
+  while (start > 0 && text[start - 1] != '\n') {
+    start--;
+  }
+  for (size_t at = start; at < length && text[at] != '\n'; at++) {
+    text[at] = ' ';
+  }
+}
+
+/* Whether lexing `prefix` fails with an unterminated delimiter or multi-line text. A lexical error earlier in
+ * the prefix (a stray `$`, an octal literal) stops the lexer before it sees the closers, so the offending line
+ * is blanked and the prefix lexed again: the delimiters of the lines around it still decide. */
 static bool prefix_unterminated(MsSpan prefix) {
+  enum { MAX_BLANKED = 8 };
   MsArena scratch = ms_arena_new();
-  MsLexed lexed;
-  MsDiag diag = {0};
-  bool failed = !ms_lex(&scratch, prefix, &lexed, &diag);
-  bool open = failed && (ms_span_starts_with(diag.message, ms_span_of_text("unterminated delimiter")) ||
-                         ms_span_starts_with(diag.message, ms_span_of_text("unterminated multi-line text")));
+  uint8_t *text = ms_arena_alloc(&scratch, prefix.len + 1, 1);
+  if (prefix.len != 0) {
+    __builtin_memcpy(text, prefix.ptr, prefix.len);
+  }
+  bool open = false;
+  for (int blanked = 0; blanked <= MAX_BLANKED; blanked++) {
+    MsLexed lexed;
+    MsDiag diag = {0};
+    if (ms_lex(&scratch, ms_span_of(text, prefix.len), &lexed, &diag)) {
+      break;
+    }
+    if (ms_span_starts_with(diag.message, ms_span_of_text("unterminated delimiter")) ||
+        ms_span_starts_with(diag.message, ms_span_of_text("unterminated multi-line text"))) {
+      open = true;
+      break;
+    }
+    blank_line_at(text, prefix.len, diag.pos.offset);
+  }
   ms_arena_free(&scratch);
   return open;
 }

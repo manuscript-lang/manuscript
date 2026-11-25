@@ -1,5 +1,4 @@
-/* Owns the cache permissions of package_cache.h, on libuv's synchronous calls. Port of `read_only` and the
- * `writable` pass of `remove_all` in crates/ms-cli/src/fetch.rs. */
+/* Owns the cache permissions of package_cache.h, on libuv's synchronous calls. */
 #define _POSIX_C_SOURCE 200809L /* libuv's headers need the POSIX types under -std=c17 */
 
 #include "cli/package_cache.h"

@@ -16,29 +16,12 @@
           "column": 26,
           "offset": 184
         }
-      },
-      {
-        "code": "MS1000",
-        "phase": "parse",
-        "message": "unmatched closing delimiter '}'; remove it or add the matching opener before it",
-        "position": {
-          "file": "golden-0435.ms",
-          "line": 7,
-          "column": 1,
-          "offset": 186
-        },
-        "end": {
-          "file": "golden-0435.ms",
-          "line": 7,
-          "column": 2,
-          "offset": 187
-        }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0435.ms:6:26: parse: mismatched closing delimiter ')'; the '{' opened at line 3:29 needs '}'\n   |\n 6 |     , second: () => ok(4))\n   |                          ^\n<DIR>/golden-0435.ms:7:1: parse: unmatched closing delimiter '}'; remove it or add the matching opener before it\n   |\n 7 | }\n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0435.ms:6:26: parse: mismatched closing delimiter ')'; the '{' opened at line 3:29 needs '}'\n   |\n 6 |     , second: () => ok(4))\n   |                          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

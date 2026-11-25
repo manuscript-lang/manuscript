@@ -1,7 +1,7 @@
 /* Owns the statement rules of the terse family: a default then an override (MSL121), a counter written as a while
  * (MSL122), an index loop (MSL123), loops that append or add (MSL124, MSL125), a binding returned on the next line
  * (MSL126) and a final return the function already makes (MSL128); and the entry point that runs every terse rule
- * over a module. Port of crates/ms-tooling/src/lint/terse.rs. */
+ * over a module. */
 #include <stdlib.h>
 
 #include "base/message.h"

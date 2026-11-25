@@ -1,5 +1,4 @@
-/* Owns the unused-import rule of lint.h: MSL102, with the edit that removes the import. Port of the import half of
- * crates/ms-tooling/src/lint/bindings.rs. */
+/* Owns the unused-import rule of lint.h: MSL102, with the edit that removes the import. */
 #include "compiler/syntax/lex.h"
 #include "compiler/syntax/walk.h"
 #include "tooling/lint.h"

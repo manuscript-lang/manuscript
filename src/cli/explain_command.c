@@ -1,5 +1,4 @@
-/* Owns `ms explain` (explain_command.h): the rule family and usual repair of diagnostic and lint codes. Port of
- * explain_codes in crates/ms-cli/src/commands.rs. */
+/* Owns `ms explain` (explain_command.h): the rule family and usual repair of diagnostic and lint codes. */
 #include "cli/explain_command.h"
 
 #include <stdio.h>

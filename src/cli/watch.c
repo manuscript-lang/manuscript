@@ -1,5 +1,5 @@
 /* Owns the change polling of watch.h: a signature of each watched path (size, modification time, mode) compared every
- * few milliseconds. Port of the loop in crates/ms-cli/src/engine/tooling.rs. */
+ * few milliseconds. */
 #define _POSIX_C_SOURCE 200809L /* libuv's headers need the POSIX types under -std=c17 */
 
 #include "cli/watch.h"

@@ -1,4 +1,4 @@
-/* cli/display.h: how the commands show paths and path errors, as crates/ms-cli does. */
+/* cli/display.h: how the commands show paths and path errors. */
 #ifndef MS_CLI_DISPLAY_H
 #define MS_CLI_DISPLAY_H
 

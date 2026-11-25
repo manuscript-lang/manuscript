@@ -1,4 +1,4 @@
-/* lsp/lsp_uri.c: `file:` and `manuscript-stdlib:` URIs. Port of crates/ms-lsp/src/uri.rs. */
+/* lsp/lsp_uri.c: `file:` and `manuscript-stdlib:` URIs. */
 #include <ctype.h>
 #include <string.h>
 

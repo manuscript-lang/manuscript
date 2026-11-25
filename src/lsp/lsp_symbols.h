@@ -1,5 +1,4 @@
-/* lsp/lsp_symbols.h: `textDocument/documentSymbol`, the outline of a checked module. Port of
- * crates/ms-lsp/src/symbols.rs. */
+/* lsp/lsp_symbols.h: `textDocument/documentSymbol`, the outline of a checked module. */
 #ifndef MS_CLI_LSP_SYMBOLS_H
 #define MS_CLI_LSP_SYMBOLS_H
 

@@ -1,4 +1,4 @@
-/* Owns report.h: port of crates/ms-tooling/src/report.rs. */
+/* Owns report.h. */
 #include "tooling/report.h"
 
 #include "base/sha256.h"

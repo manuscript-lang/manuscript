@@ -1,4 +1,4 @@
-/* Owns facts.h: port of crates/ms-tooling/src/{facts,collect}.rs. */
+/* Owns facts.h. */
 #include "tooling/facts.h"
 
 #include "base/sort.h"
@@ -65,7 +65,7 @@ static void sort_spans(MsSpans *list) {
   ms_sort((uint8_t *)list->ptr, list->len, sizeof(MsSpan), ms_sort_compare_spans, NULL);
 }
 
-/* `E` of a function type whose result is `Result[T, E]`, or empty. Port of `error_type`. */
+/* `E` of a function type whose result is `Result[T, E]`, or empty. */
 static MsSpan error_type(MsSpan signature) {
   if (!ms_span_starts_with(signature, ms_span_of_text("fn("))) {
     return (MsSpan){0};

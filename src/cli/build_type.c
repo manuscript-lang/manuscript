@@ -1,4 +1,4 @@
-/* Owns build_type.h. Port of `BuildType` in crates/ms-cli/src/backend.rs. */
+/* Owns build_type.h. */
 #include "cli/build_type.h"
 
 static const char *const NAMES[] = {"Debug", "Release", "MinSizeRel"};
