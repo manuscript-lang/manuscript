@@ -63,13 +63,6 @@ typedef struct Twins {
   uint32_t nplans;
 } Twins;
 
-static bool dominates(const MirBlock *idom, MirBlock a, MirBlock b) {
-  while (b != a && idom[b] != b && idom[b] != MIR_NONE) {
-    b = idom[b];
-  }
-  return b == a;
-}
-
 static MirBlock tw_owner(const Twins *t, MirValue v) {
   return v < t->nvalues ? t->owner[v] : MIR_NONE - 1;
 }
@@ -102,7 +95,7 @@ static bool tw_const(const Twins *t, MirValue v) {
 static bool tw_reaches(const Twins *t, MirValue v, const MirBlock *preds, uint32_t n) {
   const MirBlock def = tw_owner(t, v);
   for (uint32_t i = 0; i < n; i++) {
-    if (t->idom[preds[i]] == MIR_NONE || (def != MIR_NONE && !dominates(t->idom, def, preds[i]))) {
+    if (t->idom[preds[i]] == MIR_NONE || (def != MIR_NONE && !mir_dominates(t->idom, def, preds[i]))) {
       return false;
     }
   }
@@ -227,7 +220,7 @@ static int plan_pair(Twins *t, MirBlock x, MirBlock y, MirBlock xpred, MirBlock 
       return -1;
     }
     if (a->block == b->block) {
-      if (dominates(t->idom, a->block, x) || dominates(t->idom, a->block, y)) {
+      if (mir_dominates(t->idom, a->block, x) || mir_dominates(t->idom, a->block, y)) {
         return -1;
       }
       continue;

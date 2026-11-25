@@ -78,6 +78,9 @@ uint32_t mir_rpo(MsArena *arena, const MirFunc *func, MirBlock **order);
 MirBlock *mir_dominators(MsArena *arena, const MirFunc *func, const MirBlock *order, uint32_t count,
                          const MirPreds *preds);
 
+/* Whether block `a` dominates block `b` under `idom` (an unreachable block is dominated only by itself). */
+bool mir_dominates(const MirBlock *idom, MirBlock a, MirBlock b);
+
 /* The number of instructions in `func`, excluding terminators. */
 uint32_t mir_inst_count(const MirFunc *func);
 

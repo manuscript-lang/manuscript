@@ -39,10 +39,6 @@ typedef struct FmtOutcome {
   bool listed;           /* a file of the report, not only a problem with a target */
 } FmtOutcome;
 
-static void print_span(FILE *stream, MsSpan text) {
-  (void)fwrite(text.ptr, 1, text.len, stream);
-}
-
 static int64_t order_targets(uint8_t *env, const uint8_t *a, const uint8_t *b) {
   (void)env;
   const MsSpan *x = (const void *)a;
@@ -271,7 +267,7 @@ static int print_console(const FmtOutcome *outcome, const FmtOptions *options) {
     return 0;
   }
   if (!options->json) {
-    print_span(stderr, ms_strbuild_span(&outcome->console));
+    ms_span_write(stderr, ms_strbuild_span(&outcome->console));
     (void)fputc('\n', stderr);
   }
   return STATUS_FAILED;
@@ -331,7 +327,7 @@ int ms_fmt_command(int argc, char **argv) {
     }
     if (targets.len == 1) {
       MsArena scratch = ms_arena_new();
-      print_span(stderr, ms_project_nested_hint(&scratch, targets.ptr[0]));
+      ms_span_write(stderr, ms_project_nested_hint(&scratch, targets.ptr[0]));
       ms_arena_free(&scratch);
     }
     (void)fputc('\n', stderr);
@@ -341,7 +337,7 @@ int ms_fmt_command(int argc, char **argv) {
   if (options.json) {
     MsStrBuild report = ms_strbuild_new();
     write_report(&report, outcomes, count);
-    print_span(stdout, ms_strbuild_span(&report));
+    ms_span_write(stdout, ms_strbuild_span(&report));
     ms_strbuild_free(&report);
   }
   free_outcomes(outcomes, count);

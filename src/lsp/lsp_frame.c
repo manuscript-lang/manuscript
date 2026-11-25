@@ -4,6 +4,8 @@
 
 #include "lsp/lsp_internal.h"
 
+#include "base/chars.h"
+
 enum { MAX_HEADER = 8192, MAX_BODY = 16 << 20 };
 
 /* Reads one header line without its terminator into `line`; false at end of input with nothing read. */
@@ -27,12 +29,6 @@ static LspFrameStatus read_line(FILE *input, MsStrBuild *line, size_t *header_si
   }
 }
 
-static MsSpan trim(MsSpan text) {
-  while (text.len > 0 && isspace(text.ptr[0])) text = ms_span_of(text.ptr + 1, text.len - 1);
-  while (text.len > 0 && isspace(text.ptr[text.len - 1])) text.len--;
-  return text;
-}
-
 static bool header_is_length(const uint8_t *key, size_t length) {
   static const char NAME[] = "content-length";
   if (length != sizeof NAME - 1) return false;
@@ -52,7 +48,7 @@ LspFrameStatus lsp_read_frame(FILE *input, MsStrBuild *body, const char **error)
       ms_strbuild_free(&line);
       return status;
     }
-    const MsSpan text = trim(ms_strbuild_span(&line));
+    const MsSpan text = ms_span_trim(ms_strbuild_span(&line));
     if (text.len == 0) {
       ms_strbuild_free(&line);
       break;
@@ -70,7 +66,7 @@ LspFrameStatus lsp_read_frame(FILE *input, MsStrBuild *body, const char **error)
         *error = "duplicate Content-Length";
         return LSP_FRAME_FAILED;
       }
-      const MsSpan value = trim(ms_span_of(colon + 1, text.len - key_len - 1));
+      const MsSpan value = ms_span_trim(ms_span_of(colon + 1, text.len - key_len - 1));
       size_t number = 0;
       bool valid = value.len > 0 && value.len < 12;
       for (size_t i = 0; valid && i < value.len; i++) {

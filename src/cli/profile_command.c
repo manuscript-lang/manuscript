@@ -59,7 +59,6 @@ typedef struct Profile {
   MsStrBuild allocs_text;  /* the allocation report, with --allocs */
 } Profile;
 
-static void print_span(FILE *stream, MsSpan text) { (void)fwrite(text.ptr, 1, text.len, stream); }
 
 static void add_artifact(Profile *profile, const char *kind, MsSpan path, const char *state) {
   profile->artifacts[profile->artifact_count++] = (Artifact){.kind = kind, .path = path, .state = state};
@@ -207,7 +206,7 @@ static void print_document(const Profile *profile) {
     }
   }
   ms_strbuild_append_text(&out, "\n}\n");
-  print_span(stdout, ms_strbuild_span(&out));
+  ms_span_write(stdout, ms_strbuild_span(&out));
   ms_strbuild_free(&out);
 }
 
@@ -304,7 +303,7 @@ static void note_problem(Profile *profile, MsSpan message, int *status) {
   profile->phase = "artifact";
   profile->message = message;
   if (!profile->invocation->json) {
-    print_span(stderr, ms_message_format(profile->arena, "%S\n", message));
+    ms_span_write(stderr, ms_message_format(profile->arena, "%S\n", message));
   }
   if (*status == 0) {
     *status = STATUS_FAILED;
@@ -536,12 +535,12 @@ static void convert(Profile *profile, int *status, MsStrBuild *report) {
 
 static void print_text_report(const Profile *profile, const MsStrBuild *report) {
   MsArena *const arena = profile->arena;
-  print_span(stdout, ms_strbuild_span(report));
+  ms_span_write(stdout, ms_strbuild_span(report));
   if (profile->allocs_text.bytes.len > 0) {
     (void)fputc('\n', stdout);
-    print_span(stdout, ms_strbuild_span(&profile->allocs_text));
+    ms_span_write(stdout, ms_strbuild_span(&profile->allocs_text));
   }
-  print_span(stdout, ms_message_format(arena, "\nProfile bundle: %S\n", profile->display));
+  ms_span_write(stdout, ms_message_format(arena, "\nProfile bundle: %S\n", profile->display));
   static const struct {
     const char *file;
     const char *what;
@@ -553,17 +552,17 @@ static void print_text_report(const Profile *profile, const MsStrBuild *report) 
     MsStrBuild path = ms_strbuild_new();
     ms_path_append_joined(&path, profile->display, ms_span_of_text(files[i].file));
     const MsSpan shown = ms_strbuild_span(&path);
-    print_span(stdout, ms_message_format(arena, "  %S", shown));
+    ms_span_write(stdout, ms_message_format(arena, "  %S", shown));
     for (size_t used = shown.len; used < 28; used++) {
       (void)fputc(' ', stdout);
     }
-    print_span(stdout, ms_message_format(arena, " %s\n", files[i].what));
+    ms_span_write(stdout, ms_message_format(arena, " %s\n", files[i].what));
     ms_strbuild_free(&path);
   }
   MsStrBuild shown_program = ms_strbuild_new();
   ms_path_append_joined(&shown_program, profile->display, ms_span_of_text(PROGRAM_NAME));
   const MsSpan record = perf_record(profile, ms_strbuild_span(&shown_program));
-  print_span(stdout, ms_message_format(arena,
+  ms_span_write(stdout, ms_message_format(arena,
                                        "\nTo sample with perf instead (no ms involved):\n  %S\n  %s\nBuilds keep frame "
                                        "pointers, DWARF line tables and a perf map (/tmp/perf-<pid>.map, written when MS_PERF_MAP=1), so perf resolves "
                                        "Manuscript function names and lines.\n",
@@ -581,7 +580,7 @@ static int build_and_profile(Profile *profile, MsCheckedInput *checked) {
   profile->top = invocation->top == 0 ? MS_PROFILE_DEFAULT_TOP : (size_t)invocation->top;
   MsSpan why = {0};
   if (!make_bundle_directory(profile, &why)) {
-    print_span(stderr, ms_message_format(profile->arena, "%S\n", why));
+    ms_span_write(stderr, ms_message_format(profile->arena, "%S\n", why));
     return fail(profile, "artifact", why, STATUS_FAILED);
   }
   if (!ms_checked_input_load(profile->arena, checked, invocation->filename, MS_INPUT_PROGRAM)) {
@@ -594,7 +593,7 @@ static int build_and_profile(Profile *profile, MsCheckedInput *checked) {
                                  .static_libc = invocation->static_libc};
   if (!ms_pipeline_link(&request, &error)) {
     ms_path_remove_tree(profile->output); /* this run made the directory, and a failed build must not block a retry */
-    print_span(stderr, ms_message_format(profile->arena, "%S\n", error));
+    ms_span_write(stderr, ms_message_format(profile->arena, "%S\n", error));
     return fail(profile, "build", error, STATUS_FAILED);
   }
   if (!ms_build_metadata_write(profile->arena, profile->program, invocation->build_type)) {
@@ -611,7 +610,7 @@ static int build_and_profile(Profile *profile, MsCheckedInput *checked) {
   ms_path_remove_tree(ms_string_span(&scratch));
   ms_string_release(&scratch);
   if (!started) {
-    print_span(stderr, ms_message_format(profile->arena, "%S\n", profile->message));
+    ms_span_write(stderr, ms_message_format(profile->arena, "%S\n", profile->message));
     return fail(profile, "execution", profile->message, STATUS_FAILED);
   }
   profile->completed = true;
