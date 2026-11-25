@@ -1,4 +1,4 @@
-// conform: tags=borrow,look
+// conform: tags=ownership
 // conform: phase=run
 type Cursor {
     items &List[String]
