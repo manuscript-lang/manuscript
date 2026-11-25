@@ -49,6 +49,8 @@ fn main() Void {
 	print(near.key)
 	print(near.value.re.matches("xx"))
 	print((many.floor(1000) or panic("missing")).key)
+	print(many.range(5, 9).length())
+	print(many.entries().length())
 	print(many.keys().length())
 	print(many.values().length())
 
@@ -67,4 +69,5 @@ fn tail() Void {
 	print(ids.ceiling(4) or - 1)
 	print(ids.floor(4) or - 1)
 	print(ids.values().length())
+	print(ids.range(3, 10).length())
 }
