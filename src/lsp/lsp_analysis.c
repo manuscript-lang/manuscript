@@ -231,6 +231,7 @@ void lsp_analyze_changed(const LspDocList *docs, const LspDoc *doc, const MsOver
   if (!out->checked.checked) return;
   const MsCheckProgram *program = &out->checked.program;
   out->resolved = true;
+  out->inspections = MS_ARENA_NEW(out->arena, LspInspections);
   out->index = ms_occurrence_index_with_types(out->arena, &out->checked.program, &out->written);
   out->paths = MS_ARENA_NEW_ARRAY(out->arena, MsSpan, program->user_modules == 0 ? 1 : program->user_modules);
   for (uint32_t m = 0; m < program->user_modules; m++) {
@@ -240,6 +241,16 @@ void lsp_analyze_changed(const LspDocList *docs, const LspDoc *doc, const MsOver
       if (ms_span_equal(out->checked.graph.modules[g].name, name)) out->paths[m] = out->checked.graph.modules[g].path;
     }
   }
+}
+
+const MsInspection *lsp_inspection(const LspAnalysis *analysis, bool standard) {
+  LspInspections *inspections = analysis->inspections;
+  const size_t at = standard ? 1 : 0;
+  if (!inspections->done[at]) {
+    ms_inspect_collect(analysis->arena, &analysis->checked.program, standard, &inspections->value[at]);
+    inspections->done[at] = true;
+  }
+  return &inspections->value[at];
 }
 
 bool lsp_rename_stays_checked(const LspDocList *docs, const LspDoc *doc, const MsOverlayFile *changed, size_t count,
