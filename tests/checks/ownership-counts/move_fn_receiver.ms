@@ -1,5 +1,5 @@
-// expect-debug: allocs=8
-// expect-release: allocs=8
+// expect-debug: allocs=6
+// expect-release: allocs=6
 // A `move fn` operation called through an interface takes the payload out of the
 // interface value's box: two strings and two boxes, no copy of either name.
 type Name {
