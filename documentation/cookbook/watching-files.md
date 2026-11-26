@@ -30,8 +30,6 @@ test "a new file is reported" {
 ```
 
 ```text
-RUN watch_test.ms::a new file is reported
-PASS watch_test.ms::a new file is reported
 1 tests, 0 failed
 ```
 

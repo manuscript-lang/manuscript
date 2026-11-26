@@ -48,8 +48,6 @@ test "prepare before returning a label" {
 ```
 
 ```text
-RUN ready_test.ms::prepare before returning a label
-PASS ready_test.ms::prepare before returning a label
 1 tests, 0 failed
 ```
 
