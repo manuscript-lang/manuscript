@@ -73,7 +73,7 @@ fn run(opts Map[String, String], runs Int) Result[String, Error] {
 				),
 			)?
 			_emit := must(
-				f"ms emit {name}",
+				f"ms build --emit mir {name}",
 				capture(
 					cli.clone(),
 					[

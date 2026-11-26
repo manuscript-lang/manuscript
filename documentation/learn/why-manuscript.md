@@ -66,17 +66,17 @@ parse: '&&' is not an operator; write 'and' for logical and
 resolution: unknown binding none; Manuscript writes absence as null
 ```
 
-When the fix is mechanical, `ms check --fix` applies it.
+When the fix is mechanical, `ms check --only types --fix` applies it.
 
 ## Easy to review and understand
 
 Reading the diff line by line does not scale when an agent writes the code. Manuscript is simple enough that the code is easy to follow, and the tooling shows what a program does before you read any of it. You run:
 
 ```sh
-ms diagram ms.toml --format html -o code-map.html
+ms map ms.toml --format html -o code-map.html
 ```
 
-You get one offline file that shows source, types, calls and ownership side by side, with the declarations the change touched highlighted. A Behavior view lays out the control flow of the selected function, and the actual code is one click away from any box in the picture. `ms review --diff` ranks what deserves your attention first: changed contracts, error flow and resource scopes.
+You get one offline file that shows source, types, calls and ownership side by side, with the declarations the change touched highlighted. A Behavior view lays out the control flow of the selected function, and the actual code is one click away from any box in the picture. `ms map --view review --diff` ranks what deserves your attention first: changed contracts, error flow and resource scopes.
 
 A file or connection opened in a scope closes when the scope exits, even on an early return, a fault or a cancellation, so there is less to check by eye.
 
@@ -88,7 +88,7 @@ Agents are good at improving what they can measure. Manuscript puts the measurin
 
 - **Test.** `test` blocks sit beside the code and run with `ms test`. Property tests draw inputs nobody thought of and shrink any failure to a small case, and `ms test --fuzz 30s` turns the same tests into a fuzzer.
 - **Benchmark.** `bench` blocks run under `ms bench`, which times each one over repeated samples, so a change is a number, not a feeling.
-- **Profile.** `ms profile` samples a running program and reports where the time goes, so the agent optimizes the hotspot instead of guessing.
+- **Profile.** `ms run --profile` samples a running program and reports where the time goes, so the agent optimizes the hotspot instead of guessing.
 
 The loop is the one a person would follow: measure, change one thing, measure again. The toolchain is designed for an agent to run that loop on its own.
 

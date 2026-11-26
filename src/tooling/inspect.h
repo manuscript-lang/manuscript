@@ -1,4 +1,4 @@
-/* tooling/inspect.h: the entities and call sites of a checked program, as `ms diagram` and `ms review` read them.
+/* tooling/inspect.h: the entities and call sites of a checked program, as `ms map` and `ms map --view review` read them.
  *
  * Ownership: every text lives in the arena the caller gives; the program must outlive the inspection. */
 #ifndef MS_TOOLING_INSPECT_H
@@ -47,7 +47,7 @@ void ms_inspect_collect(MsArena *arena, const MsCheckProgram *program, bool std,
 
 void ms_inspection_free(MsInspection *inspection);
 
-/* The `ms inspect` document of a checked program, bundled standard modules included: locals, the digest of every
+/* The `ms map --view inspect` document of a checked program, bundled standard modules included: locals, the digest of every
  * source, entities, call sites and statements, as pretty JSON with a closing newline. */
 void ms_inspect_document(MsArena *arena, const MsCheckProgram *program, MsStrBuild *out);
 

@@ -1,6 +1,6 @@
 # Standard modules
 
-Every standard module and the names it exports, from the declarations. Import with `import name, other from "@std/path/file.ms"`. The prelude (String, List, Map, Set, Optional, Result, Int, Float, Error, `print`) needs no import. `ms search_symbol <name>` prints a name's signature and import line.
+Every standard module and the names it exports, from the declarations. Import with `import name, other from "@std/path/file.ms"`. The prelude (String, List, Map, Set, Optional, Result, Int, Float, Error, `print`) needs no import. `ms search <name>` prints a name's signature and import line.
 
 Pick the module by task: text and parsing (`@std/text`, `@std/regex.ms`, `@std/data/json.ms`, `csv.ms`, `toml.ms`), files and processes (`@std/os`), streams and pipes (`@std/io`), promises (`@std/concurrency`), servers and clients (`@std/net`), time (`@std/time.ms`), math and randomness (`@std/math`, `@std/random.ms`), tests (`@std/test`), terminal programs (`@std/cli`).
 

@@ -460,7 +460,7 @@ fn verify(ms, scratch String, cell Cell, show Bool, filter String) Tally {
 	file := f"{scratch}/{name}.ms"
 	void write_file(file, program(cell.shape.clone(), cell.construct.clone())).wait().get()
 
-	verdict := run(ms.clone(), ["check", file.clone()]).wait()
+	verdict := run(ms.clone(), ["check", "--only", "types", file.clone()]).wait()
 
 	if verdict.is_error() or verdict.get().exit_code != 0 {
 		tally.rejected += 1

@@ -708,7 +708,7 @@ fn main() Void! {
 
 ## 13. Test next to the code
 
-A `test "name" { ... }` block sits in the same file and runs with `ms test`. Test the rules where a mistake costs something, with `expect_equal(actual, expected)?`. Run `ms check --fix`, then `ms verify`, before calling work done.
+A `test "name" { ... }` block sits in the same file and runs with `ms test`. Test the rules where a mistake costs something, with `expect_equal(actual, expected)?`. Run `ms check --only types --fix`, then `ms check --test`, before calling work done.
 
 <!-- complete: idiom-totals.ms -->
 ```manuscript

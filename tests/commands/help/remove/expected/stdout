@@ -1,0 +1,7 @@
+Usage: ms remove @name
+
+Remove a dependency from [dependencies] and [effects] in ms.toml and from ms.lock.
+The cached copy stays in the package cache.
+
+Options:
+  -h, --help  Show this help

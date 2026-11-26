@@ -1,4 +1,4 @@
-# `ms profile` end to end on this platform: builds a program that burns CPU in a recursive function, runs it under the
+# `ms run --profile` end to end on this platform: builds a program that burns CPU in a recursive function, runs it under the
 # sampler and checks the bundle and both reports: `cmake -DMS_C=<ms> -DWORK=<scratch dir> -P cmake/ProfileRun.cmake`.
 # The LLVM tools come from TOOL_DIR, PATH, or Homebrew's keg-only prefixes on macOS, as in SmokeRun.cmake.
 cmake_minimum_required(VERSION 3.25)
@@ -50,10 +50,10 @@ function(expect_contains text needle what)
 endfunction()
 
 # Text mode: the report names the function and the bundle holds every file.
-execute_process(COMMAND "${MS_C}" profile busy.ms --out-dir bundle --top 5 WORKING_DIRECTORY "${WORK}"
+execute_process(COMMAND "${MS_C}" run --profile busy.ms --out-dir bundle --top 5 WORKING_DIRECTORY "${WORK}"
   RESULT_VARIABLE status OUTPUT_VARIABLE out ERROR_VARIABLE err)
 if(NOT status EQUAL 0)
-  message(FATAL_ERROR "ms profile busy.ms exited with '${status}'\n${out}${err}")
+  message(FATAL_ERROR "ms run --profile busy.ms exited with '${status}'\n${out}${err}")
 endif()
 expect_contains("${out}" "Showing top" "report")
 expect_contains("${out}" "fib" "report")
@@ -74,7 +74,7 @@ if(pprof_size EQUAL 0)
 endif()
 
 # The directory must be new.
-execute_process(COMMAND "${MS_C}" profile busy.ms --out-dir bundle WORKING_DIRECTORY "${WORK}"
+execute_process(COMMAND "${MS_C}" run --profile busy.ms --out-dir bundle WORKING_DIRECTORY "${WORK}"
   RESULT_VARIABLE status ERROR_VARIABLE err)
 if(NOT status EQUAL 1)
   message(FATAL_ERROR "a second profile into the same directory exited with '${status}', expected 1")
@@ -82,10 +82,10 @@ endif()
 expect_contains("${err}" "profile directory must be new" "second profile")
 
 # JSON mode: one document with the program's output and the ranked functions; the program's status is returned.
-execute_process(COMMAND "${MS_C}" profile exit.ms --out-dir json-bundle --json WORKING_DIRECTORY "${WORK}"
+execute_process(COMMAND "${MS_C}" run --profile exit.ms --out-dir json-bundle --json WORKING_DIRECTORY "${WORK}"
   RESULT_VARIABLE status OUTPUT_VARIABLE out ERROR_VARIABLE err)
 if(NOT status EQUAL 3)
-  message(FATAL_ERROR "ms profile exit.ms exited with '${status}', expected the program's 3\n${out}${err}")
+  message(FATAL_ERROR "ms run --profile exit.ms exited with '${status}', expected the program's 3\n${out}${err}")
 endif()
 expect_contains("${out}" "\"command\": \"profile\"" "json")
 expect_contains("${out}" "\"exit_code\": 3" "json")
@@ -113,10 +113,10 @@ fn main() Int {
     return 0
 }
 ")
-execute_process(COMMAND "${MS_C}" profile alloc.ms --out-dir alloc-bundle --allocs WORKING_DIRECTORY "${WORK}"
+execute_process(COMMAND "${MS_C}" run --profile alloc.ms --out-dir alloc-bundle --allocs WORKING_DIRECTORY "${WORK}"
   RESULT_VARIABLE status OUTPUT_VARIABLE out ERROR_VARIABLE err)
 if(NOT status EQUAL 0)
-  message(FATAL_ERROR "ms profile --allocs exited with '${status}'\n${out}${err}")
+  message(FATAL_ERROR "ms run --profile --allocs exited with '${status}'\n${out}${err}")
 endif()
 expect_contains("${out}" "Allocations on the main thread" "allocation report")
 expect_contains("${out}" "grow" "allocation report")
@@ -125,14 +125,14 @@ foreach(file allocs.folded allocs.folded.bytes allocs.txt)
     message(FATAL_ERROR "the bundle has no ${file}")
   endif()
 endforeach()
-execute_process(COMMAND "${MS_C}" profile alloc.ms --out-dir alloc-json --allocs --json WORKING_DIRECTORY "${WORK}"
+execute_process(COMMAND "${MS_C}" run --profile alloc.ms --out-dir alloc-json --allocs --json WORKING_DIRECTORY "${WORK}"
   RESULT_VARIABLE status OUTPUT_VARIABLE out ERROR_VARIABLE err)
 expect_contains("${out}" "\"allocs\": {" "json")
 expect_contains("${out}" "\"function\": \"grow\"" "json")
 
 # A program that does not compile leaves no directory behind.
 file(WRITE "${WORK}/bad.ms" "fn main() Int {\n    x Int := \"no\"\n    return 0\n}\n")
-execute_process(COMMAND "${MS_C}" profile bad.ms --out-dir bad-bundle WORKING_DIRECTORY "${WORK}"
+execute_process(COMMAND "${MS_C}" run --profile bad.ms --out-dir bad-bundle WORKING_DIRECTORY "${WORK}"
   RESULT_VARIABLE status ERROR_VARIABLE err)
 if(NOT status EQUAL 1 OR EXISTS "${WORK}/bad-bundle")
   message(FATAL_ERROR "a failed build exited with '${status}' or left its directory\n${err}")

@@ -83,7 +83,7 @@ vscode-install: vscode-package
 	@vsix=$$(node -p 'const p = require("./extensions/vscode/package.json"); "extensions/vscode/" + p.name + "-" + p.version + ".vsix"') && \
 		"$(VSCODE_CLI)" --install-extension "$$vsix" --force
 
-# The API reference, its downloads and the description coverage come from tools/docgen.ms, which reads `ms doc`.
+# The API reference, its downloads and the description coverage come from tools/docgen.ms, which reads `ms dev doc`.
 docs: build
 	MS="$(MS)" $(MS) run tools/docgen.ms
 
@@ -104,15 +104,15 @@ book-check: docs-check docs
 
 bench-check: build
 	@for t in $$(find bench/perf -name ms.toml | sort); do \
-		(cd $$(dirname $$t) && "$(MS)" check ms.toml) || exit 1; \
+		(cd $$(dirname $$t) && "$(MS)" check --only types ms.toml) || exit 1; \
 	done
 	@for f in $$(find bench/perf -name '*.ms' | sort); do \
 		p=$$(dirname $$f); \
 		while [ $$p != bench/perf ] && [ ! -f $$p/ms.toml ]; do p=$$(dirname $$p); done; \
-		[ -f $$p/ms.toml ] || "$(MS)" check $$f || exit 1; \
+		[ -f $$p/ms.toml ] || "$(MS)" check --only types $$f || exit 1; \
 	done
-	@for t in bench/perf/tools/*.ms bench/agent/*.ms; do "$(MS)" check $$t || exit 1; done
-	@for t in bench/agent/challenges/*/start/ms/src/main.ms; do "$(MS)" check $$t || exit 1; done
+	@for t in bench/perf/tools/*.ms bench/agent/*.ms; do "$(MS)" check --only types $$t || exit 1; done
+	@for t in bench/agent/challenges/*/start/ms/src/main.ms; do "$(MS)" check --only types $$t || exit 1; done
 	@for t in bench/perf/tools/*_test.ms; do "$(MS)" test $$t || exit 1; done
 	@"$(MS)" run bench/perf/tools/perf.ms -- check
 

@@ -5,7 +5,7 @@
 // Language-server diagnostics parity (`ctest -R lsp_parity`): the editor must show the
 // mistakes `ms check` prints. Opens a deterministic sample of the conformance fixtures
 // through `ms lsp` and fails when
-//   - a diagnostic of `ms check --json` has no diagnostic of the server at the same line and column, or
+//   - a diagnostic of `ms check --only types --json` has no diagnostic of the server at the same line and column, or
 //   - the server reports a place `ms check` does not, although `ms check` stopped at no syntax or import error
 //     (the server keeps checking past those, so it may report more after them).
 // MS names the ms to run. Usage: ms run tools/lsp-parity.ms [-- every-nth-file]
@@ -49,8 +49,8 @@ fn is_plain(text String) Bool {
 	return true
 }
 
-// The `line:column` places (by offset) of the diagnostics of `ms check --json`, and
-// whether it stopped at a syntax or import error.
+// The `line:column` places (by offset) of the diagnostics of
+// `ms check --only types --json`, and whether it stopped at a syntax or import error.
 type Reference {
 	places List[String]
 	early Bool
@@ -81,7 +81,7 @@ fn reference_of(ms, path, source String) Reference {
 	var found = Reference(places: List[String](), early: false)
 	finished := run(
 		ms,
-		["check", path.clone(), "--json"],
+		["check", "--only", "types", path.clone(), "--json"],
 		RunOptions(timeout: seconds(60)),
 	).wait()
 	if not finished.is_ok() { return found }

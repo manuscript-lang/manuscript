@@ -1,6 +1,0 @@
-review
-ms.toml
---diff
-change.patch
---effect
-std.*

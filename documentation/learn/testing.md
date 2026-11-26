@@ -230,10 +230,10 @@ ms bench ms.toml --filter "sum" --json
 
 ## Profile application work
 
-Use `ms profile` on a runnable project with an exported `main`:
+Use `ms run --profile` on a runnable project with an exported `main`:
 
 ```sh
-ms profile ms.toml --out-dir capture --top 10
+ms run --profile ms.toml --out-dir capture --top 10
 ```
 
 This runs the application entry point, not its test blocks. Put the workload you want to measure in the application's execution path. `capture` must be a new directory; the sampling profile includes folded stacks, pprof data, and a text report. The default build type is `Release`. See [profiling and native debugging](../developer-tooling/debugging/debugger-integration.md) for output files and source-attribution limits.

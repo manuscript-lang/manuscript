@@ -1,4 +1,4 @@
-/* cli/emit_command.c: `ms emit <file.ms> [-o file] [--ir]`. A single file or a project entry: loaded, checked,
+/* cli/emit_command.c: `ms build --emit mir <file.ms> [-o file] [--ir]`. A single file or a project entry: loaded, checked,
  * lowered, and printed as MIR text or as LLVM IR. Status 0 is printed, 1 a diagnostic or a back-end failure, 2 usage. */
 #include "cli/files.h"
 #include "cli/emit_command.h"
@@ -49,7 +49,7 @@ static int emit_program(MsCheckedInput *checked, const MsInvocation *invocation,
   const MsLinkRequest release = {.build_type = MS_BUILD_RELEASE, .tests = tests};
   BackendOptions options = optimize ? ms_pipeline_backend_options(&release)
                                     : (BackendOptions){.tests = tests};
-  options.verify = true; /* `ms emit` shows what the passes make, so it checks each step */
+  options.verify = true; /* `ms build --emit mir` shows what the passes make, so it checks each step */
   const bool ok = ir ? ms_backend_ir(&checked->program, checked->entry, &options, &out, &why)
                      : print_mir(&checked->program, checked->entry, optimize, &out, &why);
   int status = STATUS_FAILED;

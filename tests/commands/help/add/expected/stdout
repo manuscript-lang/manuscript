@@ -1,0 +1,16 @@
+Usage: ms add <url> (--version <requirement> | --tag <tag> | --sha <commit>) [--as @name] [--allow]
+
+Add a git dependency to ms.toml and install it. The package name defaults to the
+repository name without a leading ms- (https://github.com/acme/ms-pg.git is @pg).
+The package declares the effects it may use; ms prints them, and --allow writes
+them under [effects] so the project accepts them.
+
+Options:
+  --version <req> A semver requirement on the repository's tags: 1.2 means ^1.2,
+                  and ~1.2.3 and =1.2.3 are also allowed. One copy is built for
+                  all requirements in a compatible range.
+  --tag <tag>     Exactly this tag
+  --sha <commit>  Exactly this full 40-digit commit
+  --as @name      The name imports use (@name/file.ms)
+  --allow         Allow the effects the package declares
+  -h, --help      Show this help

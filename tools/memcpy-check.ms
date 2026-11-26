@@ -1,5 +1,5 @@
-// Emitted-copy budget (`make memcpy-check`): `ms emit --opt --ir` prints the LLVM IR
-// the back end receives, where every
+// Emitted-copy budget (`make memcpy-check`): `ms build --emit ir --opt` prints the LLVM
+// IR the back end receives, where every
 // `llvm.memcpy` and `llvm.memmove` is a block of bytes the generated code moves between two cells. A value has one owner and
 // moves, so each is a real move (a record into an optional, a result into the caller's
 // area) and none is a hidden copy. tools/memcpy-budget.txt lists, per benchmark
@@ -49,7 +49,7 @@ fn main() Int {
 		program := columns[1].clone()
 		out := run(
 			ms.clone(),
-			["emit", f"{root}/{program}", "--opt", "--ir"],
+			["build", "--emit", "ir", f"{root}/{program}", "--opt"],
 			RunOptions(timeout: seconds(120)),
 		).wait().get()
 		found := copies(out.stdout.decode_utf8() or "")

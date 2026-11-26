@@ -7,7 +7,7 @@
 #include "compiler/emit/emit_tables.h"
 
 typedef struct BackendOptions {
-  bool optimize; /* run the MIR optimiser; only `ms emit` leaves it off, to show the MIR before it */
+  bool optimize; /* run the MIR optimiser; only `ms build --emit mir` leaves it off, to show the MIR before it */
   bool compact;  /* the MIR optimiser inlines only small callees (Debug: a smaller module compiles faster) */
   bool verify;   /* verify the module after every pass of the pipeline */
   bool verify_final; /* verify it once, when the passes are done (cheaper than `verify`) */

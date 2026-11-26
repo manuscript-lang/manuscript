@@ -30,8 +30,8 @@ A header `phase=test,parse` names more than one phase: the first is the recorded
 
 | phase | command | compared |
 | --- | --- | --- |
-| `parse` | `ms check --json`, `ms fmt` | parse-phase diagnostics, formatted source |
-| `check` | `ms check --json`, `ms check` | diagnostics (code, phase, message, position), terminal text, exit status |
+| `parse` | `ms check --only types --json`, `ms fmt` | parse-phase diagnostics, formatted source |
+| `check` | `ms check --only types --json`, `ms check` | diagnostics (code, phase, message, position), terminal text, exit status |
 | `run` | `ms run` | stdout, stderr, exit status |
 | `test` | `ms test --json` | per-test results, summary, report shape (durations stripped) |
 

@@ -1,0 +1,24 @@
+Usage: ms build <file.ms|ms.toml> [--json] [-o output] [--build-type level] [--emit mir|ir [--opt] [--tests]]
+
+Build an application exporting main() Int as a native executable.
+Builds link with the linker bundled in ms on every platform; no C compiler or SDK is needed.
+
+Options:
+  -o, --output <path>  Executable path (default: ./program; ./program.exe on Windows)
+  --json              Emit one versioned build result and artifact inventory
+  --build-type <level>  Debug, Release, or MinSizeRel (case-insensitive)
+  --link <file>         Link an object or static library that defines `extern fn` symbols (repeatable)
+  --static              Linux: link a static musl executable instead of the system glibc
+  --emit <form>        Print the lowered program as text instead of building: mir (the intermediate code) or ir (the LLVM IR of the back end)
+  --opt                With --emit, run the optimization passes first, so the output is what the back end receives
+  --tests              With --emit, emit the test executable (the program's test blocks) instead of main
+                       With --emit, -o writes the text to a file (default: stdout) and --json reports a failure as JSON
+  Default build type: Release
+  -h, --help  Show this help without executing the command
+
+Examples:
+  ms build ms.toml -o hello
+  ms build main.ms --build-type MinSizeRel
+  ms build main.ms --emit mir
+  ms build ms.toml --emit mir -o main.mir
+  ms build main.ms --emit ir --opt

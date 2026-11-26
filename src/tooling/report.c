@@ -546,7 +546,7 @@ bool ms_review_explain(MsArena *arena, const MsFindings *findings, const MsFactM
         ms_strbuild_append_byte(&quoted, found->id.ptr[i]);
       }
     }
-    ms_strbuild_append(out, ms_message_format(arena, "\nNEXT\n  ms diagram <project> --view flow --entity '%S' --diff <diff>\n",
+    ms_strbuild_append(out, ms_message_format(arena, "\nNEXT\n  ms map <project> --view flow --entity '%S' --diff <diff>\n",
                                               ms_strbuild_span(&quoted)));
     ms_strbuild_free(&quoted);
   } else {

@@ -1,0 +1,6 @@
+build
+--emit
+mir
+ms.toml
+-o
+main.mir

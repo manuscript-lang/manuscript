@@ -327,7 +327,7 @@ fn check_phase(ms String, fx Fixture, work String) JsonValue {
 	json_run := invoke(
 		ms,
 		fx,
-		["check", fx.entry.clone(), "--json", "--with-text"],
+		["check", "--only", "types", fx.entry.clone(), "--json", "--with-text"],
 		work,
 		"".to_bytes(),
 	)
@@ -341,7 +341,13 @@ fn check_phase(ms String, fx Fixture, work String) JsonValue {
 		stdout = string_member(text, "stdout")
 		stderr = string_member(text, "stderr")
 	} else {
-		plain := invoke(ms, fx, ["check", fx.entry.clone()], work, "".to_bytes())
+		plain := invoke(
+			ms,
+			fx,
+			["check", "--only", "types", fx.entry.clone()],
+			work,
+			"".to_bytes(),
+		)
 		text_code = plain.code
 		stdout = normalize_text(plain.stdout, work)
 		stderr = normalize_text(plain.stderr, work)

@@ -33,7 +33,7 @@ Manuscript is in beta. The capabilities below describe current source; published
 - **Structured concurrency, no async.** `promise(fn: ...)` starts concurrent work on a thread the runtime picks, and `wait()` takes its result; streams are pulled lazily. A promise only reads what it captures; changes travel to the owner over a `pipe`. See [concurrency](documentation/core-language/concurrency/_index.md) for coordinating work, cancellation and cleanup.
 - **Native code with reproducible measurements.** The Rust compiler emits native code through Cranelift or LLVM; the runtime and standard library are embedded in `ms`. [`bench/perf`](bench/perf/README.md) records kernel, JSON, HTTP and worker results, each tied to a revision, machine and reproduction command. They show where Manuscript performs well and where work remains.
 - **One command for the development loop.** `ms` checks, formats, lints, tests, builds and profiles. Builds reuse cached or locally configured linking tools; see [build setup](documentation/developer-tooling/how-it-works.md#build-tools-and-local-setup).
-- **Feedback agents can act on.** Diagnostics read `cause; fix`, name the Manuscript spelling for habits from other languages, and carry machine-applicable repairs that `ms check --fix` applies. `--json` output from `check`, `lint`, `test`, `run`, `build` and `inspect` reports results and faults as data; `ms search_symbol`, `ms verify`, `ms review` and `ms diagram` give deterministic views of a program and of a change.
+- **Feedback agents can act on.** Diagnostics read `cause; fix`, name the Manuscript spelling for habits from other languages, and carry machine-applicable repairs that `ms check --only types --fix` applies. `--json` output from `check`, `lint`, `test`, `run`, `build` and `inspect` reports results and faults as data; `ms search`, `ms check --test`, `ms map --view review` and `ms map` give deterministic views of a program and of a change.
 - **Editor and profiling support.** A language server, a VS Code extension, and native sampling profiles with source attribution. Native builds emit DWARF line tables for source lookup.
 - **Agents pass as often.** On the same hidden-test challenges, agents write passing Manuscript programs as often as they write Go, Rust and TypeScript (pass rates are within a few points of each other), and the failures they hit decide which diagnostics, standard-library names and guides we build next.
 
@@ -57,13 +57,13 @@ The language should make common software tasks expressible with a small set of p
 
 ### A language people can inspect
 
-As agents write more code, people need practical ways to understand behavior and structure without reading every line. Manuscript’s simplicity makes it possible to derive accurate views directly from code, and `ms diagram` and `ms review` already do so for call graphs and the semantic effect of a diff. `ms diagram ms.toml --format html` packages source, checked type hints and connected views into one offline file. Readers can follow calls, inspect ownership and navigate a diff overlay directly from the code map.
+As agents write more code, people need practical ways to understand behavior and structure without reading every line. Manuscript’s simplicity makes it possible to derive accurate views directly from code, and `ms map` and `ms map --view review` already do so for call graphs and the semantic effect of a diff. `ms map ms.toml --format html` packages source, checked type hints and connected views into one offline file. Readers can follow calls, inspect ownership and navigate a diff overlay directly from the code map.
 
 The map describes checked source relationships; tests and profiling complement it with evidence from execution.
 
 ### A trustworthy development loop
 
-When agents produce code, the system that helps people evaluate it should provide evidence independent of the code-generating step. Manuscript aims to make that possible through a small language, structured compiler output, and deterministic tools such as `ms verify`, `ms inspect`, and `ms review`.
+When agents produce code, the system that helps people evaluate it should provide evidence independent of the code-generating step. Manuscript aims to make that possible through a small language, structured compiler output, and deterministic tools such as `ms check --test`, `ms map --view inspect`, and `ms map --view review`.
 
 Tests, domain knowledge and human review build on those compiler checks and diagrams. Clear source and inspectable evidence help people make informed decisions about software produced with agents.
 

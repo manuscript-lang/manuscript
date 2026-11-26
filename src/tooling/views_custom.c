@@ -1,4 +1,4 @@
-/* Owns the class, ownership and mermaid renderings of views.h: the custom views of `ms inspect`. */
+/* Owns the class, ownership and mermaid renderings of views.h: the custom views of `ms map --view inspect`. */
 #include "tooling/views.h"
 #include "tooling/views_private.h"
 

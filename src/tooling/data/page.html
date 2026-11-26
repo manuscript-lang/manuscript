@@ -585,7 +585,7 @@ palres.addEventListener('click',ev=>{const r=ev.target.closest('[data-pi]');if(r
 const help=$('help');
 help.innerHTML='<div class="box"><div style="padding:18px 22px"><h3>Reading the map</h3><table>'+
  '<tr><td><span class="sw" style="border-color:var(--pures)"></span>Pure</td><td>reaches no declared effect</td></tr>'+
- '<tr><td><span class="sw" style="border-color:var(--effs)"></span>Effects</td><td>reaches a declared effect such as <code>std.fs.read</code> or <code>std.console.write</code>: the same names <code>ms lint</code> checks against <code>allow_effect</code></td></tr>'+
+ '<tr><td><span class="sw" style="border-color:var(--effs)"></span>Effects</td><td>reaches a declared effect such as <code>std.fs.read</code> or <code>std.console.write</code>: the same names <code>ms check --only lint</code> checks against <code>allow_effect</code></td></tr>'+
  '<tr><td><span class="sw" style="border-color:var(--fg)"></span>Entry / selected</td><td>main, or what you picked</td></tr>'+
  '<tr><td><span class="sw" style="border-color:var(--var)"></span>Changed</td><td>differs from the base in a diff</td></tr>'+
  '<tr><td><span class="var">var</span> / <span class="brw">borrow</span> / <span class="hint">copy</span> / <span class="own">move / owned</span></td><td>checked passing and result modes; hover a signature type for the exact mode</td></tr></table>'+

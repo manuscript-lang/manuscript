@@ -14,4 +14,4 @@ The rule is written once in [Choosing a failure](../../../documentation/core-lan
 
 Apply when: designing any fallible read, lookup, or conversion.
 Evidence: [Optional](../../../src/stdlib/core/core.ms), [Result](../../../src/stdlib/core/core.ms), commits f7a3f26a and 040f6321, [collection rules](../../../documentation/core-language/types/collections.md).
-Verify: out-of-range `[]` faults, `get_or(i, x)` returns `x`, and no `unwrap*` or `at` declaration remains (`ms search_symbol unwrap`).
+Verify: out-of-range `[]` faults, `get_or(i, x)` returns `x`, and no `unwrap*` or `at` declaration remains (`ms search unwrap`).

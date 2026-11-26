@@ -1,6 +1,6 @@
 # Projects, ms.toml and packages
 
-A project is a directory with an `ms.toml`. Use one when a program grows past a file, needs tests beside the source, or uses packages. `ms init <directory>` creates `ms.toml`, `src/main.ms`, `test.ms`, `.gitignore` and `.gitattributes` (an existing file is never overwritten); `ms init --lib <directory>` creates a library; `ms init --workspace <directory>` a workspace with an app and a library. Inside a project, commands default to `./ms.toml`: `ms run -- args`, `ms test`, `ms verify`. Run commands on the manifest: `ms check ms.toml`, `ms run ms.toml`, `ms test ms.toml`, `ms build ms.toml -o prog`. `ms.toml` is TOML: strings are quoted, lists are arrays of strings, keys starting with `@` are quoted.
+A project is a directory with an `ms.toml`. Use one when a program grows past a file, needs tests beside the source, or uses packages. `ms init <directory>` creates `ms.toml`, `src/main.ms`, `test.ms`, `.gitignore` and `.gitattributes` (an existing file is never overwritten); `ms init --lib <directory>` creates a library; `ms init --workspace <directory>` a workspace with an app and a library. Inside a project, commands default to `./ms.toml`: `ms run -- args`, `ms test`, `ms check --test`. Run commands on the manifest: `ms check ms.toml`, `ms run ms.toml`, `ms test ms.toml`, `ms build ms.toml -o prog`. `ms.toml` is TOML: strings are quoted, lists are arrays of strings, keys starting with `@` are quoted.
 
 ## The manifest
 
@@ -115,8 +115,8 @@ entry = "src/main.ms"
 
 - Each member is a directory with its own `ms.toml` and a unique `name`; `"libs/*"` means every child with an `ms.toml`. Members stay inside the root; no nested workspaces; cycles are errors.
 - `import greet from "@util/greet.ms"` imports a member like a package. A member that uses another member's effects allows them under `[effects]`.
-- Run commands from a member, or pass its `ms.toml`. At a root with no `[project]`, `check`, `lint`, `fmt`, `verify` and `test` run on every member; a command that makes one program asks you to name a member.
+- Run commands from a member, or pass its `ms.toml`. At a root with no `[project]`, `check`, `fmt` and `test` run on every member; a command that makes one program asks you to name a member.
 
 ## Checks
 
-`ms check ms.toml`, then `ms test ms.toml`, then `ms verify`. A missing lock entry says to run `ms install`. Unknown keys, a missing `entry` file, an unknown alias and an unresolved import are errors that name the line.
+`ms check ms.toml`, then `ms test ms.toml`, then `ms check --test`. A missing lock entry says to run `ms install`. Unknown keys, a missing `entry` file, an unknown alias and an unresolved import are errors that name the line.

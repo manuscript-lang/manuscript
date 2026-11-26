@@ -4,15 +4,16 @@
 
 Formatter, LSP, CLI, diagnostics, documentation, site.
 
+- [One command per job, with options for variants](one-command-per-job-with-options-for-variants.md): 23 subcommands became 15; `--only`, `--emit`, `--profile`, `--view` and `help <code>` replace the old names, with no aliases.
 - [Effects are implicit-deny comment directives](effects-are-implicit-deny-comment-directives.md): `allow_effect` permits, `effect` declares, `std.` tags on exported stdlib functions, MSL116 warns first.
 - [Packages are git dependencies pinned by lock and hash](packages-are-git-dependencies-pinned-by-lock-and-hash.md): `ms install` resolves versions (one copy per compatible range) and pins commit and content hash; builds then work offline; packages declare effects the importer allows.
 - [Embedded examples are checked by docs-check](embedded-examples-are-checked-by-docs-check.md): `tools/example-check.ms` runs every `manuscript-example` fence, so a syntax change cannot leave a stale one.
 - [Bounded editor work rules](bounded-editor-work-rules.md): Formatter, navigation and token-batch work stays bounded to the query and required context.
-- [Workspace scans filter files before running the checker](workspace-scans-filter-files-before-running-the-checker.md): `ms search_symbol` took minutes at the repository root until the lexical prefilter and reference search skipped unrelated files.
+- [Workspace scans filter files before running the checker](workspace-scans-filter-files-before-running-the-checker.md): `ms search` took minutes at the repository root until the lexical prefilter and reference search skipped unrelated files.
 
 - [A checkout copy of a bundled file is the bundled module](a-checkout-copy-of-a-bundled-file-is-the-bundled-module.md): editing `src/stdlib/*.ms` declared every type twice, giving "expected T, found T"; the file now is the bundled module.
 - [Agent help is CLI commands, not a protocol server](agent-help-is-cli-commands-not-a-protocol-server.md): the user evaluated an MCP server (PR #528), judged the CLI the better surface for coding agents, and had it removed.
-- [Agents get machine-applicable fixes, structured faults and named replacements](agents-get-machine-applicable-fixes-structured-faults-and-na.md): diagnostics carry a `fix` field when the repair is mechanical (nearest-name misspellings, missing imports), and `ms check --fix` / `ms lint…
+- [Agents get machine-applicable fixes, structured faults and named replacements](agents-get-machine-applicable-fixes-structured-faults-and-na.md): diagnostics carry a `fix` field when the repair is mechanical (nearest-name misspellings, missing imports), and `ms check --only types --fix` / `ms check --only lint…
 - [Diagnostics are `<cause>; <fix>`, and tools key on the cause](diagnostics-are-cause-fix-and-tools-key-on-the-cause.md): agents act on a diagnostic only when it names the cause, the location, and a concrete fix (nearest name, import line, valid options).
 - [Editor recovery must preserve delimiter continuations](editor-recovery-must-preserve-delimiter-continuations.md): strict parsing accepts multiline parameters, but declaration recovery that splits their column-zero closing delimiters into separate chunks…
 - [The language server is C in src/lsp](the-language-server-is-c-in-src-lsp.md): `ms lsp` is C beside the other commands; sessions are replayed from `tests/lsp`; the deleted Rust server was the reference.
@@ -23,7 +24,7 @@ Formatter, LSP, CLI, diagnostics, documentation, site.
 - [Keep CLI and HTTP documentation with their packages](keep-cli-and-http-documentation-with-their-packages.md): the user explicitly removed the "Application hosts" section.
 - [Polish the documentation design without expanding its prose](polish-the-documentation-design-without-expanding-its-prose.md): the user selected Tailwind CSS and Vercel as documentation design references and asked not to add filler.
 - [Preserve OS argument identity before dispatch](preserve-os-argument-identity-before-dispatch.md): lossy conversion can select an existing replacement-character filename instead of the requested byte path.
-- [Profile native programs by Manuscript position](profile-native-programs-by-manuscript-position.md): `ms profile` replaces the debugger (the debugger and DAP are dropped).
+- [Profile native programs by Manuscript position](profile-native-programs-by-manuscript-position.md): `ms run --profile` replaces the debugger (the debugger and DAP are dropped).
 - [Project review must keep library internals behind their boundary](project-review-must-keep-library-internals-behind-their-boun.md): inspection deliberately includes bundled standard source modules.
 - [Readable formatting needs paragraphs while retaining inline guards](readable-formatting-needs-paragraphs-while-retaining-inline.md): the user's formatter request keeps inline `if` bodies and introduces natural reading boundaries around declarations, guard sections, substan…
 - [Sell the language through a story and concrete proof](sell-the-language-through-a-story-and-concrete-proof.md): preserve the prominent tagline, “The language for the agentic era.”, and lead with agents writing correct, fast programs that are easy to review.

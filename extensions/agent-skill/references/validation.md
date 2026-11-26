@@ -1,8 +1,8 @@
 # Validation
 
-After the final edit, run `ms check app.ms`, then `ms run app.ms` and verify behavior. `ms test` runs tests; `ms verify` checks projects. `--deny-warnings` rejects warnings.
+After the final edit, run `ms check --only types app.ms`, then `ms run app.ms` and verify behavior. `ms test` runs tests; `ms check --test` checks projects. `--deny-warnings` rejects warnings.
 
-Read the plain `ms check` output and apply the repairs it names; `--fix` applies machine fixes, then recheck. `--json` is for tools that parse results; it is several times larger, so agents should not use it by default. `ms explain <code>` explains diagnostics. Acceptance does not prove runtime behavior or speed.
+Read the plain `ms check` output and apply the repairs it names; `--fix` applies machine fixes, then recheck. `--json` is for tools that parse results; it is several times larger, so agents should not use it by default. `ms help <code>` explains diagnostics. Acceptance does not prove runtime behavior or speed.
 
 <!-- complete-test: arithmetic.ms -->
 ```manuscript
@@ -19,7 +19,7 @@ Assertions return Results; `?` fails the test on error. Tests need no main. `ben
 
 Test success, failure and boundary inputs. Never expect exceptions. Avoid undeclared assignment, `try`/`await`, unwrap-style calls, `def`, enum `case`, or methods inside type bodies. Use `:=`, postfix `?`, `fn Type.method` and explicit returns instead.
 
-For additional APIs, inspect `ms search_symbol` signatures/imports. Report compiled, executed and untested checks separately.
+For additional APIs, inspect `ms search` signatures/imports. Report compiled, executed and untested checks separately.
 
 ## Habits from other languages
 
@@ -121,6 +121,6 @@ fn main() Void! {
 }
 ```
 
-`ms check --fix` rewrites the file in place (it adds `.wait()` and similar repairs), and `ms fmt` may rewrite imports into a parenthesised block, so re-read the file after either. Lint errors can hide under warnings in `ms verify` output: run `ms lint` for the full list. There is no date-only type: keep `"YYYY-MM-DD"` text and validate with `parse_timestamp(f"{d}T00:00:00Z")`. Effect names you will meet: `std.console.write`, `std.fs.read`, `std.fs.write`, `std.clock.read`, `std.env.read`.
+`ms check --only types --fix` rewrites the file in place (it adds `.wait()` and similar repairs), and `ms fmt` may rewrite imports into a parenthesised block, so re-read the file after either. Lint errors can hide under warnings in `ms check --test` output: run `ms check --only lint` for the full list. There is no date-only type: keep `"YYYY-MM-DD"` text and validate with `parse_timestamp(f"{d}T00:00:00Z")`. Effect names you will meet: `std.console.write`, `std.fs.read`, `std.fs.write`, `std.clock.read`, `std.env.read`.
 
-A single-file program needs no `ms.toml`: `ms verify main.ms` (bare `ms verify` wants a project; it fails on unformatted source, so run `ms fmt` first). `ms verify --deny-warnings` is the real gate: plain `ms verify` passes with lint warnings such as unused imports. `ms fmt` rewrites the file: several imports become one `import (` block listing `Name, Other from "path.ms",` entries, and a one-line `if c { ... }` body collapses to `if c { return x }`, so edit by reading the file again rather than by text substitution. Tests live in `test` blocks beside each module; the root `test.ms` from `ms init` is for cross-module checks. Compare whole strings in `expect_equal(actual, expected)?`: `expect_equal(out.contains(x), true)?` hides the output. A workspace root lists every project in `members`; a library is imported as `@geometry/lib.ms` (relative to its `source` directory). Benchmarks are `bench "name" { ... }` blocks run by `ms bench`; the body is one iteration: end it with a bare value (or a call) so the work cannot be removed, and read inputs from a fixture (`fn make_fixture() T`, read as `fixture`) so constants are not folded. A test that needs a file uses `dir := temporary("prefix")?` from `@std/os/fs.ms` and `dir.path()`.
+A single-file program needs no `ms.toml`: `ms check --test main.ms` (bare `ms check --test` wants a project; it fails on unformatted source, so run `ms fmt` first). `ms check --test --deny-warnings` is the real gate: plain `ms check --test` passes with lint warnings such as unused imports. `ms fmt` rewrites the file: several imports become one `import (` block listing `Name, Other from "path.ms",` entries, and a one-line `if c { ... }` body collapses to `if c { return x }`, so edit by reading the file again rather than by text substitution. Tests live in `test` blocks beside each module; the root `test.ms` from `ms init` is for cross-module checks. Compare whole strings in `expect_equal(actual, expected)?`: `expect_equal(out.contains(x), true)?` hides the output. A workspace root lists every project in `members`; a library is imported as `@geometry/lib.ms` (relative to its `source` directory). Benchmarks are `bench "name" { ... }` blocks run by `ms bench`; the body is one iteration: end it with a bare value (or a call) so the work cannot be removed, and read inputs from a fixture (`fn make_fixture() T`, read as `fixture`) so constants are not folded. A test that needs a file uses `dir := temporary("prefix")?` from `@std/os/fs.ms` and `dir.path()`.

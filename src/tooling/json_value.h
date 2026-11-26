@@ -1,4 +1,4 @@
-/* tooling/json_value.h: a JSON document read into a tree and written back in the CLI's pretty layout. `ms verify`
+/* tooling/json_value.h: a JSON document read into a tree and written back in the CLI's pretty layout. `ms check`
  * runs each step as a child process and embeds its `--json` result in its own document. Every node lives in the
  * arena. */
 #ifndef MS_CLI_JSON_VALUE_H
