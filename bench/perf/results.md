@@ -6,6 +6,19 @@ The one results page of the suite ([groups.txt](groups.txt), [README](README.md)
 
 _Whole programs against rust, go, node and c. Run: `make perf GROUP=suite`._
 
+### 2026-11-26, short-text byte search sixteen bytes at a time (on `ced98597`)
+
+Release `ms` from `ced98597` with and without the 16-byte vector scan in the short search (`memchr_short`), same 4 vCPU VM, wall time in ms (min and median of 60 alternating runs for `treegrep`, 25 for the others) and callgrind instructions.
+
+| program | instructions before | after | wall before (min / median) | wall after |
+|---|---:|---:|---:|---:|
+| treegrep | 190.6 M | 179.7 M | 27.4 / 31.5 | 25.5 / 29.2 |
+| grep | 177.0 M | 166.1 M | 31.6 / 35.1 | 30.1 / 32.9 |
+| logstats | 430.3 M | 426.7 M | 47.3 / 53.0 | 49.8 / 52.1 |
+| strings | 1,493.6 M | 1,506.2 M | 130.0 / 147.8 | 128.8 / 149.3 |
+
+`treegrep` is still 1.2x Rust (20.6 ms): the remaining gap is the search wrapper call per line and thread-pool start, not the scan. `report` is 1.18x Rust (181 ms against 153 ms) at equal user time; its extra 30 MB of page faults come from the growing output string (#7169).
+
 ### 2026-11-25, split loops without a list (on `70c893f162`)
 
 Release `ms` built from `70c893f162` with and without the split-loop change, same 4 vCPU Xeon VM, wall time in ms (min of 9) with the Rust program of the suite beside it. `for piece in text.split(sep)` walks the text by byte offset instead of building the list of pieces first. Programs with no split loop (csvgroup, wordfreq, jsonsum) moved by +3.8% to +7.8% between the two runs, which is this VM's noise.

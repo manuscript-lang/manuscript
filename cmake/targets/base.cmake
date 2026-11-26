@@ -6,7 +6,7 @@ ms_library(ms_base base
   LINK mimalloc uv)
 
 # Unit tests of pure data structures only; the corpus is the gate.
-foreach(unit safe alloc value map)
+foreach(unit safe alloc value map search)
   ms_executable(${unit}_unit base SOURCES ${unit}_unit.c LINK ms_base)
   add_test(NAME base_${unit} COMMAND ${unit}_unit)
 endforeach()
