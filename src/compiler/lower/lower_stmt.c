@@ -55,6 +55,22 @@ static bool var_owns(const LowerFn *fn, MirVar var) {
   return fn->b.vars.ptr[var].mode == MM_MOVE;
 }
 
+/* Whether the result of `call` is a part of an operand that is itself a call result (`make().get()`): that value dies with the statement. */
+static bool borrows_call_temporary(LowerFn *fn, const MsExpr *call) {
+  const MsCall *fact = ms_facts_call(fn->facts, call->id);
+  const MsExpr *callee = fn_call_callee(call);
+  const bool receiver = callee->kind == MS_E_MEMBER;
+  for (uint32_t position = 0; fact != NULL && position <= call->u.call.args.len + (receiver ? 1u : 0u); position++) {
+    const uint32_t arg = position - (receiver ? 1u : 0u);
+    const MsExpr *source = receiver && position == 0 ? callee->u.member.left
+                           : arg < call->u.call.args.len ? call->u.call.args.ptr[arg].value : NULL;
+    if (source != NULL && source->kind == MS_E_CALL && ms_own_call_borrows(fn->cx->program, fact, position)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /* Whether a call reads a value that dies with the statement (`make().get()`): a result that borrows from it
  * cannot outlive the statement. */
 static bool call_reads_temporary(const MsFacts *facts, const MsExpr *call) {
@@ -261,7 +277,13 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
         fn_closer_for(fn, ms_facts_closer(fn->facts, pattern->id), ms_facts_type(fn->facts, pattern->id))) {
       /* A temporary resource closes where its statement ends: a part kept past it is taken out of the temporary. */
       const MirValue owned = fn_take_from_temporary(fn, stmt->u.bind.value, value);
-      value = owned != MIR_NONE ? owned : fn_implicit_clone(fn, value, true);
+      /* A resource with nothing to drop cannot be cloned: an owner at its last use still closes at its scope end, so the name views it. */
+      if (owned == MIR_NONE && !borrows_call_temporary(fn, stmt->u.bind.value) &&
+          !mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value))) {
+        borrow = true;
+      } else {
+        value = owned != MIR_NONE ? owned : fn_implicit_clone(fn, value, true);
+      }
     } else {
       borrow = true;
     }
@@ -942,8 +964,10 @@ static bool lower_scoped(LowerFn *fn, const MsStmt *stmt) {
   fn->bind_scope = stmt->kind == MS_S_BIND ? fn_scope(fn) + 1 : 0;
   (void)fn_scope_begin(fn);
   fn->temps = true;
+  fn->temps_keep = fn_stmt_keeps_resource(fn, stmt);
   const bool ok = lower_stmt(fn, stmt);
   fn->temps = false;
+  fn->temps_keep = false;
   fn->bind_scope = 0;
   if (!fn->terminated) {
     fn_scope_end(fn);

@@ -285,8 +285,7 @@ bool fn_is_borrowed_view(LowerFn *fn, MirValue value) {
     return true; /* a call's borrowing variant, read as the plain Result */
   }
   const MirInst *last = fn_just_made(fn, value);
-  MirMode mode = MM_MOVE;
-  return last != NULL && mir_result_mode(fn->cx->module, &fn->b.func, last, &mode) && mode == MM_BORROW;
+  return last != NULL && last->res != MIR_NONE && mir_result_borrowed(fn->cx->module, &fn->b.func, last);
 }
 
 /* The one switch of the rule against hidden copies: when true, a copy no `.clone()` asked for is a compile error.

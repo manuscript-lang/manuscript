@@ -268,6 +268,17 @@ static void stmt_bind(Body *body, const MsStmt *stmt) {
       ms_check_report(body->program, body->module, named->pos, MS_CHECK_TYPE,
                       ms_string_from_span(ms_span_of_text("a generic method value requires explicit specialization; write it with its type arguments, such as `result.map[Type]`, or call it with arguments")));
     }
+    const MsTy receiver = ms_facts_type(body->facts, named->u.member.left->id);
+    const MsTy result = value != MS_TY_NONE && ms_ty_kind(&body->program->types, value) == MS_TY_FUNCTION
+                            ? ms_ty_result(&body->program->types, value) : MS_TY_NONE;
+    const bool hands_out = entry != NULL && entry->source != NULL && result != MS_TY_NONE &&
+                           ((entry->source->consuming && ms_check_holds_resource(body->program, receiver) && !ms_check_property(body->program, receiver, MS_PROPERTY_CLONABLE)) ||
+                            (entry->source->holding && ms_check_holds_resource(body->program, result) && !ms_check_property(body->program, result, MS_PROPERTY_CLONABLE)));
+    if (hands_out) {
+      /* The value can be called twice, and a resource that cannot be cloned has no second owner to hand out. */
+      ms_check_report(body->program, body->module, named->pos, MS_CHECK_TYPE,
+                      ms_string_from_span(ms_span_of_text("a method that consumes a resource or answers a view of it cannot be used as a value, since the value could be called twice; call the method directly")));
+    }
     ms_method_match_list_free(&found);
   }
   const MsTy kept = stmt->u.bind.is_mutable ? value : body_lifted_function(body, stmt->u.bind.value, value);

@@ -657,6 +657,7 @@ static MirValue bound_native_method(LowerFn *fn, const MsExpr *expr, MirTy fn_ty
   body.b.func.captures = reserved.captures;
   body.b.func.ncaptures = reserved.ncaptures;
   body.b.func.loc = (MirLoc){body.file, 0, 0, 0};
+  fn_init_closing(&body); /* the natives that drop what they take out close it in this scope */
   (void)fn_scope_begin(&body);
   MirValue *values = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirValue, (size_t)reserved.nparams + 1);
   mir_b_params(&body.b, values, reserved.nparams);
