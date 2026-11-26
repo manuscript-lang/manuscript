@@ -295,11 +295,13 @@ bool fn_store_field_in_place(LowerFn *fn, const MsExpr *place, MirValue address,
       break;
     }
   }
-  if (!moved_out && owns) {
+  const MsTy checked = ms_facts_type(fn->facts, place->id);
+  /* A resource whose own fields need no drop (a bare handle with a `close`) still closes when replaced. */
+  const bool closes = fn_closer_for(fn, ms_facts_closer(fn->facts, place->id), checked);
+  if (!moved_out && (owns || closes)) {
     const MirValue view = mir_b_emit(&fn->b, MOP_Load, &address, 1, (MirImm){.tag = MI_TY, .a = field_ty}, field_ty);
-    const MirValue old = mir_b_emit(&fn->b, MOP_MoveOut, &view, 1, (MirImm){0}, field_ty);
-    const MsTy checked = ms_facts_type(fn->facts, place->id);
-    if (fn_closer_for(fn, ms_facts_closer(fn->facts, place->id), checked)) {
+    const MirValue old = owns ? mir_b_emit(&fn->b, MOP_MoveOut, &view, 1, (MirImm){0}, field_ty) : view;
+    if (closes) {
       if (!fn_close_replaced(fn, checked, old)) {
         return false;
       }

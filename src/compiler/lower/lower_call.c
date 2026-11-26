@@ -254,7 +254,7 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
         }
       }
       if (want == LW_MOVE && out[index] != MIR_NONE && written != NULL &&
-          (written->kind == MS_E_CALL || (written->kind == MS_E_NAME && ms_facts_use(fn->facts, written->id) == MS_USE_MOVE)) &&
+          (written->kind == MS_E_CALL || written->kind == MS_E_LIST || (written->kind == MS_E_NAME && ms_facts_use(fn->facts, written->id) == MS_USE_MOVE)) &&
           (step + 1 < call->arg_count || held_across(call, native))) {
         MsTy checked = ms_ty_subst(&fn->cx->program->types, fn_read_type(fn, written), fn->subst.vars,
                                    fn->subst.args, fn->subst.count);
