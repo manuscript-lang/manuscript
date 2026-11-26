@@ -1,11 +1,13 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import expect_equal from "@std/test/test.ms"
-import msrt_test_edge_string from "@std/internal/test.ms"
+import (
+	edge_string from "@std/test/boundary.ms",
+	expect_equal from "@std/test/test.ms",
+)
 
 // Whether `[a, b)` (negative bounds count from the end) lies inside the text on scalar
 // boundaries, so `view` accepts it and equals `slice`.
-fn whole_range(text String, a Int, b Int) Bool {
+fn whole_range(text String, a, b Int) Bool {
 	n := text.length()
 	from := if a < 0 { n + a } else { a }
 	to := if b < 0 { n + b } else { b }
@@ -77,15 +79,17 @@ test "view of a short text agrees with slice for ASCII and non-ASCII" {
 	}
 }
 
-// A string owes nothing after its last byte: these texts end where the next page is unreadable, so a fast path that
-// reads the byte after the end (to find a scalar boundary) faults on every run.
+// A string owes nothing after its last byte: these texts end where the next page is
+// unreadable, so a fast path that reads the byte after the end (to find a scalar
+// boundary) faults on every run.
 test "slice and view to the end of a string read no byte past it" {
 	var text = ""
 	var i = 0
 
 	while i < 24 {
 		text = f"{text}é"
-		edge := msrt_test_edge_string(text)
+
+		edge := edge_string(text)
 		n := edge.length()
 		var from = 0
 
@@ -94,6 +98,7 @@ test "slice and view to the end of a string read no byte past it" {
 			expect_equal(edge.slice(from, n), text.slice(from, n))?
 			from += 1
 		}
+
 		var at = 0
 
 		while at <= n {
@@ -102,19 +107,21 @@ test "slice and view to the end of a string read no byte past it" {
 			}
 			at += 1
 		}
+
 		i += 1
 	}
 }
 
-// The same texts through the other string operations that have a fast path: each result must equal the one from an
-// ordinary copy, and none may read past the end.
+// The same texts through the other string operations that have a fast path: each result
+// must equal the one from an ordinary copy, and none may read past the end.
 test "string operations read no byte past the end of a string" {
 	var text = ""
 	var i = 0
 
 	while i < 40 {
 		text = f"{text}{if i % 3 == 0 { "é" } else { "a" }}"
-		edge := msrt_test_edge_string(text)
+
+		edge := edge_string(text)
 		same := text.clone()
 		expect_equal(edge == same, true)?
 		expect_equal(edge < same, false)?
@@ -125,11 +132,14 @@ test "string operations read no byte past the end of a string" {
 		expect_equal(edge.trim(), same.trim())?
 		expect_equal(edge.upper(), same.upper())?
 		expect_equal(edge.replace("a", "b"), same.replace("a", "b"))?
-		expect_equal(edge.split("é").collect().length(), same.split("é").collect().length())?
+		expect_equal(
+			edge.split("é").collect().length(),
+			same.split("é").collect().length(),
+		)?
 		expect_equal(f"{edge}{edge}", f"{same}{same}")?
 		expect_equal(edge.slice(1, -1), same.slice(1, -1))?
-		var count = 0
 
+		var count = 0
 		for c in edge.chars() {
 			count += c.length()
 		}
@@ -137,6 +147,5 @@ test "string operations read no byte past the end of a string" {
 		i += 1
 	}
 }
-
 // expect-exit: 0
 // expect-tests: passed=7 failed=0
