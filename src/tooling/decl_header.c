@@ -75,21 +75,18 @@ static MsSpan formatted(MsArena *arena, MsSpan header) {
 
 /* The written header of the function declared on the line holding `offset`, and where `offset` falls in it. Empty when the
  * line declares no function. */
-static MsSpan raw_header(MsSpan source, size_t offset, size_t *rel) {
+static MsSpan raw_header(MsSpan source, size_t offset) {
   if (offset > source.len) return ms_span_of(NULL, 0);
   size_t start = offset;
   while (start > 0 && source.ptr[start - 1] != '\n') start--;
   while (start < offset && (source.ptr[start] == ' ' || source.ptr[start] == '\t')) start++;
   if (!has_fn_word(ms_span_of(source.ptr + start, offset - start))) return ms_span_of(NULL, 0);
   const size_t end = header_end(source, offset);
-  const MsSpan raw = ms_span_of(source.ptr + start, end - start);
-  *rel = offset - start;
-  return raw;
+  return ms_span_of(source.ptr + start, end - start);
 }
 
 MsSpan ms_declaration_header(MsArena *arena, MsSpan source, size_t offset) {
-  size_t rel;
-  const MsSpan raw = raw_header(source, offset, &rel);
+  const MsSpan raw = raw_header(source, offset);
   return raw.len == 0 ? raw : formatted(arena, trim(raw));
 }
 
@@ -127,6 +124,16 @@ static bool parameter_type(MsSpan segment, size_t *from, size_t *to) {
   *from = at;
   *to = end;
   return end > at;
+}
+
+/* Where `name` stands in `text` as a declared name: after a space or `.`, before `(` or `[`. SIZE_MAX when it does not. */
+static size_t name_at(MsSpan text, MsSpan name) {
+  for (size_t i = 0; i + name.len < text.len; i++) {
+    if (!ms_span_equal(ms_span_of(text.ptr + i, name.len), name) || (i > 0 && text.ptr[i - 1] != ' ' && text.ptr[i - 1] != '.')) continue;
+    const uint8_t next = text.ptr[i + name.len];
+    if (next == '(' || next == '[') return i;
+  }
+  return SIZE_MAX;
 }
 
 /* The written header with `types` in place of its parameter and result types. */
@@ -182,10 +189,9 @@ static void substitute(MsStrBuild *out, MsSpan raw, size_t rel, MsSpan name, con
   }
 }
 
-MsSpan ms_declaration_signature(MsArena *arena, MsSpan source, size_t offset, MsSpan name, const MsSigTypes *types) {
-  size_t rel;
-  const MsSpan raw = raw_header(source, offset, &rel);
-  if (raw.len == 0) return raw;
+MsSpan ms_signature_text(MsArena *arena, MsSpan raw, MsSpan name, const MsSigTypes *types) {
+  const size_t rel = name_at(raw, name);
+  if (rel == SIZE_MAX) return ms_span_of(NULL, 0);
   MsStrBuild written = ms_strbuild_new();
   if (types != NULL) {
     substitute(&written, raw, rel, name, types);
@@ -194,11 +200,11 @@ MsSpan ms_declaration_signature(MsArena *arena, MsSpan source, size_t offset, Ms
   }
   const MsSpan header = formatted(arena, trim(ms_strbuild_span(&written)));
   ms_strbuild_free(&written);
-  /* From the parameter list on: past the name and any type parameters. */
-  for (size_t i = 0; i + name.len < header.len; i++) {
-    if (!ms_span_equal(ms_span_of(header.ptr + i, name.len), name) || (i > 0 && header.ptr[i - 1] != ' ' && header.ptr[i - 1] != '.')) continue;
-    const size_t at = i + name.len;
-    if (at < header.len && (header.ptr[at] == '(' || header.ptr[at] == '[')) return ms_span_of(header.ptr + at, header.len - at);
-  }
-  return ms_span_of(NULL, 0);
+  const size_t at = name_at(header, name);
+  return at == SIZE_MAX ? ms_span_of(NULL, 0) : ms_span_of(header.ptr + at + name.len, header.len - at - name.len);
+}
+
+MsSpan ms_declaration_signature(MsArena *arena, MsSpan source, size_t offset, MsSpan name, const MsSigTypes *types) {
+  const MsSpan raw = raw_header(source, offset);
+  return raw.len == 0 ? raw : ms_signature_text(arena, raw, name, types);
 }

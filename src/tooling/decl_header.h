@@ -22,4 +22,8 @@ typedef struct MsSigTypes {
  * call shows the types it instantiates. Empty when the line declares no such function. The text lives in the arena. */
 MsSpan ms_declaration_signature(MsArena *arena, MsSpan source, size_t offset, MsSpan name, const MsSigTypes *types);
 
+/* The same for a header written as `raw` (`fn Point(x Int, y Int) Point`): a caller whose declaration is not a function, such
+ * as a record, writes its constructor's header from the source lines that declare it. */
+MsSpan ms_signature_text(MsArena *arena, MsSpan raw, MsSpan name, const MsSigTypes *types);
+
 #endif
