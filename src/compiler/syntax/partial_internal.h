@@ -28,8 +28,6 @@ bool partial_is_candidate_line(MsSpan line);
 bool partial_root_start(MsSpan source);
 /* Whether a parsed chunk holds the nodes of one written root. */
 bool partial_single_root(const MsModule *module);
-/* The name a declaration chunk that failed to parse introduces. */
-bool partial_declared_name(MsSpan chunk, MsSpan *name);
 
 /* ---- statement recovery ---- */
 

@@ -7,7 +7,6 @@ MS_LIST_DEFINE(LineList, line_list, MsSpan)
 MS_LIST_DEFINE(OffsetList, offset_list, size_t)
 MS_LIST_DEFINE(ImportBuf, import_buf, MsImport)
 MS_LIST_DEFINE(DeclBuf, decl_buf, MsDecl *)
-MS_LIST_DEFINE(SpanBuf, span_buf, MsSpan)
 MS_LIST_DEFINE(RangeBuf, range_buf, MsOffsetRange)
 
 /* A probe records the parse of one candidate root: where it ends, and its error. */
@@ -168,7 +167,7 @@ static int64_t compare_issues(uint8_t *env, const uint8_t *a, const uint8_t *b) 
 typedef struct Result {
   ImportBuf imports;
   DeclBuf decls;
-  SpanBuf omitted;
+  RangeBuf omitted;
   RangeBuf recovered;
   uint32_t node_count;
   DiagList diags;
@@ -221,10 +220,7 @@ static void parse_chunks(Partial *partial, Split *split, Result *result) {
     if (chunk_error(partial, split, start, end, line_offset, &error)) {
       DiagList issues = {0};
       if (!partial_recover_statements(partial, chunk, where, &error, &text, &issues)) {
-        MsSpan name;
-        if (partial_declared_name(chunk, &name)) {
-          span_buf_push(&result->omitted, name);
-        }
+        range_buf_push(&result->omitted, (MsOffsetRange){(uint32_t)start, (uint32_t)end});
         diag_list_push(&result->diags, error);
         diag_list_free(&issues);
         continue;
@@ -257,7 +253,7 @@ static void export_module(MsArena *arena, const Result *result, MsModule *module
   module->ndecls = (uint32_t)result->decls.len;
   module->decls = copy_buf(arena, result->decls.ptr, result->decls.len, sizeof(MsDecl *), _Alignof(MsDecl *));
   module->nomitted = (uint32_t)result->omitted.len;
-  module->omitted = copy_buf(arena, result->omitted.ptr, result->omitted.len, sizeof(MsSpan), _Alignof(MsSpan));
+  module->omitted = copy_buf(arena, result->omitted.ptr, result->omitted.len, sizeof(MsOffsetRange), _Alignof(MsOffsetRange));
   module->nrecovered = (uint32_t)result->recovered.len;
   module->recovered = copy_buf(arena, result->recovered.ptr, result->recovered.len, sizeof(MsOffsetRange),
                                _Alignof(MsOffsetRange));
@@ -266,7 +262,7 @@ static void export_module(MsArena *arena, const Result *result, MsModule *module
 static void free_result(Result *result) {
   import_buf_free(&result->imports);
   decl_buf_free(&result->decls);
-  span_buf_free(&result->omitted);
+  range_buf_free(&result->omitted);
   range_buf_free(&result->recovered);
   diag_list_free(&result->diags);
 }

@@ -195,7 +195,11 @@ void lsp_document_symbols(const LspDocList *docs, const LspDoc *doc, MsStrBuild 
     for (uint32_t i = 0; i < tree->ndecls; i++) {
       const MsDecl *decl = tree->decls[i];
       if (decl->synthetic && decl->kind == MS_D_INTERFACE) continue;
-      const size_t next = i + 1 < tree->ndecls ? tree->decls[i + 1]->pos.offset : outline.source.len;
+      size_t next = i + 1 < tree->ndecls ? tree->decls[i + 1]->pos.offset : outline.source.len;
+      /* A declaration that did not parse is not in the tree, but it still ends this one. */
+      for (uint32_t k = 0; k < tree->nomitted; k++) {
+        if (tree->omitted[k].start > decl->pos.offset && tree->omitted[k].start < next) next = tree->omitted[k].start;
+      }
       size_t end = block_end(&outline, next);
       if (end < decl->pos.offset) end = decl->pos.offset;
       if (!first) ms_strbuild_append_byte(out, ',');

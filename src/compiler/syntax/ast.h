@@ -433,9 +433,9 @@ typedef struct MsModule {
   MsDecl **decls;
   uint32_t ndecls;
   uint32_t node_count; /* node ids are 0..node_count */
-  /* Editor recovery only: names of declarations left out and the spans that parsed after
+  /* Editor recovery only: the source ranges of declarations left out, and the spans that parsed after
    * blanking invalid statements. */
-  MsSpan *omitted;
+  MsOffsetRange *omitted;
   uint32_t nomitted;
   MsOffsetRange *recovered;
   uint32_t nrecovered;

@@ -43,6 +43,16 @@ bool ms_lex_at(MsArena *arena, MsSpan source, uint32_t base_offset, uint32_t bas
  * declaration; one resets the delimiter depth. The result has `nlines` entries from `arena`. */
 bool *ms_lex_continuations(MsArena *arena, MsSpan source, const bool *roots, size_t nroots, size_t *nlines);
 
+typedef enum MsSkimKind { MS_SKIM_COMMENT, MS_SKIM_TEXT } MsSkimKind;
+typedef struct MsSkimSpan {
+  MsSkimKind kind;
+  size_t start, end; /* byte offsets of `source` */
+} MsSkimSpan;
+
+/* The comments and text literals of `source` in order, ending where the lexer's rules end them even when the
+ * source does not lex (an unterminated one runs to its line or the end). The spans come from `arena`. */
+size_t ms_lex_skim(MsArena *arena, MsSpan source, MsSkimSpan **out);
+
 /* Whether `source` ends inside an unterminated delimiter or multi-line text. A line that fails to lex is ignored
  * whole, so a lexical error in the middle does not hide what the lines after it close. */
 bool ms_lex_ends_open(MsArena *arena, MsSpan source);
