@@ -11,7 +11,9 @@
  * branch to them as unlikely. */
 #include "compiler/mir/mir_expand.h"
 
+
 #include "compiler/mir/mir_analysis.h"
+#include "compiler/mir/mir_layout.h"
 #include "compiler/mir/mir_pass.h"
 
 static bool is_join(const MirModule *module, const MirInst *inst) {
@@ -59,6 +61,7 @@ typedef struct Expander {
   uint32_t at;
   uint32_t post_index, post_unwrap; /* `msrt_post_index`, `msrt_post_unwrap_none`, interned on first use */
   MirIdList joined;                 /* the `fault.site` results the flag of a join block stands for */
+  uint32_t *uses;                   /* by value: how often the function reads it; NULL until a push needs it */
 } Expander;
 
 static MirValue emit(Expander *e, MirBlockData *block, MirOp op, const MirValue *args, uint32_t nargs,
@@ -393,6 +396,94 @@ static void expand_push(Expander *e, const MirInst *inst, MirBlockData *cur) {
   *cur = next;
 }
 
+static void count_use(void *context, MirValue value) {
+  uint32_t *uses = context;
+  uses[value]++;
+}
+
+/* How often each value of the function is read, counted once per function. */
+static const uint32_t *use_counts(Expander *e) {
+  if (e->uses == NULL) {
+    e->uses = MS_ARENA_NEW_ARRAY(&e->module->arena, uint32_t, e->func->values.len + 1);
+    for (size_t value = 0; value < e->func->values.len + 1; value++) {
+      e->uses[value] = 0;
+    }
+    for (size_t bi = 0; bi < e->func->blocks.len; bi++) {
+      const MirBlockData *data = &e->func->blocks.ptr[bi];
+      for (size_t ii = 0; ii < data->insts.len; ii++) {
+        for (uint32_t arg = 0; arg < data->insts.ptr[ii].nargs; arg++) {
+          e->uses[data->insts.ptr[ii].args[arg]]++;
+        }
+      }
+      mir_term_each_value(&data->term, count_use, e->uses);
+    }
+  }
+  return e->uses;
+}
+
+/* A push whose updated list goes straight back (`put slot, updated`, and nothing else reads it). */
+static bool push_put(Expander *e, const MirBlockData *block, size_t index) {
+  const MirInst *push = &block->insts.ptr[index];
+  if (push->op != MOP_ListPush || index + 1 >= block->insts.len) {
+    return false;
+  }
+  const MirInst *put = &block->insts.ptr[index + 1];
+  /* The list was taken from the very place it goes back to, with nothing in between, so only its length changes. */
+  const MirInst *take = index > 0 ? &block->insts.ptr[index - 1] : NULL;
+  return put->op == MOP_Put && put->nargs == 2 && put->args[1] == push->res && use_counts(e)[push->res] == 1 &&
+         take != NULL && take->op == MOP_Take && take->res == push->args[0] && take->args[0] == put->args[0] &&
+         use_counts(e)[take->res] == 1;
+}
+
+/* `put slot, list.push l, v` with each way to the element its own put: a list with room only has a new length, so
+ * the store of the pointer and capacity just read from the slot is dead, where one put after the join would store
+ * all three every time. */
+static void expand_push_put(Expander *e, const MirInst *inst, const MirInst *put, MirBlockData *cur) {
+  const MirLoc loc = inst->loc;
+  const MirValue list = inst->args[0];
+  const MirTy ty = mir_value_ty(e->func, list);
+  const MirValue len = emit(e, cur, MOP_ListLen, &list, 1, mir_imm_none(), MIR_INT, loc);
+  const MirValue cap = emit(e, cur, MOP_ListCap, &list, 1, mir_imm_none(), MIR_INT, loc);
+  const MirValue full = emit_cmp(e, cur, MOP_ICmp, MCC_EQ, len, cap, loc);
+  const MirBlock grow = e->next;
+  const MirBlock room = e->next + 1;
+  const MirBlock after = e->next + 2;
+  e->next += 3;
+  cur->term = (MirTerm){.kind = MT_CONDBR, .value = full, .a = {.block = grow}, .b = {.block = room}};
+  mir_block_list_push(&e->out, *cur);
+  MirBlockData slow = mir_block_empty();
+  slow.cold = true;
+  slow.term_loc = loc;
+  {
+    const MirValue zero = emit_int(e, &slow, 0, loc);
+    const MirValue empty = emit_cmp(e, &slow, MOP_ICmp, MCC_EQ, cap, zero, loc);
+    const MirValue one = emit_int(e, &slow, 1, loc);
+    const MirValue doubled = emit_pure2(e, &slow, MOP_Shl, cap, one, loc);
+    const MirValue four = emit_int(e, &slow, 4, loc);
+    const MirValue new_cap = emit_select(e, &slow, empty, four, doubled, loc);
+    const MirValue grow_args[2] = {list, new_cap};
+    const MirValue grown = emit(e, &slow, MOP_ListGrow, grow_args, 2, mir_imm_none(), ty, loc);
+    const MirValue push_args[2] = {grown, inst->args[1]};
+    const MirValue pushed = emit(e, &slow, MOP_ListPushU, push_args, 2, mir_imm_none(), ty, loc);
+    const MirValue stored[2] = {put->args[0], pushed};
+    (void)emit(e, &slow, MOP_Put, stored, 2, put->imm, MIR_NONE, put->loc);
+  }
+  slow.term = (MirTerm){.kind = MT_BR, .value = MIR_NONE, .a = {.block = after}};
+  mir_block_list_push(&e->out, slow);
+  MirBlockData fast = mir_block_empty();
+  fast.term_loc = loc;
+  {
+    const MirValue push_args[2] = {list, inst->args[1]};
+    const MirValue pushed = emit(e, &fast, MOP_ListPushU, push_args, 2, mir_imm_none(), ty, loc);
+    /* Only the length differs from what the slot holds: the put writes that one leaf. */
+    const MirValue stored[2] = {put->args[0], pushed};
+    (void)emit(e, &fast, MOP_Put, stored, 2, mir_imm_int(MIR_LIST_LEN_LEAF), MIR_NONE, put->loc);
+  }
+  fast.term = (MirTerm){.kind = MT_BR, .value = MIR_NONE, .a = {.block = after}};
+  mir_block_list_push(&e->out, fast);
+  *cur = mir_block_empty();
+}
+
 static uint32_t primitive(Expander *e, uint32_t *cached, const char *name, const MirTy *params, uint32_t count,
                           MirTy ret) {
   if (*cached == MIR_NONE) {
@@ -518,11 +609,11 @@ static bool has_site(const MirBlockData *block, size_t at) {
   return false;
 }
 
-static uint32_t block_continuations(const MirBlockData *block, bool checks) {
+static uint32_t block_continuations(Expander *e, const MirBlockData *block, bool checks) {
   uint32_t count = 0;
   for (size_t index = 0; index < block->insts.len; index++) {
     const MirOp op = (MirOp)block->insts.ptr[index].op;
-    const uint32_t more = continuations(op, checks);
+    const uint32_t more = continuations(op, checks) + (push_put(e, block, index) ? 1 : 0);
     const bool exits = more == 1 && has_site(block, index);
     if (more == 1 && wraps_index(op)) {
       count += exits ? 4 : 2; /* an in-range test, then the slow block that counts from the end */
@@ -549,7 +640,10 @@ static void expand_block(Expander *e, MirBlockData *old, MirBlockData *cur) {
         continue; /* the flag is a block parameter of the join */
       }
     }
-    if (expands(e->module, inst)) {
+    if (push_put(e, old, index)) {
+      expand_push_put(e, inst, &old->insts.ptr[index + 1], cur);
+      index++; /* the put is part of it */
+    } else if (expands(e->module, inst)) {
       expand_inst(e, inst, cur);
     } else {
       mir_inst_list_push(&cur->insts, *inst);
@@ -563,7 +657,7 @@ static void expand_func(Expander *e) {
   uint32_t total = 0;
   for (size_t index = 0; index < old.len; index++) {
     start[index] = total;
-    total += 1 + block_continuations(&old.ptr[index], e->checks);
+    total += 1 + block_continuations(e, &old.ptr[index], e->checks);
   }
   e->fault_base = total;
   mir_block_list_reserve(&e->out, total);
