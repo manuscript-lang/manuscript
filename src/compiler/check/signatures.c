@@ -6,9 +6,19 @@
  * variables, which the earlier pass made. Unknown names are reported for the program's own modules. */
 #include "compiler/check/resolve_internal.h"
 
+/* The most type parameters a function declares (a method counts its receiver's): the checker and the lowerer bind a
+ * call's variables in 16-slot arrays, and a function past them lost the extra variables and failed in lowering. */
+enum { MAX_FUNCTION_TYPE_PARAMS = 16 };
+
 static void resolve_bounds(Resolver *resolver, const MsSymbol *symbol) {
   MsCheckProgram *program = resolver->program;
   const MsTypeParams params = ms_check_decl_type_params(symbol->decl);
+  if (resolver->report && symbol->kind == MS_SYMBOL_FN && symbol->var_count > MAX_FUNCTION_TYPE_PARAMS &&
+      params.len > 0) {
+    const uint32_t at = params.len > MAX_FUNCTION_TYPE_PARAMS ? MAX_FUNCTION_TYPE_PARAMS : params.len - 1;
+    ms_check_report(program, resolver->module, params.ptr[at]->pos, MS_CHECK_TYPE,
+                    ms_string_static(ms_span_of_text("a function takes at most 16 type parameters; group related ones into a record type")));
+  }
   const size_t scope = resolver->names.len - (params.len < symbol->var_count ? params.len : symbol->var_count);
   bool defaulted = false;
   for (uint32_t index = 0; index < params.len && index < symbol->var_count; index++) {
