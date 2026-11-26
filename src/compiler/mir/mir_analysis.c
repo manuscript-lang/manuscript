@@ -29,6 +29,9 @@ static bool result_is_borrow(const MirModule *module, const MirFunc *func, const
   }
   case MOP_Call:
     return inst->imm.tag == MI_FUNC && module->funcs.ptr[inst->imm.a].ret_borrowed;
+  case MOP_CallRt: /* a native that views its argument (`@borrows`) hands back no owner; a list of views is its own */
+    return inst->imm.tag == MI_EXT && module->externs.ptr[inst->imm.a].views && inst->nargs > 0 &&
+           mir_value_ty(func, inst->args[0]) == mir_value_ty(func, inst->res);
   case MOP_CallMethod:
     return inst->imm.tag == MI_METHOD && inst->imm.a < module->ifaces.len && inst->imm.b < module->ifaces.ptr[inst->imm.a].nmethods &&
            module->ifaces.ptr[inst->imm.a].methods[inst->imm.b].ret_borrowed;

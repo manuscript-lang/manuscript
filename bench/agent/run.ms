@@ -153,7 +153,7 @@ fn run_one(
 	).out.trim()
 	rec := RunRecord(
 		toolchain: toolchain.clone(),
-		skill: if skill == "e3b0c44298fc" { "" } else { skill },
+		skill: if skill == "e3b0c44298fc" { "" } else { skill.clone() },
 		run_id: run_id.clone(),
 		ts: now().unix_seconds(),
 		tag: tag.clone(),

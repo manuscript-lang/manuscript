@@ -170,7 +170,7 @@ fn hand_lines(data Bytes) Int! {
 
 fn stdlib_lines(data Bytes) Int! {
 	var count = 0
-	for line in from_bytes(data) | lines {
+	for line in from_bytes(data.clone()) | lines {
 		count += line.length()
 	}
 	return ok(count)

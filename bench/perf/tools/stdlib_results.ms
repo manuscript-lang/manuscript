@@ -113,7 +113,7 @@ export fn case_labels(names List[String]) Map[String, String] {
 
 	for name in names {
 		parts := name.split("::")
-		s := parts.slice(1, parts.length()).get_or([]).join("::")
+		s := parts.slice(1, parts.length()).clone().get_or([]).join("::")
 		label := if parts.length() > 1 { s } else { name.clone() }
 		short.add(name.clone(), label.clone())
 		counts.add(label.clone(), counts.get_or(label, 0) + 1)
@@ -126,7 +126,7 @@ export fn case_labels(names List[String]) Map[String, String] {
 		s := short.get_or(name, "")
 		labels.add(
 			name.clone(),
-			if counts.get_or(s, 0) == 1 { s } else { name.clone() },
+			if counts.get_or(s, 0) == 1 { s.clone() } else { name.clone() },
 		)
 		distinct.add(labels.get_or(name, "").clone())
 	}

@@ -42,7 +42,7 @@ fn gen_big() String {
 			"INSERT INTO sales VALUES " + vals.slice(
 				i,
 				if i + 20 < vals.length() { i + 20 } else { vals.length() },
-			).get_or([]).join(", ") + ";"
+			).clone().get_or([]).join(", ") + ";"
 		)
 		i += 20
 	}

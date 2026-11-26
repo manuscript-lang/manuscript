@@ -103,7 +103,7 @@ fn solve_line(line String) String {
 
 		var items = List[Thing]()
 
-		for tok in t.slice(2, t.length()).get_or([]) {
+		for tok in t.slice(2, t.length()).clone().get_or([]) {
 			p := tok.split(":")
 			if (
 				p.length() != 2
@@ -121,10 +121,10 @@ fn solve_line(line String) String {
 	if cmd == "coins" {
 		if t.length() < 3 { return bad }
 
-		rest := t.slice(1, t.length()).get_or([])
+		rest := t.slice(1, t.length()).clone().get_or([])
 		if not rest.all(x => full_match(NUM, x)) { return bad }
 
-		cs := t.slice(2, t.length()).get_or([]).map(x => x.parse_int() or 0)
+		cs := t.slice(2, t.length()).clone().get_or([]).map(x => x.parse_int() or 0)
 		if (cs.min() or 0) < 1 { return bad }
 
 		return coins(t[1].parse_int() or 0, cs)

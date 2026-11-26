@@ -17,7 +17,7 @@ fn d[T](xs List[T]) Int => xs.length()
 
 fn e[T Clonable](m Map[String, T]) Map[String, T] => m.clone()
 
-fn f[T Clonable](xs List[T]) List[T] => xs.slice(0, 1).get_or([]).clone()
+fn f[T Clonable](xs List[T]) List[T] => xs.slice(0, 1).clone().get_or([])
 
 fn g[T Hashable](xs List[T]) Set[T] {
 	var s = Set[T]()

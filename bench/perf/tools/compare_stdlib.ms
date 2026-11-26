@@ -114,7 +114,7 @@ fn run(opts Map[String, String], repeats, samples Int) Result[String, Error] {
 		}
 	}
 
-	want := expected or Map[String, Int]()
+	want := (expected or Map[String, Int]()).clone()
 	labels := case_labels(names)
 	var table = [
 		f"Median of {repeats} alternating runs of {samples} samples; all {want.length()} cases and operation counts verified.",

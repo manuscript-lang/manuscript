@@ -250,7 +250,7 @@ static bool native_returns_element(const PlaceReturns *counts, const MsCall *cal
 static bool call_borrows(const PlaceReturns *counts, const MsExpr *value) {
   const MsCall *call = ms_facts_call(counts->facts, value->id);
   if (call != NULL && call->callee.kind == MS_REF_NATIVE) {
-    return native_returns_element(counts, call, value);
+    return ms_own_declared_ref_result(counts->cx->program, &call->callee) || native_returns_element(counts, call, value); /* a declared `&T` views its arguments */
   }
   if (call == NULL || counts->depth >= 4 || (call->callee.kind != MS_REF_FUNCTION && call->callee.kind != MS_REF_METHOD)) {
     return false;
@@ -260,7 +260,7 @@ static bool call_borrows(const PlaceReturns *counts, const MsExpr *value) {
     return true; /* a recursive call answers what the function's other returns answer */
   }
   if (callee != NULL && (callee->bodiless || callee->external)) {
-    return native_returns_element(counts, call, value);
+    return ms_own_declared_ref_result(counts->cx->program, &call->callee) || native_returns_element(counts, call, value);
   }
   if (callee == NULL || !ms_own_result_is_borrowed(counts->cx->program, call->callee.decl.module, call->callee.decl.node) ||
       (call->callee.kind == MS_REF_METHOD && ms_method_of_func(callee)->consuming)) {
@@ -384,28 +384,6 @@ static bool body_closes(const Lower *cx, const LowerTarget *target, const LowerS
   return closes.found;
 }
 
-/* Whether a body returns `m.get(k) or d`: an instance whose value is an Optional stores it as it is, so the answer is no view of
- * the entry and the result cannot borrow. */
-typedef struct EntryOr {
-  const Lower *cx;
-  const MsFacts *facts;
-  bool found;
-} EntryOr;
-
-static void note_entry_or(void *ctx, const MsStmt *stmt) {
-  EntryOr *scan = ctx;
-  const MsExpr *value = stmt->kind == MS_S_RETURN ? stmt->u.expr : NULL;
-  scan->found |= value != NULL && value->kind == MS_E_BINARY && value->op == MS_B_OR && value->u.bin.left->kind == MS_E_CALL &&
-                 ms_own_native_get(scan->cx->program, scan->facts, value->u.bin.left) == MS_NATIVE_GET_MAP;
-}
-
-static bool returns_entry_or(Lower *cx, const LowerTarget *target) {
-  EntryOr scan = {cx, &cx->program->modules.ptr[target->module].facts, false};
-  const MsVisitor visitor = {.ctx = &scan, .stmt = note_entry_or};
-  ms_walk_block(&visitor, target->func->body);
-  return scan.found;
-}
-
 static bool borrows_result(Lower *cx, const LowerTarget *target, const LowerSubst *subst, MirTy ret, const MirParam *params, uint32_t count) {
   const MirTyData *ret_data = mir_ty_data(cx->module, ret);
   const MsTypeRef *written = target->func != NULL ? target->func->result : NULL;
@@ -422,9 +400,6 @@ static bool borrows_result(Lower *cx, const LowerTarget *target, const LowerSubs
     if (params[index].mode == MM_MOVE) {
       return false; /* the body owns (and releases) a moved parameter: its part cannot outlive the call */
     }
-  }
-  if (ret_data->kind == MK_OPT && returns_entry_or(cx, target)) {
-    return false;
   }
   return returns_places(cx, target->module, target->func, ms_ty_result(&cx->program->types, target->ty), 0,
                         ret_data->kind == MK_OPT && mir_ty_opt_boxed(cx->module, ret_data->elem));

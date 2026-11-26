@@ -232,7 +232,7 @@ fn json_failure(before, after, out String, pairs Int) Result[Void, Error] {
 					return invalid(f"invalid identity/checksum/timer: {name}: {text}")
 				}
 
-				nums := all_ints(fields.slice(3, 6).get_or([]))?
+				nums := all_ints(fields.slice(3, 6).clone().get_or([]))?
 				if nums[1] <= 0 or nums[2] <= 0 {
 					return invalid(f"invalid identity/checksum/timer: {name}: {text}")
 				}
@@ -285,7 +285,7 @@ fn main() Int {
 		)
 	}
 
-	parsed := options(args.slice(4, args.length()).get_or([]), ["pairs"], [])
+	parsed := options(args.slice(4, args.length()).clone().get_or([]), ["pairs"], [])
 	if parsed.is_error() { return fail(parsed.err().message) }
 
 	pairs := parsed.get_or(Map[String, String]()).get_or("pairs", "9").parse_int() or 0

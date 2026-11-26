@@ -161,7 +161,7 @@ fn errors_table(runs List[Run], lang String) String {
 				place.replace_all(e, "", null).get_or(e.clone()),
 				"'X'",
 				null,
-			).get_or(e)
+			).get_or(e.clone())
 		)
 	)
 	stats := all.distinct().map(m => CodeStat(m.clone(), all.count(x => x == m)))

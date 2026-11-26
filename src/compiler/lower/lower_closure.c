@@ -691,7 +691,9 @@ static MirValue bound_native_method(LowerFn *fn, const MsExpr *expr, MirTy fn_ty
     (void)fn_fail(fn, "the operation `%.*s` cannot be used as a value yet", (int)operation.len, (const char *)operation.ptr);
     return MIR_NONE;
   }
-  if (reserved.ret != MIR_VOID && result != MIR_NONE) {
+  if (reserved.ret != MIR_VOID && result != MIR_NONE && !fn_owns_result(&body, result)) {
+    result = fn_relay_clone(&body, result); /* a function value answers an owned result: a view the native gives is copied for it */
+  } else if (reserved.ret != MIR_VOID && result != MIR_NONE) {
     (void)mir_b_emit(&body.b, MOP_ScopeDisown, &result, 1, (MirImm){0}, MIR_NONE);
   }
   fn_scope_unwind(&body, 0);

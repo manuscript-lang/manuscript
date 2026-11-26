@@ -444,6 +444,7 @@ typedef struct MirExtern {
   uint32_t nparams;
   MirTy ret;
   bool noreturn, pure, fresh, leaf, reads, retains;
+  bool views; /* `@borrows`: a result of its first argument's type is a view of it and owns nothing */
   uint8_t role; /* a MirRole */
   uint8_t twin; /* a MirTwin */
 } MirExtern;

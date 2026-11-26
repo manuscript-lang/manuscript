@@ -124,11 +124,13 @@ MirValue fn_map_entry_view(LowerFn *fn, const MsExpr *call) {
   if (ms_own_native_get(fn->cx->program, fn->facts, call) != MS_NATIVE_GET_MAP) {
     return MIR_NONE;
   }
-  /* a value that is itself an Optional is stored as it is, and the answer wraps it once more: no view of the entry */
+  /* An Optional value is stored as it is and the answer does not wrap it again (`V??` is `V?`), so the entry is the answer. */
   const MsTy map_ty = ms_facts_type(fn->facts, call->u.call.callee->u.member.left->id);
   const MirTy answer_ty = fn_type(fn, ms_facts_type(fn->facts, call->id));
-  if (map_ty == MS_TY_NONE || ms_ty_arg_count(&fn->cx->program->types, map_ty) != 2 ||
-      mir_ty_data(fn->cx->module, answer_ty)->elem != fn_type(fn, ms_ty_args(&fn->cx->program->types, map_ty)[1])) {
+  const MirTy stored_ty = map_ty == MS_TY_NONE || ms_ty_arg_count(&fn->cx->program->types, map_ty) != 2
+                              ? MIR_VOID : fn_type(fn, ms_ty_args(&fn->cx->program->types, map_ty)[1]);
+  const bool wraps = stored_ty != MIR_VOID && mir_ty_data(fn->cx->module, answer_ty)->elem == stored_ty;
+  if (!wraps && answer_ty != stored_ty) {
     return MIR_NONE;
   }
   const MsExpr *receiver = call->u.call.callee->u.member.left;
@@ -149,7 +151,7 @@ MirValue fn_map_entry_view(LowerFn *fn, const MsExpr *call) {
   mir_b_seal_block(&fn->b, miss);
   mir_b_switch_to(&fn->b, hit);
   const MirValue entry = mir_b_emit(&fn->b, MOP_Load, &address, 1, (MirImm){.tag = MI_TY, .a = entry_ty}, entry_ty);
-  const MirValue some = mir_b_emit(&fn->b, MOP_OptView, &entry, 1, (MirImm){0}, opt_ty);
+  const MirValue some = wraps ? mir_b_emit(&fn->b, MOP_OptView, &entry, 1, (MirImm){0}, opt_ty) : entry;
   mir_b_br(&fn->b, join, &some, 1);
   mir_b_switch_to(&fn->b, miss);
   const MirValue none = mir_b_emit(&fn->b, MOP_OptNone, NULL, 0, (MirImm){0}, opt_ty);

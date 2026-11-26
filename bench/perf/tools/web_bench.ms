@@ -112,7 +112,9 @@ fn wait_started(p Plan, port Int) Bool {
 }
 
 fn first_pid(pattern String) String {
-	return capture("pgrep", ["-f", pattern.clone()]).stdout.split("\n")[0].trim()
+	return capture("pgrep", ["-f", pattern.clone()]).stdout.split(
+		"\n"
+	)[0].trim().clone()
 }
 
 // Total system calls of all threads while strace is attached for `seconds`.
@@ -142,7 +144,7 @@ fn syscalls(pid String, seconds Int, file String) Int {
 }
 
 fn rss_kb(pid String) String {
-	return capture("ps", ["-o", "rss=", "-p", pid.clone()]).stdout.trim()
+	return capture("ps", ["-o", "rss=", "-p", pid.clone()]).stdout.trim().clone()
 }
 
 fn threads(pid String) Int {
@@ -457,7 +459,7 @@ fn main() Int {
 	}
 
 	fallback := if args[0] == "run" { "5" } else { "3" }
-	given := if args.length() == 2 { args[1].clone() } else { fallback }
+	given := if args.length() == 2 { args[1].clone() } else { fallback.clone() }
 	seconds := given.parse_int() or 0
 	if seconds <= 0 { return usage("seconds must be a positive integer") }
 

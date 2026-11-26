@@ -46,10 +46,7 @@ fn main() Int {
 		if not say(works(command, ["--version"]), command, command) { failed += 1 }
 	}
 
-	expected_node := (
-		read_file(".node-version").wait().get().decode_utf8()
-		or "".trim()
-	)
+	expected_node := (read_file(".node-version").wait().get().decode_utf8() or "")
 	node := capture("node", ["--version"]).trim()
 	if not say(
 		node == f"v{expected_node}",

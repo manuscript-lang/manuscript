@@ -77,7 +77,7 @@ export type Lang {
 
 // The extension of the solution file, such as `.ms`.
 fn Lang.suffix() String {
-	base := self.solution.split("/").last() or ""
+	base := (self.solution.split("/").last() or "").clone()
 	at := base.last_index_of(".")
 	if at != null { return base.slice(at, base.length()) }
 
@@ -161,7 +161,7 @@ export fn load_languages(ids List[String]) List[Lang] {
 
 		var template = entry.key.clone()
 		t := d.get("template")
-		if t != null { template = t.as_string() or entry.key }
+		if t != null { template = t.as_string() or entry.key.clone() }
 		out.append(
 			Lang(
 				entry.key.clone(),

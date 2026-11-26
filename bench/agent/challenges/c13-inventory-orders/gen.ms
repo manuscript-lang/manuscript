@@ -113,7 +113,7 @@ fn solve(s String) String {
 			var items = List[Item]()
 			var bad = ""
 
-			for tok in t.slice(2, t.length()).get_or([]) {
+			for tok in t.slice(2, t.length()).clone().get_or([]) {
 				p := tok.split(":")
 
 				if p.length() != 2 or not full_match(SKU, p[0]) or not qty_ok(p[1]) {

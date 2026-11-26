@@ -290,7 +290,7 @@ bool fn_is_borrowed_view(LowerFn *fn, MirValue value) {
 
 /* The one switch of the rule against hidden copies: when true, a copy no `.clone()` asked for is a compile error.
  * Only a value that owns memory counts: a plain value is its own copy. */
-static const bool implicit_clone_is_error = false;
+static const bool implicit_clone_is_error = true;
 
 bool lower_hidden_copies_allowed(void) {
   return !implicit_clone_is_error;

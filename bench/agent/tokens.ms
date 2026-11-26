@@ -77,7 +77,7 @@ fn main() Int {
 	)
 
 	for i in 0..names.length() {
-		row := all.slice(i * 4, i * 4 + 4).get_or([])
+		row := all.slice(i * 4, i * 4 + 4).clone().get_or([])
 		for j in 0..4 { totals[j] += row[j] }
 		out = (
 			out

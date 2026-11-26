@@ -97,9 +97,9 @@ fn solve(s String) String {
 		}
 
 		ids := if c == "transfer" {
-			t.slice(1, 3).get_or([])
+			t.slice(1, 3).clone().get_or([])
 		} else {
-			t.slice(1, 2).get_or([])
+			t.slice(1, 2).clone().get_or([])
 		}
 		amount := t[t.length() - 1].clone()
 		var unknown = ""

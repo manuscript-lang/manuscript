@@ -785,7 +785,7 @@ type Vm {
 	wrote Bool = false
 }
 
-fn var Vm.fail(msg String) Void {
+fn var Vm.fail(move msg String) Void {
 	if self.trap == "" { self.trap = msg }
 }
 

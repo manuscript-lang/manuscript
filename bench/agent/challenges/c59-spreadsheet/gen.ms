@@ -22,7 +22,7 @@ fn strip_nl(text String) String {
 	while end > start and chars[end - 1] == "\n" {
 		end -= 1
 	}
-	return chars.slice(start, end).get_or([]).join("") + "\n"
+	return chars.slice(start, end).clone().get_or([]).join("") + "\n"
 }
 
 // `set KEY VALUE` lines for the flat list `pairs` of keys and values.

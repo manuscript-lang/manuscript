@@ -31,7 +31,7 @@ fn resolve_hashes(oracle, script String) String {
 	for groups in (found or panic("called Optional.get() on null")).capture_all(
 		out,
 		1000,
-	).get_or([]) {
+	).clone().get_or([]) {
 		shorts.append(groups[1].clone())
 	}
 
@@ -60,7 +60,7 @@ fn strip_nl(text String) String {
 	while end > start and chars[end - 1] == "\n" {
 		end -= 1
 	}
-	return chars.slice(start, end).get_or([]).join("") + "\n"
+	return chars.slice(start, end).clone().get_or([]).join("") + "\n"
 }
 
 fn W(name String, lines List[String] = []) String {
