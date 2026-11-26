@@ -272,7 +272,7 @@ bool fn_closing_local(const LowerFn *fn, const MsExpr *place, MirValue *slot, Mi
 MirValue fn_move_out_of_scope(LowerFn *fn, MirValue value);
 /* The payload of the optional `opt`, or `fallback` evaluated when it is none: the value of a parameter a function value
  * may leave out. The result is owned when its type needs a drop. */
-MirValue fn_unlift(LowerFn *fn, MirValue opt, const MsExpr *fallback, MirTy elem);
+MirValue fn_unlift(LowerFn *fn, MirValue opt, const MsExpr *fallback, MirTy elem, MirMode mode);
 /* Makes the scope `scope` own `value` (kind 0 drops it). */
 void fn_own(LowerFn *fn, uint32_t scope, MirValue value);
 

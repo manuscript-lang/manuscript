@@ -301,7 +301,7 @@ static bool lower_lambda_body(Lower *cx, uint32_t index) {
     if (written != NULL && written->def != NULL && mir_ty_data(cx->module, ty)->kind == MK_OPT && ty != declared) {
       /* A parameter the function type lets the caller omit arrives as an optional: the default, which may read
        * a capture, fills a none once the captures are bound. */
-      fn.param_vars[at - 1] = mir_b_declare_var(&fn.b, declared, MM_MOVE);
+      fn.param_vars[at - 1] = mir_b_declare_var(&fn.b, declared, mode == MM_MOVE ? MM_MOVE : MM_BORROW);
       lifted[at] = true;
       continue;
     }
@@ -342,7 +342,8 @@ static bool lower_lambda_body(Lower *cx, uint32_t index) {
   for (uint32_t at = 1; ok && at < reserved.nparams && at <= LOWER_MAX_ARGS; at++) {
     if (lifted[at]) {
       const MirTy declared = fn_type(&fn, ms_ty_params(&cx->program->types, source_ty)[at - 1].ty);
-      const MirValue filled = fn_unlift(&fn, values[at], lambda.expr->u.lambda.params.ptr[at - 1]->def, declared);
+      const MirValue filled = fn_unlift(&fn, values[at], lambda.expr->u.lambda.params.ptr[at - 1]->def, declared,
+                                   (MirMode)reserved.params[at].mode);
       ok = filled != MIR_NONE;
       if (ok) {
         mir_b_def_var(&fn.b, fn.param_vars[at - 1], filled);
@@ -442,7 +443,7 @@ static uint32_t lower_defaulting_closure(Lower *cx, MirTy fn_ty, uint32_t callee
       continue;
     }
     const MsParam *written = at - 1 < declared->len ? declared->ptr[at - 1] : NULL;
-    args[at - 1] = fn_unlift(&fn, values[at], written != NULL ? written->def : NULL, want);
+    args[at - 1] = fn_unlift(&fn, values[at], written != NULL ? written->def : NULL, want, (MirMode)target.params[at - 1].mode);
     if (args[at - 1] == MIR_NONE) {
       return MIR_NONE;
     }

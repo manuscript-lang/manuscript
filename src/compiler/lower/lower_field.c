@@ -112,6 +112,9 @@ static bool field_cell_exact(const MirModule *module, uint32_t record, uint32_t 
       (own->kind == MK_OBJ && own->obj_class == MIR_OBJ_HANDLE)) {
     return true; /* one leaf */
   }
+  if (word_leaves(module, def->fields[field].ty, 4)) {
+    return true; /* whole words stay whole words: their offsets from the field's first leaf do not depend on what precedes it */
+  }
   for (uint32_t index = 0; index < field; index++) {
     if (!word_leaves(module, def->fields[index].ty, 4)) {
       return false;

@@ -181,7 +181,7 @@ test "Map fold uses ordered snapshots and returns independent accumulators" {
 	var chain_1 = Map[String, Int]()
 	chain_1.add("a", 3)
 
-	nested := chain_1.fold(success, (acc, k, v) => acc.map(n => (n + v)))
+	nested := chain_1.fold(success.clone(), (acc, k, v) => acc.map(n => (n + v)))
 	nested.get() | expect_equal(5)?
 	empty_calls.is_empty() | expect_true?
 }

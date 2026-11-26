@@ -8,7 +8,49 @@
 
 /* ---- parameters a function value may leave out ---- */
 
-MirValue fn_unlift(LowerFn *fn, MirValue opt, const MsExpr *fallback, MirTy elem) {
+/* A borrowed parameter filled from `opt`: the payload of a given argument is the caller's, read in place; a default is
+ * moved into a holder (an optional the enclosing scope owns, empty on the given path) and viewed from there. */
+static MirValue unlift_view(LowerFn *fn, MirValue opt, const MsExpr *fallback, MirTy elem) {
+  const MirTy opt_ty = mir_b_ty(&fn->b, opt);
+  const MirValue present = mir_b_emit(&fn->b, MOP_OptIsSome, &opt, 1, (MirImm){0}, MIR_BOOL);
+  const MirBlock some_block = mir_b_new_block(&fn->b);
+  const MirBlock none_block = mir_b_new_block(&fn->b);
+  const MirBlock join = mir_b_new_block(&fn->b);
+  const MirVar either = mir_b_declare_var(&fn->b, opt_ty, MM_BORROW);
+  const MirVar holder = mir_b_declare_var(&fn->b, opt_ty, MM_MOVE);
+  mir_b_br_if(&fn->b, present, some_block, NULL, 0, none_block, NULL, 0);
+  mir_b_seal_block(&fn->b, some_block);
+  mir_b_seal_block(&fn->b, none_block);
+  mir_b_switch_to(&fn->b, some_block);
+  mir_b_def_var(&fn->b, either, opt);
+  mir_b_def_var(&fn->b, holder, mir_b_emit(&fn->b, MOP_OptNone, NULL, 0, (MirImm){0}, opt_ty));
+  mir_b_br(&fn->b, join, NULL, 0);
+  mir_b_switch_to(&fn->b, none_block);
+  const MirTy saved_hint = fn->hint;
+  fn->hint = elem;
+  (void)fn_scope_begin(fn); /* the default's temporaries live only on this path */
+  const MirValue other = fallback != NULL ? fn_expr(fn, fallback, LW_MOVE) : MIR_NONE;
+  fn->hint = saved_hint;
+  if (other == MIR_NONE) {
+    return MIR_NONE;
+  }
+  (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &other, 1, (MirImm){0}, MIR_NONE);
+  const MirValue held = mir_b_emit(&fn->b, MOP_OptSome, &other, 1, (MirImm){0}, opt_ty);
+  mir_b_def_var(&fn->b, either, held);
+  mir_b_def_var(&fn->b, holder, held);
+  fn_scope_end(fn);
+  mir_b_br(&fn->b, join, NULL, 0);
+  mir_b_seal_block(&fn->b, join);
+  mir_b_switch_to(&fn->b, join);
+  fn_own(fn, fn_scope(fn), mir_b_use_var(&fn->b, holder));
+  const MirValue chosen = mir_b_use_var(&fn->b, either);
+  return mir_b_emit(&fn->b, MOP_OptGet, &chosen, 1, (MirImm){0}, elem);
+}
+
+MirValue fn_unlift(LowerFn *fn, MirValue opt, const MsExpr *fallback, MirTy elem, MirMode mode) {
+  if (mode != MM_MOVE && mir_needs_drop(fn->cx->module, elem)) {
+    return unlift_view(fn, opt, fallback, elem);
+  }
   const MirValue present = mir_b_emit(&fn->b, MOP_OptIsSome, &opt, 1, (MirImm){0}, MIR_BOOL);
   const MirBlock some_block = mir_b_new_block(&fn->b);
   const MirBlock none_block = mir_b_new_block(&fn->b);

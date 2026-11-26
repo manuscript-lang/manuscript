@@ -424,8 +424,12 @@ bool fn_list_element_addr(LowerFn *fn, const MsExpr *place, MirValue *addr) {
   MsExpr *container = NULL;
   MsExpr *key = NULL;
   *addr = MIR_NONE;
-  if (!ms_expr_index(place, &container, &key) || !fn_is_list(fn, container) || !lists_in_place(fn, container)) {
+  if (!ms_expr_index(place, &container, &key) || !fn_is_list(fn, container)) {
     return false;
+  }
+  if (!lists_in_place(fn, container)) { /* a list in a map entry or below one: its element lies at the entry's address */
+    MirTy element_ty = MIR_VOID;
+    return fn_place_changeable(fn, container) && fn_place_address(fn, place, addr, &element_ty);
   }
   const MirValue list = fn_expr(fn, container, LW_BORROW);
   if (list == MIR_NONE) {
@@ -532,6 +536,15 @@ static MirValue call_changing(LowerFn *fn, const MsExpr *place, MsName name, Mir
     if (element == MIR_NONE) {
       return MIR_NONE;
     }
+    wanted[0] = element;
+    return call_native(fn, name, wanted, count, ret, result_slot);
+  }
+  /* An entry of a map held in place: the native changes it where it lies, at the entry's address. */
+  MsExpr *entry_map = NULL;
+  MsExpr *entry_key = NULL;
+  MirTy entry_ty = MIR_VOID;
+  if (place != NULL && ms_expr_index(place, &entry_map, &entry_key) && !fn_is_list(fn, entry_map) &&
+      fn_place_address(fn, place, &element, &entry_ty)) {
     wanted[0] = element;
     return call_native(fn, name, wanted, count, ret, result_slot);
   }

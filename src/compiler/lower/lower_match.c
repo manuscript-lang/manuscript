@@ -356,7 +356,12 @@ MirValue fn_match(LowerFn *fn, const MsExpr *expr) {
   }
   match.kind = mir_ty_data(fn->cx->module, match.ty)->kind;
   const MsExpr *subject = expr->u.match.scrutinee;
-  match.consumed = ((subject->kind == MS_E_NAME && ms_facts_use(fn->facts, subject->id) == MS_USE_MOVE) ||
+  /* An owning local read for the last time gives its payloads to the arms: what an arm hands on moves, it is not a copy. */
+  const MsRef *subject_ref = subject->kind == MS_E_NAME ? ms_facts_ref(fn->facts, subject->id) : NULL;
+  const bool last_owner = subject_ref != NULL && subject_ref->kind == MS_REF_LOCAL && subject_ref->local < fn->nvars &&
+                          fn->local_owns != NULL && fn->local_owns[subject_ref->local] == 1 && fn->facts->last != NULL &&
+                          fn->facts->last[subject->id] != 0;
+  match.consumed = ((subject->kind == MS_E_NAME && (ms_facts_use(fn->facts, subject->id) == MS_USE_MOVE || last_owner)) ||
                     ((subject->kind == MS_E_CALL || takes) && fn_fresh_owner(fn, match.scrutinee))) &&
                    (match.kind == MK_ALT || match.kind == MK_OPT) &&
                    (subject->kind == MS_E_CALL || takes || !ms_check_holds_resource(fn->cx->program, ms_facts_type(fn->facts, subject->id)));
