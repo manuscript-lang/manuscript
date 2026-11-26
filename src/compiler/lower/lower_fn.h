@@ -502,6 +502,7 @@ bool fn_record_operator(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue righ
 MirValue fn_set_from_list(LowerFn *fn, MirValue values, MirTy ty);
 MirValue fn_map_literal(LowerFn *fn, const MsExpr *expr);
 MirValue fn_map_index(LowerFn *fn, MirValue map, const MsExpr *key, MirTy ty);
+bool fn_set_element(LowerFn *fn, const MsExpr *container, const MsExpr *key, MirValue value);
 MirValue fn_entry_address(LowerFn *fn, MirValue container, const MsExpr *key, MirTy *entry_ty);
 void fn_fault_missing_key(LowerFn *fn, MirValue key, MirTy key_ty);
 /* `cur = n.next` over a payload view of `cur` (lower_assign_take.c): the new value, or MIR_NONE when not that shape. */
@@ -642,7 +643,8 @@ bool fn_probe_bind(LowerFn *fn, const MsStmt *stmt, MirValue address, MirTy ty);
 void fn_probe_end(LowerFn *fn, bool falls_out);
 void fn_writebacks_put(LowerFn *fn, uint32_t keep);
 /* `match` over an alternative (lower_match.c). */
-MirValue fn_match(LowerFn *fn, const MsExpr *expr);
+MirValue fn_match(LowerFn *fn, const MsExpr *expr, LowerWant want);
+bool fn_match_names_places(const MsExpr *expr);
 
 /* The value of a variable, and a new one for local `local` of the function. */
 MirVar fn_local(LowerFn *fn, uint32_t local, MirTy ty);

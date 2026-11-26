@@ -737,7 +737,7 @@ static MirValue expr_value(LowerFn *fn, const MsExpr *expr, LowerWant want) {
       const MirValue view = want == LW_BORROW ? fn_map_get_view(fn, expr) : MIR_NONE;
       return view != MIR_NONE ? view : fn_call(fn, expr, want);
     }
-    case MS_E_MATCH: return fn_match(fn, expr);
+    case MS_E_MATCH: return fn_match(fn, expr, want);
     case MS_E_LIST: return fn_list(fn, expr);
     case MS_E_INDEX:
     case MS_E_APPLY: {
@@ -768,6 +768,20 @@ static bool field_leaves(const LowerFn *fn, const MsExpr *expr) {
                                        expr->u.member.left->kind == MS_E_CALL);
 }
 
+/* Whether the call `expr`, made as `value`, is a plain native that answers a view of its argument (`s.trim()`:
+ * `hold fn trim() &String`), so its new owner holds a copy. A result that only contains views (`fields()`) is the
+ * caller's own list. */
+static bool native_answers_view(const LowerFn *fn, const MsExpr *expr, MirValue value) {
+  const MirInst *made = fn_just_made(fn, value);
+  const MsCall *call = ms_facts_call(fn->facts, expr->id);
+  if (made == NULL || made->op != MOP_CallRt || made->imm.tag != MI_EXT || call == NULL ||
+      fn->cx->module->externs.ptr[made->imm.a].role != MR_VIEW_RESULT) {
+    return false;
+  }
+  const MsFunc *callee = ms_own_find_func(fn->cx->program, &call->callee);
+  return callee != NULL && callee->result != NULL && callee->result->is_ref;
+}
+
 /* A name or field read where the consumer takes ownership: the value stays with its binding unless the use moves
  * it, so the consumer gets a copy. */
 static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, LowerWant want) {
@@ -780,7 +794,8 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
       fn_closing_take(fn, ms_facts_ref(fn->facts, expr->id), value, &taken)) {
     return taken;
   }
-  if (want == LW_MOVE && expr->kind == MS_E_CALL && value != MIR_NONE && fn_is_native_view(fn, value) &&
+  if (want == LW_MOVE && expr->kind == MS_E_CALL && value != MIR_NONE &&
+      (fn_is_native_view(fn, value) || native_answers_view(fn, expr, value)) &&
       mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value))) {
     return fn_implicit_clone(fn, value, true); /* the new owner copies what the native only views */
   }

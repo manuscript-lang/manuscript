@@ -44,11 +44,102 @@ static bool is_borrowed_param_place(const Relays *pass, const MsExpr *place) {
   return ref->kind == MS_REF_PARAM && ms_facts_use(pass->facts, root->id) == MS_USE_BORROW;
 }
 
+/* A name, a field or an element: storage that keeps its value after the call, whoever owns it. A borrowed error in
+ * the call's result is part of it, so a `?` that moved the error out would take it from that storage. */
+static bool is_named_place(const Relays *pass, const MsExpr *place) {
+  MsExpr *left = NULL;
+  MsExpr *at = NULL;
+  return is_borrowed_param_place(pass, place) || place->kind == MS_E_NAME || place->kind == MS_E_MEMBER ||
+         ms_expr_index(place, &left, &at);
+}
+
+/* Whether a callee can answer a Result whose error is a part of one of its arguments, not an error it built: it writes
+ * `error(place)` of a name it does not move, returns such a Result whole, or relays one through `?` or a returned call.
+ * A callee that only builds its errors hands `?` an error nobody else owns, so `?` takes it without a copy. */
+typedef struct ErrorScan {
+  const MsCheckProgram *program;
+  const MsFacts *facts;
+  MsParams params;
+  uint32_t depth;
+  bool found;
+} ErrorScan;
+
+static bool callee_may_hold_error(const MsCheckProgram *program, const MsCall *call, uint32_t depth);
+
+static bool is_unmoved_place(const ErrorScan *scan, const MsExpr *expr) {
+  MsExpr *left = NULL;
+  MsExpr *at = NULL;
+  const bool place = expr->kind == MS_E_NAME || expr->kind == MS_E_MEMBER || ms_expr_index(expr, &left, &at);
+  const MsRef *ref = expr->kind == MS_E_NAME ? ms_facts_ref(scan->facts, expr->id) : NULL;
+  if (ref != NULL && ref->kind == MS_REF_PARAM && ref->local < scan->params.len && !scan->params.ptr[ref->local]->moving) {
+    return true; /* a parameter the callee borrows is never its to give away, at its last read too */
+  }
+  if (!place || ms_facts_use(scan->facts, expr->id) == MS_USE_MOVE) {
+    return false;
+  }
+  return !(expr->kind == MS_E_NAME && scan->facts->last != NULL && expr->id < scan->facts->node_count && scan->facts->last[expr->id] != 0);
+}
+
+static bool is_result_value(const ErrorScan *scan, const MsExpr *expr) {
+  return ms_ty_is(&scan->program->types, ms_facts_type(scan->facts, expr->id), MS_BUILTIN_Result);
+}
+
+static void scan_call_error(ErrorScan *scan, const MsExpr *call_expr) {
+  const MsCall *call = ms_facts_call(scan->facts, call_expr->id);
+  if (call != NULL && callee_may_hold_error(scan->program, call, scan->depth + 1)) {
+    scan->found = true;
+  }
+}
+
+static void scan_stmt(void *ctx, const MsStmt *stmt) {
+  ErrorScan *scan = ctx;
+  const MsExpr *value = stmt->kind == MS_S_RETURN ? stmt->u.expr : NULL;
+  if (value == NULL || !is_result_value(scan, value)) {
+    return;
+  }
+  if (is_unmoved_place(scan, value)) {
+    scan->found = true; /* a Result of an argument, returned whole */
+  } else if (value->kind == MS_E_CALL) {
+    scan_call_error(scan, value);
+  }
+}
+
+static void scan_expr(void *ctx, const MsExpr *expr) {
+  ErrorScan *scan = ctx;
+  if (expr->kind == MS_E_UNARY && expr->op == MS_U_TRY && expr->u.bin.left->kind == MS_E_CALL) {
+    scan_call_error(scan, expr->u.bin.left); /* the relay hands the callee's error on */
+    return;
+  }
+  const MsCall *call = expr->kind == MS_E_CALL ? ms_facts_call(scan->facts, expr->id) : NULL;
+  if (call != NULL && call->callee.kind == MS_REF_CASE && call->arg_count == 1 && expr->u.call.args.len == 1 &&
+      is_result_value(scan, expr) && is_unmoved_place(scan, expr->u.call.args.ptr[0].value) &&
+      ms_ty_is(&scan->program->types, ms_facts_type(scan->facts, expr->id), MS_BUILTIN_Result) &&
+      call->callee.index != 0) {
+    scan->found = true; /* `error(cause)` of a part an argument holds */
+  }
+}
+
+static bool callee_may_hold_error(const MsCheckProgram *program, const MsCall *call, uint32_t depth) {
+  if (depth > 6) {
+    return true; /* too deep to follow: assume the worst */
+  }
+  const MsFunc *func = call->callee.kind == MS_REF_FUNCTION || call->callee.kind == MS_REF_METHOD ? ms_own_find_func(program, &call->callee) : NULL;
+  if (func == NULL || func->external || func->bodiless || call->callee.decl.module >= program->modules.len) {
+    return false; /* a native builds its errors */
+  }
+  ErrorScan scan = {.program = program, .facts = &program->modules.ptr[call->callee.decl.module].facts, .params = func->params, .depth = depth, .found = false};
+  const MsVisitor visitor = {.ctx = &scan, .stmt = scan_stmt, .expr = scan_expr};
+  ms_walk_callable(&visitor, func->params, func->body);
+  return scan.found;
+}
+
 /* Whether a call's result borrows an argument that is a place someone else owns: a borrowed result of a temporary the
  * caller made leaves as that temporary's owner. */
 static bool borrows_a_place(const Relays *pass, const MsExpr *call_expr) {
   const MsCall *call = ms_facts_call(pass->facts, call_expr->id);
-  if (call == NULL || call->callee.kind != MS_REF_FUNCTION) {
+  if (call == NULL || call->callee.kind != MS_REF_FUNCTION ||
+      !ms_own_result_is_borrowed(pass->program, call->callee.decl.module, call->callee.decl.node) ||
+      !callee_may_hold_error(pass->program, call, 0)) {
     return false;
   }
   const uint32_t mask = ms_own_result_borrow_mask(pass->program, call->callee.decl.module, call->callee.decl.node);
@@ -58,8 +149,7 @@ static bool borrows_a_place(const Relays *pass, const MsExpr *call_expr) {
     }
     for (uint32_t at = 0; at < call_expr->u.call.args.len; at++) {
       const MsExpr *written = call_expr->u.call.args.ptr[at].value;
-      if (written->id == call->args[index].node.node &&
-          is_borrowed_param_place(pass, written)) {
+      if (written->id == call->args[index].node.node && is_named_place(pass, written)) {
         return true;
       }
     }

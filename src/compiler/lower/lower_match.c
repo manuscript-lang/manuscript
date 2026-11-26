@@ -11,6 +11,7 @@ typedef struct Match {
   uint8_t kind; /* MK_ALT, MK_OPT, or MK_INT and the like for literals */
   MirVar result;
   bool has_result;
+  bool borrows; /* every arm names a place: the result views it, and nothing owns it */
   MirBlock join;
   bool joined; /* an arm falls through to the join */
   bool consumed; /* the scrutinee is a name the match moves: its arms own the payload they bind */
@@ -205,7 +206,7 @@ static bool lower_arm(LowerFn *fn, Match *match, const MsArm *arm) {
   }
   const MirValue viewed = match->scrutinee;
   MirValue owned = MIR_NONE;
-  const bool last = match->last_ref != NULL && fn_closing_take(fn, match->last_ref, viewed, &owned);
+  const bool last = !match->borrows && match->last_ref != NULL && fn_closing_take(fn, match->last_ref, viewed, &owned);
   if (last) {
     /* The last read of a resource-holding name: the arm takes the value from its slot and closes what it does not
      * name, in this order, before its body runs. */
@@ -218,7 +219,7 @@ static bool lower_arm(LowerFn *fn, Match *match, const MsArm *arm) {
   } else if (named && arm->bindings.len > 0) {
     const bool takes_all = match->owned_resource && (match->kind == MK_OPT ||
                            arm->bindings.len == fn->cx->module->alts.ptr[mir_ty_data(fn->cx->module, match->ty)->id].cases[kase].nfields);
-    if ((match->consumed || takes_all) && !(match->kind == MK_OPT && kase != 1)) {
+    if (!match->borrows && (match->consumed || takes_all) && !(match->kind == MK_OPT && kase != 1)) {
       take_payload(fn, match, arm, kase, false);
     } else {
       bind_payload(fn, match, arm, kase);
@@ -227,10 +228,10 @@ static bool lower_arm(LowerFn *fn, Match *match, const MsArm *arm) {
   match->scrutinee = viewed;
   bool ok = fn_stmts(fn, arm->body);
   if (!fn->terminated && arm->value != NULL) {
-    const MirValue value = fn_expr(fn, arm->value, LW_MOVE);
+    const MirValue value = fn_expr(fn, arm->value, match->borrows ? LW_BORROW : LW_MOVE);
     ok = ok && value != MIR_NONE;
     if (match->has_result && value != MIR_NONE) {
-      if (mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value))) {
+      if (!match->borrows && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value))) {
         (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
       }
       mir_b_def_var(&fn->b, match->result, value);
@@ -336,7 +337,29 @@ static bool dispatch_literals(LowerFn *fn, const Match *match, const MsExpr *exp
   return true;
 }
 
-MirValue fn_match(LowerFn *fn, const MsExpr *expr) {
+/* Whether every arm of a `match` or `if` either leaves the function or yields a name or a field read in place, and one
+ * yields: read as a borrow, the result views whichever place the arm names, a payload an arm binds included. */
+bool fn_match_names_places(const MsExpr *expr) {
+  bool yields = false;
+  for (uint32_t index = 0; index < expr->u.match.arms.len; index++) {
+    const MsArm *arm = expr->u.match.arms.ptr[index];
+    if (arm->value == NULL) {
+      const bool leaves = arm->body.len != 0 && arm->body.ptr[arm->body.len - 1]->kind == MS_S_RETURN;
+      if (!leaves) {
+        return false;
+      }
+      continue;
+    }
+    const MsExprKind kind = (MsExprKind)arm->value->kind;
+    if (arm->body.len != 0 || (kind != MS_E_NAME && kind != MS_E_MEMBER)) {
+      return false;
+    }
+    yields = true;
+  }
+  return yields;
+}
+
+MirValue fn_match(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   /* `match call()? { v => .. }`: the payload of a Result nothing else owns moves out into the match, so its arms own what
    * they bind (a binding handed on is moved, not copied). */
   const MsExpr *tried = expr->u.match.scrutinee;
@@ -390,7 +413,8 @@ MirValue fn_match(LowerFn *fn, const MsExpr *expr) {
   const MsTy result = ms_facts_type(fn->facts, expr->id);
   const MirTy result_ty = result == MS_TY_NONE ? MIR_VOID : fn_type(fn, result);
   match.has_result = result_ty != MIR_VOID;
-  match.result = match.has_result ? mir_b_declare_var(&fn->b, result_ty, MM_MOVE) : 0;
+  match.borrows = want == LW_BORROW && match.has_result && fn_match_names_places(expr);
+  match.result = match.has_result ? mir_b_declare_var(&fn->b, result_ty, match.borrows ? MM_BORROW : MM_MOVE) : 0;
   match.join = mir_b_new_block(&fn->b);
   for (uint32_t index = 0; index < narms; index++) {
     blocks[index] = mir_b_new_block(&fn->b);
@@ -422,7 +446,7 @@ MirValue fn_match(LowerFn *fn, const MsExpr *expr) {
     return mir_b_unit(&fn->b);
   }
   const MirValue joined = mir_b_use_var(&fn->b, match.result);
-  if (mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, joined))) {
+  if (!match.borrows && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, joined))) {
     fn_own(fn, fn_scope(fn), joined); /* the arms' values met in one owner: the enclosing scope drops it, or the one who takes it */
   }
   return joined;

@@ -29,7 +29,7 @@ export fn parse_dotenv(text String) Map[String, String]! {
 			"#"
 		) { continue }
 
-		assignment := entry.cut_prefix("export ") or entry
+		assignment := entry.cut_prefix("export ").clone() or entry.clone()
 		found := assignment.index_of("=")
 		if found == null { return error(config_error(number, "expected NAME=value")) }
 

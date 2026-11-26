@@ -528,7 +528,8 @@ fn verify_bigint_and_regex() Void! {
 	// A Regex has one owner and no clone, so the lent part comes from a binding, not a
 	// temporary.
 	compiled := compile(pattern: "[0-9]+")
-	pattern := common_result(result: compiled)?
+	compiled_view := common_result(result: compiled)
+	pattern := compiled_view.get()
 	(pattern.matches(text: "a12b3")) | expect_true?
 	(
 		(
