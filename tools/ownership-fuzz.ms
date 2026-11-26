@@ -20,56 +20,73 @@ import (
 )
 
 HEADER := """
-type P:
-	name: String
-	tags: List[String]
+type P {
+	name String
+	tags List[String]
+}
 
-type W:
-	p: P
-	o: String?
+type W {
+	p P
+	o String?
+}
 
-fn eat(move s: String) Int:
+fn eat(move s String) Int {
 	return s.length()
+}
 
-fn peek(s: String) Int:
+fn peek(s String) Int {
 	return s.length()
+}
 
-fn pick(a: String, b: String) String:
+fn pick(hold a String, b String) &String {
 	return a
+}
 
-fn part(p: P) String:
+fn part(hold p P) &String {
 	return p.name
+}
 
-fn tag0(p: P) String:
+fn tag0(hold p P) &String {
 	return p.tags[0]
+}
 
-fn first_of(xs: List[String]) String?:
+fn first_of(hold xs List[String]) &String? {
 	return xs.first()
+}
 
-fn grow(var xs: List[String], move s: String) Void:
+fn grow(var xs List[String], move s String) Void {
 	xs.append(s)
+}
 
-fn rename(var p: P, move s: String) Void:
+fn rename(var p P, move s String) Void {
 	p.name = s
+}
 
-fn mkp(move s: String) P:
+fn mkp(move s String) P {
 	t := s.clone()
 	return P(s, [t])
+}
 
-fn wrap(move p: P) W:
-	return W(p, none)
+fn wrap(move p P) W {
+	return W(p, null)
+}
 
-fn upd(var w: W, move s: String) Void:
+fn upd(var w W, move s String) Void {
 	w.o = s
+}
 
-fn mkw(n: Int) W:
+fn mkw(n Int) W {
 	return W(P(f"wn{n}-ffffffffffffffffffffffffffffff", [f"wt{n}-gggggggggggggggggggggggggg"]), f"wo{n}-hhhhhhhhhhhhhhhhhhhhhhhhhhhh")
+}
 
-fn mkl(n: Int) List[String]:
+fn mkl(n Int) List[String] {
 	return [f"e{n}-cccccccccccccccccccccccccccccc", f"e{n}-cccccccccccccccccccccccccccccd"]
+}
 
-fn ret_cl(s: String) fn() Int:
-	return fn(): s.length()
+fn ret_cl(s String) fn() Int {
+	own := s.clone()
+	return () => own.length()
+}
 
 """
 // Expressions that read a part of a temporary; `K` stands for a fresh number.
@@ -166,7 +183,7 @@ fn var Gen.step() Void {
 	} else if pick < 7 {
 		v := self.fresh("l")
 		h1 := self.text("e", "c")
-		self.emit(f"var {v}: List[String] = [{h1}]")
+		self.emit(f"var {v} List[String] = [{h1}]")
 		self.lists.append(v)
 	} else if pick < 9 {
 		v := self.fresh("p")
@@ -218,7 +235,7 @@ fn var Gen.step() Void {
 		self.emit(f"{v} := first_of({l})")
 		self.optionals.append(v)
 	} else if pick < 25 and o != "" {
-		self.emit(f"if q := {o}:\n\t\tprint(q)")
+		self.emit(f"if q := {o} \{ print(q) \}")
 	} else if pick < 26 and l != "" {
 		h1 := self.moved()
 		self.emit(f"grow({l}, {h1})")
@@ -234,13 +251,13 @@ fn var Gen.step() Void {
 		self.emit(f"upd({w}, {h1})")
 	} else if pick < 30 and s != "" {
 		v := self.fresh("c")
-		self.emit(f"{v} := fn(): {s}.length()\n\tprint(f\"\{{v}()\}\")")
+		self.emit(f"{v} := () => {s}.length()\n\tprint(f\"\{{v}()\}\")")
 	} else if pick < 31 {
 		v := self.fresh("c")
 		h1 := self.moved()
 		self.emit(f"{v} := ret_cl({h1})\n\tprint(f\"\{{v}()\}\")")
 	} else if pick < 32 and l != "" {
-		self.emit(f"for x in {l}:\n\t\tprint(x)")
+		self.emit(f"for x in {l} \{ print(x) \}")
 	} else if pick < 33 and l != "" {
 		h1 := self.text("z", "i")
 		self.emit(f"{l} = [{h1}]")
@@ -248,7 +265,7 @@ fn var Gen.step() Void {
 		h1 := self.moved()
 		self.emit(f"{p}.tags.append({h1})")
 	} else if pick < 35 and w != "" {
-		self.emit(f"if q := {w}.o:\n\t\tprint(q)")
+		self.emit(f"if q := {w}.o \{ print(q) \}")
 	} else if pick < 37 {
 		body := TEMPORARIES[self.rng.int(0, TEMPORARIES.length())].replace(
 			"K",
@@ -300,7 +317,7 @@ fn var Gen.finish() Void {
 		self.lines.append(f"print({w}.p.name)")
 	}
 	for o in self.optionals {
-		self.lines.append(f"if q := {o}:\n\t\tprint(q)")
+		self.lines.append(f"if q := {o} \{ print(q) \}")
 	}
 }
 
@@ -310,7 +327,7 @@ fn program(seed Int) String {
 	g.finish()
 
 	body := g.lines.map(line => f"\t{line}").join("\n")
-	return f"{HEADER}fn main() Void:\n{body}\n"
+	return f"{HEADER}fn main() Void \{\n{body}\n\}\n"
 }
 
 // Whether `line` has the shape every value prints with.
