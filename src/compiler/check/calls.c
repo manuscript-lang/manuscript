@@ -310,9 +310,9 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
                       MsTy *bound, const MsTy *hint) {
   const MsTyTable *types = &body->program->types;
   /* A function literal is typed after the other arguments, so the variables they fix are known to it. */
-  bool typed[32] = {false};
-  bool waited[32] = {false}; /* arguments left open by an uninferred case */
   const size_t nargs = call->u.call.args.len;
+  bool *const typed = MS_ARENA_NEW_ARRAY(&body->program->arena, bool, nargs + 1);
+  bool *const waited = MS_ARENA_NEW_ARRAY(&body->program->arena, bool, matched->count + 1); /* left open by an uninferred case */
   bool has_lambda = false;
   for (size_t at = 0; at < nargs; at++) {
     has_lambda = has_lambda || call->u.call.args.ptr[at].value->kind == MS_E_LAMBDA;
@@ -331,15 +331,13 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
     }
     const MsTy param = ms_ty_params(types, target->sig)[index].ty;
     const MsArg *arg = &call->u.call.args.ptr[matched->slot[index]];
-    if ((arg->value->kind == MS_E_LAMBDA) != (pass >= 1) || (written < 32 && typed[written])) {
+    if ((arg->value->kind == MS_E_LAMBDA) != (pass >= 1) || typed[written]) {
       continue;
     }
     if (pass >= 1 && pass < nargs && function_params_open(body, target, param, bound)) {
       continue; /* a function literal whose parameters another function literal fixes waits for it */
     }
-    if (written < 32) {
-      typed[written] = true;
-    }
+    typed[written] = true;
     MsStrBuild context = ms_strbuild_new();
     if (target->name.len != 0) {
       ms_strbuild_append_text(&context, "argument '");
