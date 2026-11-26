@@ -701,7 +701,7 @@ MirValue fn_default_result(LowerFn *fn) {
  * payload. A moved name, a fresh value and another lender's result are already owned. */
 static MirValue view_return(LowerFn *fn, const MsExpr *expr) {
   const bool place = expr->kind == MS_E_NAME || expr->kind == MS_E_MEMBER || expr->kind == MS_E_INDEX;
-  if (place && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE && !fn_names_borrowed_param(fn, expr)) {
+  if (place && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE && !fn_names_borrowed_place(fn, expr)) {
     return take_value(fn, expr);
   }
   const MirValue value = fn_expr(fn, expr, LW_BORROW);

@@ -36,7 +36,7 @@ test "a good parse reads the same shape" {
 	text := "{\"mid\":{\"inner\":{\"a\":true,\"b\":false,\"c\":true,\"d\":false,\"e\":true,\"f\":false,\"g\":true,\"h\":false,\"name\":\"abc\"},\"n\":3}}"
 	got := parse[Outer](text)?
 	expect_equal(got.mid or Mid(inner: Inner(a: false, b: false, c: false, d: false, e: false, f: false, g: false, h: false, name: ""), n: 0), got.mid or Mid(inner: Inner(a: false, b: false, c: false, d: false, e: false, f: false, g: false, h: false, name: ""), n: 0))?
-	m := got.mid or Mid(inner: Inner(a: false, b: false, c: false, d: false, e: false, f: false, g: false, h: false, name: ""), n: 0)
+	m := got.mid.clone() or Mid(inner: Inner(a: false, b: false, c: false, d: false, e: false, f: false, g: false, h: false, name: ""), n: 0)
 	expect_equal(m.n, 3)?
 }
 // expect-exit: 0

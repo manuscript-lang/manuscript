@@ -76,7 +76,7 @@ test "or_else takes its receiver, so a caller that keeps a List Optional clones 
 test "or_else invokes a missing fallback once and skips a present fallback" {
 	var fallback = Fallback(0)
 	missing String? := null
-	recovered := missing or fallback.create()
+	recovered := missing.clone() or fallback.create()
 	expect_equal(recovered or panic("called Optional.get() on null"), "fallback 1")?
 
 	kept := text(6) or fallback.create()
@@ -89,7 +89,7 @@ test "or_else invokes a missing fallback once and skips a present fallback" {
 
 test "or_else permits a fallback that stays absent" {
 	missing String? := null
-	kept := missing or null
+	kept := missing.clone() or null
 	expect_equal(kept, null)?
 }
 

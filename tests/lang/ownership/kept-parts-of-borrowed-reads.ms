@@ -15,7 +15,7 @@ fn names(suite String) List[String] {
 
 test "a let keeps the message of a borrowed error" {
 	r := failed()
-	message := r.err().message
+	message := r.err().message.clone()
 	expect_equal(message.length(), 4)?
 }
 

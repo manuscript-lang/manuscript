@@ -209,7 +209,7 @@ fn upgrade_status(address String, version String, extra String) String! {
 	send(client, request)?
 
 	reply := (recv(client, 2.seconds())?) or Bytes([])
-	return ok((reply.decode_utf8() or "").split("\r\n").first() or "")
+	return ok((reply.decode_utf8() or "").split("\r\n").first().clone() or "")
 }
 
 test "WebSocket client options bound messages and reject bad values" {
@@ -387,7 +387,7 @@ fn direct(var exchange HttpExchange) Void! {
 		(http_result(socket.input.next())?)
 		or panic("called Optional.get() on null")
 	)
-	_sent := http_result(socket.output.write(message))?
+	_sent := http_result(socket.output.write(message.clone()))?
 }
 
 test "HttpExchange.upgrade returns a WebSocket" {

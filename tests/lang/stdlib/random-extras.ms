@@ -71,10 +71,10 @@ test "secure sample and weighted_choice" {
 	expect_equal(expect_ok(sample([1, 2, 3], 0))?, List[Int]())?
 
 	_error := expect_error(sample([1], 2))?
-	expect_equal(expect_some(expect_ok(weighted_choice(["a", "b"], [0.0, 2.0]))?)?, "b")?
+	expect_equal(expect_some(expect_ok(weighted_choice(["a", "b"], [0.0, 2.0]).clone())?)?, "b")?
 
 	_other := expect_error(weighted_choice(["a"], [0.0]))?
-	expect_none(expect_ok(weighted_choice(List[String](), List[Float]()))?)?
+	expect_none(expect_ok(weighted_choice(List[String](), List[Float]()).clone())?)?
 }
 
 test "secure_int covers wide and empty ranges" {
