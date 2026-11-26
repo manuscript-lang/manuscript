@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 #include "compiler/syntax/walk.h"
+#include "tooling/decl_header.h"
 #include "tooling/doc_comment.h"
 
 typedef struct Open {
@@ -214,10 +215,14 @@ static bool callable(const MsCheckProgram *program, MsTy ty, const MsTyParam **p
 
 /* The declared function of the callee, for its parameters: function types keep no parameter names in their identity, so the names (and the
  * defaults) come from the declaration. NULL for a callee with no declaration in the program. */
-static const MsFunc *declared_func(const MsCheckProgram *program, const MsOccurrence *callee) {
+static const MsFunc *declared_func(const MsCheckProgram *program, const MsOccurrence *callee, uint32_t *site_module, size_t *site_offset) {
   if (callee->symbol != 0 && callee->symbol < program->symbols.len) {
     const MsDecl *decl = program->symbols.ptr[callee->symbol].decl;
-    if (decl != NULL && decl->kind == MS_D_FN) return &decl->u.fn;
+    if (decl != NULL && decl->kind == MS_D_FN) {
+      *site_module = program->symbols.ptr[callee->symbol].module;
+      *site_offset = decl->pos.offset;
+      return &decl->u.fn;
+    }
   }
   /* A method's key is `method:<file>:<offset of its declaration>`. */
   if (!callee->method || !ms_span_starts_with_text(callee->key, "method:")) return NULL;
@@ -231,6 +236,8 @@ static const MsFunc *declared_func(const MsCheckProgram *program, const MsOccurr
     const MsMethodEntry *entry = &program->methods.ptr[i];
     if (entry->source != NULL && entry->source->pos.offset == offset &&
         ms_span_equal(ms_names_span(program->names, program->modules.ptr[entry->module].file), file)) {
+      *site_module = entry->module;
+      *site_offset = entry->source->pos.offset;
       return &entry->source->func;
     }
   }
@@ -276,6 +283,66 @@ static bool instantiated_callee(const LspAnalysis *analysis, const LspDoc *doc, 
   return false;
 }
 
+/* The text of `ty` as the compiler prints it, kept in the analysis arena. */
+static MsSpan type_text(const LspAnalysis *analysis, MsTy ty) {
+  MsStrBuild text = ms_strbuild_new();
+  if (ty != MS_TY_NONE) ms_ty_show(&text, analysis->checked.program.names, &analysis->checked.program.types, ty);
+  const MsSpan kept = ms_arena_copy(analysis->arena, ms_strbuild_span(&text));
+  ms_strbuild_free(&text);
+  return kept;
+}
+
+/* The label of a declared callee: its declaration's parameter list and result as the formatter writes them, with the types
+ * of this call in place of the written ones. Each parameter's label is the part of the list that declares it (a shared
+ * type, `left, right Int`, labels both). False when the declaration cannot be read, and nothing is appended. */
+static bool declared_label(const LspAnalysis *analysis, MsStrBuild *label, MsStrBuild *parameters, const MsOccurrence *callee,
+                           uint32_t module, size_t offset, const MsTyParam *params, size_t count, MsTy result) {
+  const MsCheckProgram *program = &analysis->checked.program;
+  const MsSpan source = program->modules.ptr[module].source;
+  size_t at;
+  if (!lsp_header(source, offset, callee->name, &at)) return false;
+  MsSpan *written = count == 0 ? NULL : MS_ARENA_NEW_ARRAY(analysis->arena, MsSpan, count);
+  for (size_t i = 0; i < count; i++) written[i] = type_text(analysis, params[i].ty);
+  const MsSigTypes types = {.params = written, .count = count, .result = type_text(analysis, result)};
+  MsSpan list = ms_declaration_signature(analysis->arena, source, at, callee->name, &types);
+  if (list.len > 0 && list.ptr[0] == '[') { /* the callee as written carries its type arguments */
+    size_t close = 0;
+    while (close < list.len && list.ptr[close] != '(') close++;
+    list = ms_span_of(list.ptr + close, list.len - close);
+  }
+  if (list.len == 0 || list.ptr[0] != '(') return false;
+  ms_strbuild_append(label, list);
+  /* The parameters: the list split at its top-level commas; a bare name (no type of its own) shares the next segment's. */
+  size_t emitted = 0;
+  size_t group_start = 1;
+  size_t group_size = 0;
+  size_t start = 1;
+  int depth = 0;
+  for (size_t i = 1; i < list.len && emitted < count; i++) {
+    const uint8_t c = list.ptr[i];
+    depth += (c == '(' || c == '[') - (c == ')' || c == ']');
+    if (!(depth < 0 || (c == ',' && depth == 0))) continue;
+    bool bare = true;
+    for (size_t k = start; k < i; k++) {
+      if (list.ptr[k] == ' ') bare = false;
+    }
+    group_size++;
+    if (!bare || depth < 0) {
+      for (size_t n = 0; n < group_size && emitted < count; n++, emitted++) {
+        if (emitted > 0) ms_strbuild_append_byte(parameters, ',');
+        ms_strbuild_append_text(parameters, "{\"label\":");
+        lsp_json_string(parameters, ms_span_of(list.ptr + group_start, i - group_start));
+        ms_strbuild_append_byte(parameters, '}');
+      }
+      group_size = 0;
+      group_start = i + 2;
+    }
+    start = i + 2;
+    if (depth < 0) break;
+  }
+  return true;
+}
+
 static void signature_for(LspAnalysis *analysis, const LspDocList *docs, MsSpan source, const Open *call, const ArgumentList *arguments,
                           const MsOccurrence *callee, MsStrBuild *out) {
   (void)docs;
@@ -287,7 +354,10 @@ static void signature_for(LspAnalysis *analysis, const LspDocList *docs, MsSpan 
     ms_strbuild_append_text(out, "null");
     return;
   }
-  const MsFunc *declared = ms_ty_kind(&program->types, callee->ty) == MS_TY_FUNCTION ? declared_func(program, callee) : NULL;
+  uint32_t site_module = 0;
+  size_t site_offset = 0;
+  const MsFunc *declared = ms_ty_kind(&program->types, callee->ty) == MS_TY_FUNCTION
+                               ? declared_func(program, callee, &site_module, &site_offset) : NULL;
   const MsParams *ast = declared != NULL ? &declared->params : NULL;
   if (ast != NULL && ast->len != count) ast = NULL;
   /* A constructed type's fields keep their defaults in the declaration. */
@@ -300,13 +370,15 @@ static void signature_for(LspAnalysis *analysis, const LspDocList *docs, MsSpan 
   MsStrBuild label = ms_strbuild_new();
   MsStrBuild parameters = ms_strbuild_new();
   ms_strbuild_append(&label, ms_span_of(source.ptr + call->callee_start, call->callee_end - call->callee_start));
+  if (declared != NULL && declared_label(analysis, &label, &parameters, callee, site_module, site_offset, params, count, result)) {
+    /* The declaration's own header, with this call's types in it. */
+  } else {
   ms_strbuild_append_byte(&label, '(');
   for (size_t i = 0; i < count; i++) {
     MsStrBuild one = ms_strbuild_new();
     /* The modes read as the declaration writes them: `var`, `move`, `hold`. */
     if (params[i].flags & MS_PARAM_VAR) ms_strbuild_append_text(&one, "var ");
     if (params[i].flags & MS_PARAM_MOVE) ms_strbuild_append_text(&one, "move ");
-    if (ast != NULL && ast->ptr[i]->holding) ms_strbuild_append_text(&one, "hold ");
     if (ast != NULL || ms_ty_kind(&program->types, callee->ty) != MS_TY_FUNCTION) {
       ms_strbuild_append(&one, ms_names_span(program->names, ast != NULL ? ast->ptr[i]->name : params[i].name));
       ms_strbuild_append_text(&one, " ");
@@ -322,8 +394,8 @@ static void signature_for(LspAnalysis *analysis, const LspDocList *docs, MsSpan 
     ms_strbuild_free(&one);
   }
   ms_strbuild_append_text(&label, ") ");
-  if (declared != NULL && declared->result != NULL && declared->result->is_ref) ms_strbuild_append_byte(&label, '&');
   if (result != MS_TY_NONE) ms_ty_show(&label, program->names, &program->types, result);
+  }
   /* The active parameter: a written label picks its slot, an unlabeled argument the first slot not yet taken. */
   size_t active = 0;
   bool *used = count == 0 ? NULL : calloc(count, sizeof *used);

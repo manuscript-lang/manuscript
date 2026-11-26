@@ -10,4 +10,16 @@
  * function. The text lives in the arena. */
 MsSpan ms_declaration_header(MsArena *arena, MsSpan source, size_t offset);
 
+/* Written types to put in place of a declaration's own in `ms_declaration_signature`: the instantiated types of one call. */
+typedef struct MsSigTypes {
+  const MsSpan *params; /* the type of each parameter, in declaration order; an empty span keeps the written type */
+  size_t count;
+  MsSpan result; /* the result type (a written `&` stays); empty keeps the written one */
+} MsSigTypes;
+
+/* What follows the name of the function `name` declared on the line holding `offset`: its type parameters, parameter list
+ * and result, laid out by `ms_format` (`[T](move left T, right T) T`). `types`, when not NULL, replaces the written parameter and result types, so a
+ * call shows the types it instantiates. Empty when the line declares no such function. The text lives in the arena. */
+MsSpan ms_declaration_signature(MsArena *arena, MsSpan source, size_t offset, MsSpan name, const MsSigTypes *types);
+
 #endif

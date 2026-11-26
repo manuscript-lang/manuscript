@@ -3,4 +3,6 @@
 {"jsonrpc":"2.0","id":2,"result":{"signatures":[{"label":"first[Int](move left Int, right Int) Int","parameters":[{"label":"move left Int"},{"label":"right Int"}],"documentation":null}],"activeSignature":0,"activeParameter":1}}
 {"jsonrpc":"2.0","id":3,"result":{"signatures":[{"label":"(pair).combine(left Int, right Int) Int","parameters":[{"label":"left Int"},{"label":"right Int"}],"documentation":null}],"activeSignature":0,"activeParameter":1}}
 {"jsonrpc":"2.0","id":4,"result":{"signatures":[{"label":"first[Int](move left Int, right Int) Int","parameters":[{"label":"move left Int"},{"label":"right Int"}],"documentation":null}],"activeSignature":0,"activeParameter":1}}
+{"jsonrpc":"2.0","id":10,"result":{"signatures":[{"label":"clamp(low, high Int, value Int = 0) Int","parameters":[{"label":"low, high Int"},{"label":"low, high Int"},{"label":"value Int = 0"}],"documentation":null}],"activeSignature":0,"activeParameter":0}}
+{"jsonrpc":"2.0","id":11,"result":{"signatures":[{"label":"clamp(low, high Int, value Int = 0) Int","parameters":[{"label":"low, high Int"},{"label":"low, high Int"},{"label":"value Int = 0"}],"documentation":null}],"activeSignature":0,"activeParameter":1}}
 {"jsonrpc":"2.0","id":9,"result":null}
