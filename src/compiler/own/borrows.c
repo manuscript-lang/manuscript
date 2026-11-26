@@ -715,6 +715,39 @@ static void note_loop(Borrows *pass, const MsStmt *stmt) {
   use_list_push(&pass->uses, (Use){.binding = ref->local, .offset = body_end(pass, stmt->u.each.body), .loop = stmt->pos.offset + 1});
 }
 
+/* Whether the type declares a `close` of its own: what it holds cannot be taken out of it. */
+static bool declares_close(MsCheckProgram *program, MsTy ty) {
+  MsMethodMatchList found = {0};
+  ms_check_find_method(program, ty, ms_names_intern(program->names, ms_span_of_text("close")), &found);
+  const bool declared = found.len != 0 && found.ptr[0].entry != NULL;
+  ms_method_match_list_free(&found);
+  return declared;
+}
+
+/* `m := make().part()` where `make()` is a resource with its own `close` and the part is another value of it: the
+ * temporary closes with the statement, and the name would keep a view of what it closed. A result that is the
+ * temporary itself (`deferred(..).with(..)`) is not a part: the name takes it. */
+static void note_part_of_closing_temporary(Borrows *pass, const MsStmt *stmt) {
+  const MsExpr *call = stmt->u.bind.value != NULL ? kept_call(stmt->u.bind.value) : NULL;
+  const MsCall *fact = call != NULL ? ms_facts_call(pass->facts, call->id) : NULL;
+  const MsExpr *callee = call != NULL ? call->u.call.callee : NULL;
+  if (fact == NULL || callee->kind != MS_E_MEMBER || !ms_own_declared_ref_result(pass->program, &fact->callee) ||
+      !borrows_temporary(pass, call)) {
+    return;
+  }
+  const MsTy part = ms_facts_type(pass->facts, call->id);
+  const MsTy owner = ms_facts_type(pass->facts, callee->u.member.left->id);
+  if (part == MS_TY_NONE || owner == MS_TY_NONE || part == owner || !declares_close(pass->program, owner) ||
+      !ms_check_holds_resource(pass->program, part) || ms_check_property(pass->program, part, MS_PROPERTY_CLONABLE)) {
+    return;
+  }
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_append_text(&text, "`");
+  ms_own_expr_text(&text, pass->program->names, call);
+  ms_strbuild_append_text(&text, "` borrows a part of a temporary that closes when this statement ends; bind the owner first and borrow from it");
+  ms_check_report(pass->program, pass->module, call->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+}
+
 static void visit_stmt(void *ctx, const MsStmt *stmt) {
   Borrows *pass = ctx;
   note_ranges(pass, stmt);
@@ -730,6 +763,7 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
   if (stmt->kind == MS_S_BIND) {
     note_kept_captures(pass, stmt);
     note_bind(pass, stmt);
+    note_part_of_closing_temporary(pass, stmt);
   } else if (stmt->kind == MS_S_ASSIGN) {
     note_change(pass, stmt->u.assign.target, true, false);
     uint32_t root = 0;
