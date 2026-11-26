@@ -70,7 +70,8 @@ static MirValue vf_boundary(MirBuilder *b, MirValue bytes, MirValue at) {
 }
 
 /* A flat text: the range is inside it and both ends start a scalar, which an ASCII flag proves at once and a look
- * at the two bytes proves otherwise (every string is followed by a NUL, so the byte at `end` is readable).
+ * at the two bytes proves otherwise. A byte is read only at an offset below `len`: a string is not promised a
+ * byte after its last (a heap text can end at the end of a page), and the end of the text is a boundary anyway.
  * Continues in a new block, else goes to `slow`. */
 static void vf_flat_guard(MirBuilder *b, const VfView *v) {
   const MirValue w1 = ob_load(b, v->slot, VF_WORD, MIR_INT);
@@ -87,6 +88,7 @@ static void vf_flat_guard(MirBuilder *b, const VfView *v) {
   ok = ob_and(b, ok, ordered);
   ok = ob_and(b, ok, inside);
   const MirBlock fast = mir_b_new_block(b), bounded = mir_b_new_block(b), scan = mir_b_new_block(b);
+  const MirBlock after_start = mir_b_new_block(b), check_start = mir_b_new_block(b), check_end = mir_b_new_block(b);
   mir_b_br_if(b, ok, bounded, NULL, 0, v->slow, NULL, 0);
   mir_b_seal_block(b, bounded);
   mir_b_switch_to(b, bounded);
@@ -94,9 +96,16 @@ static void vf_flat_guard(MirBuilder *b, const VfView *v) {
   mir_b_seal_block(b, scan);
   mir_b_switch_to(b, scan);
   const MirValue bytes = ob_load(b, v->slot, 0, MIR_PTR);
-  const MirValue first = vf_boundary(b, bytes, v->start);
-  const MirValue last = vf_boundary(b, bytes, v->end);
-  mir_b_br_if(b, ob_and(b, first, last), fast, NULL, 0, v->slow, NULL, 0);
+  mir_b_br_if(b, mir_b_icmp(b, MCC_EQ, v->start, len), fast, NULL, 0, check_start, NULL, 0); /* empty, at the end */
+  mir_b_seal_block(b, check_start);
+  mir_b_switch_to(b, check_start);
+  mir_b_br_if(b, vf_boundary(b, bytes, v->start), after_start, NULL, 0, v->slow, NULL, 0);
+  mir_b_seal_block(b, after_start);
+  mir_b_switch_to(b, after_start);
+  mir_b_br_if(b, mir_b_icmp(b, MCC_EQ, v->end, len), fast, NULL, 0, check_end, NULL, 0);
+  mir_b_seal_block(b, check_end);
+  mir_b_switch_to(b, check_end);
+  mir_b_br_if(b, vf_boundary(b, bytes, v->end), fast, NULL, 0, v->slow, NULL, 0);
   mir_b_seal_block(b, fast);
   mir_b_switch_to(b, fast);
 }
