@@ -46,6 +46,10 @@ MS_RETURNS_NONNULL void *ms_arena_alloc_zeroed(MsArena *arena, size_t size, size
 /* A copy of `span` in the arena. */
 MsSpan ms_arena_copy(MsArena *arena, MsSpan span);
 
+/* Moves every chunk of `from` into `into`, which owns them from now on: what `from` handed out stays valid for as long
+ * as `into` lives. `into` keeps bumping in its own current chunk. `from` is empty afterwards. */
+void ms_arena_absorb(MsArena *into, MsArena *from);
+
 /* Forgets everything; the arena is usable again and keeps its newest chunk, so a scratch arena reset between
  * queries allocates nothing once it has grown to the size of its largest query. */
 void ms_arena_reset(MsArena *arena);

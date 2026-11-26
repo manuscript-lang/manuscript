@@ -6,9 +6,12 @@
 #include "compiler/mir/mir_verify.h"
 #include "compiler/opt/opt_inline.h"
 #include "compiler/opt/opt_pass.h"
+#include "compiler/opt/opt_util.h"
 
 /* Rounds of the per-function passes. */
 #define OPT_FUNCTION_ROUNDS 3
+/* Functions a worker takes at a time: most are small, and a batch keeps the claims few. */
+#define OPT_FUNCTIONS_PER_BATCH 16
 
 /* The per-function passes, in the order a round runs them. A pass runs again in a later round only when a pass that
  * can give it new work changed the function since it last ran. `simplify` is the cleanup that consumes every other
@@ -61,29 +64,41 @@ static bool function_round(MirModule *m, MirFunc *f, uint32_t *dirty, bool first
   return changed;
 }
 
-/* Runs each function's rounds (at most three, stopping at the first that changes nothing) on a copy and stores
- * the copies of those that changed. */
+/* What the workers of `function_passes` share: each function's result is written to its own slot. */
+typedef struct FunctionJob {
+  const MirModule *module;
+  MirFunc *results;
+  bool *changed;
+} FunctionJob;
+
+static void function_step(void *context, MirModule *view, uint32_t fi) {
+  FunctionJob *job = context;
+  opt_func_deep_clone(view, &job->module->funcs.ptr[fi], &job->results[fi]);
+  uint32_t dirty[FP_COUNT] = {0};
+  for (int round = 0; round < OPT_FUNCTION_ROUNDS; round++) {
+    if (!function_round(view, &job->results[fi], dirty, round == 0)) {
+      break;
+    }
+    job->changed[fi] = true;
+  }
+}
+
+/* Runs each function's rounds (at most three, stopping at the first that changes nothing) on a copy, on every core,
+ * and stores the copies of those that changed. */
 static void function_passes(MirModule *m) {
   const uint32_t count = (uint32_t)m->funcs.len;
   MsArena arena = ms_arena_new();
-  MirFunc *results = MS_ARENA_NEW_ARRAY(&arena, MirFunc, (size_t)count + 1);
-  bool *changed = MS_ARENA_NEW_ARRAY(&arena, bool, (size_t)count + 1);
+  FunctionJob *job = MS_ARENA_NEW(&arena, FunctionJob);
+  job->module = m;
+  job->results = MS_ARENA_NEW_ARRAY(&arena, MirFunc, (size_t)count + 1);
+  job->changed = MS_ARENA_NEW_ARRAY(&arena, bool, (size_t)count + 1);
+  opt_parallel_funcs(m, OPT_FUNCTIONS_PER_BATCH, function_step, job);
   for (uint32_t fi = 0; fi < count; fi++) {
-    opt_func_deep_clone(m, &m->funcs.ptr[fi], &results[fi]);
-    uint32_t dirty[FP_COUNT] = {0};
-    for (int round = 0; round < OPT_FUNCTION_ROUNDS; round++) {
-      if (!function_round(m, &results[fi], dirty, round == 0)) {
-        break;
-      }
-      changed[fi] = true;
-    }
-  }
-  for (uint32_t fi = 0; fi < count; fi++) {
-    if (changed[fi]) {
+    if (job->changed[fi]) {
       mir_func_release(&m->funcs.ptr[fi]);
-      m->funcs.ptr[fi] = results[fi];
+      m->funcs.ptr[fi] = job->results[fi];
     } else {
-      mir_func_release(&results[fi]);
+      mir_func_release(&job->results[fi]);
     }
   }
   ms_arena_free(&arena);

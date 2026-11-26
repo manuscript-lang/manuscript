@@ -1,4 +1,8 @@
 /* Helpers shared by the optimiser's passes. */
+#include <stdatomic.h>
+
+#include "base/fatal.h"
+#include "base/parallel.h"
 #include "compiler/opt/opt_util.h"
 
 /* Removes the instructions flagged in `dead[block][index]` from every block. */
@@ -201,4 +205,66 @@ void *opt_grow(MsArena *a, void *arr, uint32_t n, uint32_t *cap, size_t elem) {
   }
   *cap = ncap;
   return p;
+}
+
+typedef struct FuncLoop {
+  MirModule *module;
+  void (*step)(void *context, MirModule *view, uint32_t fi);
+  void *context;
+  MirModule views[MS_PARALLEL_MAX_WORKERS];
+  bool started[MS_PARALLEL_MAX_WORKERS];
+} FuncLoop;
+
+static void func_loop_step(void *context, size_t worker, size_t fi) {
+  FuncLoop *loop = context;
+  MirModule *view = &loop->views[worker];
+  if (!loop->started[worker]) {
+    *view = *loop->module;
+    view->arena = ms_arena_new();
+    loop->started[worker] = true;
+  }
+  loop->step(loop->context, view, (uint32_t)fi);
+}
+
+void opt_parallel_funcs(MirModule *m, size_t grain, void (*step)(void *context, MirModule *view, uint32_t fi), void *context) {
+  MsArena scratch = ms_arena_new();
+  FuncLoop *loop = MS_ARENA_NEW(&scratch, FuncLoop);
+  loop->module = m;
+  loop->step = step;
+  loop->context = context;
+  (void)ms_parallel_for(m->funcs.len, grain, func_loop_step, loop);
+  for (size_t worker = 0; worker < MS_PARALLEL_MAX_WORKERS; worker++) {
+    if (!loop->started[worker]) {
+      continue;
+    }
+    MirModule *view = &loop->views[worker];
+    ms_arena_absorb(&m->arena, &view->arena);
+    MirModule expected = *m;
+    expected.arena = view->arena;
+    if (!ms_span_equal(ms_span_of((const uint8_t *)&expected, sizeof expected), ms_span_of((const uint8_t *)view, sizeof *view))) {
+      ms_fatal(MS_FATAL_INVARIANT, "a per-function pass changed the module");
+    }
+  }
+  ms_arena_free(&scratch);
+}
+
+typedef struct EachFunc {
+  bool (*pass)(MirModule *view, MirFunc *f, void *context);
+  void *context;
+  MirModule *module;
+  atomic_bool changed;
+} EachFunc;
+
+static void each_func_step(void *context, MirModule *view, uint32_t fi) {
+  EachFunc *each = context;
+  if (each->pass(view, &each->module->funcs.ptr[fi], each->context)) {
+    atomic_store(&each->changed, true);
+  }
+}
+
+bool opt_for_each_func(MirModule *m, bool (*pass)(MirModule *view, MirFunc *f, void *context), void *context) {
+  EachFunc each = {.pass = pass, .context = context, .module = m};
+  atomic_init(&each.changed, false);
+  opt_parallel_funcs(m, 16, each_func_step, &each);
+  return atomic_load(&each.changed);
 }

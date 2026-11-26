@@ -125,3 +125,19 @@ void ms_arena_reset(MsArena *arena) {
   arena->cursor = chunk_data(arena->head);
   arena->limit = arena->cursor + arena->head->size;
 }
+
+void ms_arena_absorb(MsArena *into, MsArena *from) {
+  if (from->head == NULL) {
+    return;
+  }
+  if (into->head == NULL) {
+    *into = *from;
+  } else {
+    MsArenaChunk *tail = into->head;
+    while (tail->next != NULL) {
+      tail = tail->next;
+    }
+    tail->next = from->head;
+  }
+  *from = (MsArena){0};
+}

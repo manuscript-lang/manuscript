@@ -6,6 +6,17 @@ The one results page of the suite ([groups.txt](groups.txt), [README](README.md)
 
 _Whole programs against rust, go, node and c. Run: `make perf GROUP=suite`._
 
+### 2026-11-26, per-function MIR passes on every core (on `98dcbd11`)
+
+Release `ms` with and without the change, same 4 vCPU VM, wall time of `ms build`. The generated 123k-line project of `bench/perf/tools/compile_time_project.ms` (40 packages, 25 files, 10 functions) and `tools/conform-run.ms` (384 lines plus the standard library it reaches). `ms emit --opt` of the project, pinned to one core with `taskset`, against four cores: 4.8 s against 3.9 s; the optimized MIR is byte-identical on one and four cores.
+
+| build | before | after |
+|---|---:|---:|
+| Debug, 123k lines | 6.0 s | 5.5 s |
+| Release, `conform-run.ms` | 2.09 s | 1.85 s |
+
+Still serial in the optimizer on the project: module-wide inlining (190 ms), entry ranges (260 ms) and the unwind-thread pass (350 ms, which recomputes dominators once per threaded branch).
+
 ### 2026-11-26, short-text byte search sixteen bytes at a time (on `ced98597`)
 
 Release `ms` from `ced98597` with and without the 16-byte vector scan in the short search (`memchr_short`), same 4 vCPU VM, wall time in ms (min and median of 60 alternating runs for `treegrep`, 25 for the others) and callgrind instructions.
