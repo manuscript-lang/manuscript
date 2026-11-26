@@ -498,8 +498,35 @@ static bool set_element(LowerFn *fn, const MsExpr *container, const MsExpr *key,
     return false;
   }
   const bool map = ms_ty_is(types, owner, MS_BUILTIN_Map);
-  /* A map stores its key as well: the key is the container's own copy, not the borrow the statement read. */
-  const MirValue stored_key = map && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, at)) ? fn_implicit_clone(fn, at, true) : at;
+  const bool owns_key = map && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, at));
+  /* A map stores its key only when the entry is new: an entry that exists takes the value where it lies and keeps its
+   * own key, so a borrowed key is copied by the insert alone. */
+  MirBlock join = MIR_NONE;
+  if (owns_key) {
+    MirTy entry_ty = MIR_VOID;
+    const MirValue address = fn_entry_address(fn, receiver, key, &entry_ty);
+    if (address == MIR_NONE) {
+      return false;
+    }
+    const MirValue absent = mir_b_emit(&fn->b, MOP_PtrIsNull, &address, 1, (MirImm){0}, MIR_BOOL);
+    const MirBlock insert = mir_b_new_block(&fn->b);
+    const MirBlock replace = mir_b_new_block(&fn->b);
+    join = mir_b_new_block(&fn->b);
+    mir_b_br_if(&fn->b, absent, insert, NULL, 0, replace, NULL, 0);
+    mir_b_seal_block(&fn->b, insert);
+    mir_b_seal_block(&fn->b, replace);
+    mir_b_switch_to(&fn->b, replace);
+    const bool drops = mir_needs_drop(fn->cx->module, entry_ty);
+    if (drops) {
+      const MirValue old = mir_b_emit(&fn->b, MOP_Take, &address, 1, (MirImm){.tag = MI_TY, .a = entry_ty}, entry_ty);
+      (void)mir_b_emit(&fn->b, MOP_Drop, &old, 1, (MirImm){0}, MIR_NONE);
+    }
+    const MirValue replaced[2] = {address, value};
+    (void)mir_b_emit(&fn->b, drops ? MOP_Put : MOP_Store, replaced, 2, (MirImm){0}, MIR_NONE);
+    mir_b_br(&fn->b, join, NULL, 0);
+    mir_b_switch_to(&fn->b, insert);
+  }
+  const MirValue stored_key = owns_key ? fn_emit(fn, MOP_Clone, &at, 1, (MirImm){0}, mir_b_ty(&fn->b, at)) : at; /* the insert's own copy of the key */
   if (stored_key == MIR_NONE) {
     return false;
   }
@@ -511,6 +538,11 @@ static bool set_element(LowerFn *fn, const MsExpr *container, const MsExpr *key,
   fn->native_arg_moves = 0;
   if (!done) {
     return fn_fail(fn, "an element of this container cannot be assigned yet");
+  }
+  if (join != MIR_NONE) {
+    mir_b_br(&fn->b, join, NULL, 0);
+    mir_b_seal_block(&fn->b, join);
+    mir_b_switch_to(&fn->b, join);
   }
   return !fn->failed;
 }
