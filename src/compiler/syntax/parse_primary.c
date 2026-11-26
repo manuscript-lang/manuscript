@@ -105,6 +105,12 @@ static MS_NODISCARD bool parse_bracket(Parser *p, MsExpr *left, MsExpr **out) {
 
 /* ---- primary, postfix, calls ---- */
 
+/* Whether the next token opens a new line right after a block's closing brace: the line ends the statement there
+ * (the lexer emits no newline after a block), so a `(` or `[` that begins it starts a statement of its own. */
+static bool begins_line_after_block(const Parser *p) {
+  return parse_previous(p).kind == MS_T_BlockClose && parse_peek(p).pos.line > parse_previous(p).pos.line;
+}
+
 MS_NODISCARD bool parse_postfix(Parser *p, MsExpr *e, MsExpr **out) {
   size_t links = 0;
   for (;;) {
@@ -122,12 +128,12 @@ MS_NODISCARD bool parse_postfix(Parser *p, MsExpr *e, MsExpr **out) {
       if (!parse_need_token(p, MS_T_Name, &name))
         return false;
       e = parse_mk_member(p, name.pos, e, parse_sym(p, name));
-    } else if (parse_take(p, MS_T_LBracket)) {
+    } else if (!begins_line_after_block(p) && parse_take(p, MS_T_LBracket)) {
       if (!parse_link(p, &links))
         return false;
       if (!parse_bracket(p, e, &e))
         return false;
-    } else if (parse_take(p, MS_T_LParen)) {
+    } else if (!begins_line_after_block(p) && parse_take(p, MS_T_LParen)) {
       if (!parse_link(p, &links))
         return false;
       MsPos pos = e->pos;

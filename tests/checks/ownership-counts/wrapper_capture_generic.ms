@@ -26,13 +26,13 @@ fn id(hold b Big) &Big => b
 
 fn pass[T](hold x T) &T => x
 
-fn cap(b Big) fn() Int {
+fn cap(move b Big) fn() Int {
 	return () => b.items.length()
 }
 
 export fn main() Int {
 	w := wrap(id(mk(8)))
 	p := pass(mk(8))
-	f := cap(p)
+	f := cap(p.clone())
 	return f() + w.inner.items.length() - 16
 }

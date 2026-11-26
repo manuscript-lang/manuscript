@@ -21,6 +21,10 @@ export extern fn msrt_test_capture_current() Int
 // promise timeout does.
 export extern fn msrt_test_deadline(on Bool) Void
 
+// A borrowed copy of `text` whose last byte is the last byte of readable memory; the
+// next page is unreadable, so a read past the end faults every time.
+export extern fn msrt_test_edge_string(text String) String
+
 // The encoded fault record of the last task under capture `id` that faulted, or "";
 // taking it clears it.
 export extern fn msrt_test_capture_fault(id Int) String

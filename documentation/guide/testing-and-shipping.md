@@ -47,12 +47,6 @@ test "the order of items never changes the total" {
 ```
 
 ```text
-RUN totals.ms::small orders pay shipping
-PASS totals.ms::small orders pay shipping
-RUN totals.ms::big orders ship free
-PASS totals.ms::big orders ship free
-RUN totals.ms::the order of items never changes the total
-PASS totals.ms::the order of items never changes the total
 3 tests, 0 failed
 ```
 

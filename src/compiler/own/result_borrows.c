@@ -257,7 +257,11 @@ static Reach classify(Pass *pass, const MsExpr *expr) {
   }
   if (expr->kind == MS_E_BINARY && expr->op == MS_B_OR &&
       ms_ty_is(&pass->program->types, ms_facts_type(pass->facts, expr->u.bin.left->id), MS_BUILTIN_Optional)) {
-    return classify(pass, expr->u.bin.left); /* `x or d` hands out the payload of `x`, which stays where `x` keeps it */
+    /* `x or d` hands out the payload of `x`, which stays where `x` keeps it, or `d` where `d` is a place that stays too */
+    const MsExpr *fallback = expr->u.bin.right;
+    const bool place = fallback->kind == MS_E_NAME || fallback->kind == MS_E_MEMBER;
+    const Reach payload = classify(pass, expr->u.bin.left);
+    return place && expr->u.bin.left->kind == MS_E_CALL && payload.mask != 0 ? join(payload, classify(pass, fallback)) : payload;
   }
   const MsExpr *container = NULL;
   if (is_element(pass, expr, &container)) {

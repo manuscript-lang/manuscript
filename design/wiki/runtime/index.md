@@ -71,3 +71,4 @@ Cancellation, cleanup, resources, networking, promises, test helpers.
 - [An extern declared `T!` is a native with a u8 status and trailing out slots](an-extern-that-returns-a-result-is-a-u8-status-plus-out-slots.md): lowering builds the Result and the `Error` from the status; the table lives in core.ms.
 - [The C runtime takes idle HTTP connections by claiming their finished read](c-runtime-takes-idle-connections-by-claiming-their-finished-read.md): how a held-up thread's ready connections move; why spread placement and front-spawned request tasks are needed.
 - [A BigInt compares by value inside a list, a map or an optional](a-bigint-compares-by-value-inside-collections.md): descriptor glue and the shape walk read the number, not the handle.
+- [A rebind test takes its port from the kernel for the protocol it rebinds](a-test-that-rebinds-a-port-takes-one-from-the-kernel-per-protocol.md): a TCP rebind on a UDP-chosen port hit TIME_WAIT, not a leak.

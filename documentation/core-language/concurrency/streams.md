@@ -139,8 +139,6 @@ test "sum values from a producer" {
 ```
 
 ```text
-RUN pipe_test.ms::sum values from a producer
-PASS pipe_test.ms::sum values from a producer
 1 tests, 0 failed
 ```
 

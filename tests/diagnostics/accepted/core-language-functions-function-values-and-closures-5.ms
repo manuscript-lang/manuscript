@@ -6,7 +6,7 @@ import (
 	OpenMode, open from "@std/os/fs.ms",
 )
 
-fn notes_reader(path String) fn() Result[Bytes, Error] {
+fn notes_reader(move path String) fn() Result[Bytes, Error] {
 	return () => {
 		file := open(path, OpenMode.Read)?
 		return file.read_file(max_bytes: 1048576)

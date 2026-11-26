@@ -148,7 +148,7 @@ A function value never changes, so the checker shares it freely: pass it, store 
 A closure that is returned or stored owns what it captures, so it cannot change a captured variable:
 
 - **Moving a variable in.** The closure takes a captured variable when the closure is its last use. If the variable is used again, or is only borrowed (a loop variable, or a `:=` that borrows another value), bind a `.clone()` before the closure and capture that.
-- **Parameters.** A parameter the closure takes is moved by the function, so the caller gives the value up. Pass `.clone()` to keep it.
+- **Parameters.** A returned or stored closure that keeps a parameter takes it with `move`, so the caller gives the value up (pass `.clone()` to keep it); capturing a borrowed parameter is an error, because the closure would need a copy no `.clone()` asked for. A function value is shared, so it is the one capture that needs neither.
 - **A `var` used again.** A returned or stored closure cannot capture a `var` that is used after the closure is made, because it would keep a stale copy. Bind a `:=` copy first (`base := offset`) and capture that.
 
 A bound method keeps its receiver by the same rules. A method that changes its receiver (`add := xs.append`) shares the variable like a closure that changes it, so `xs` must be a `var`, cannot be used while `add` is still used, and `add` cannot be returned or stored. Taking such a method from a field (`bag.items.append`) is an error; call it, or write a closure. The parameter case, with the caller keeping its list:
@@ -159,7 +159,7 @@ type Counter {
     read fn() Int
 }
 
-fn counter(values List[Int]) Counter {
+fn counter(move values List[Int]) Counter {
     return Counter(read: () => values.length())
 }
 
@@ -181,7 +181,7 @@ import (
     open from "@std/os/fs.ms",
 )
 
-fn notes_reader(path String) fn() Bytes! {
+fn notes_reader(move path String) fn() Bytes! {
     return () => {
         file := open(path: path)?
         return file.read_file(max_bytes: 1048576)

@@ -441,11 +441,13 @@ fn lex(text String, line Int) List[Tok]! {
 
 type ExprParser {
 	toks List[Tok]
+	end Tok
 	at, line Int
 }
 
 fn hold ExprParser.peek() &Tok {
-	return self.toks.get_or(self.at, Tok(kind: "end", text: ""))
+	if self.at < self.toks.length() { return self.toks[self.at] }
+	return self.end
 }
 
 fn ExprParser.is_sym(text String) Bool {
@@ -578,7 +580,12 @@ fn var ExprParser.primary() TemplateExpr! {
 
 fn parse_expr(text String, line Int) TemplateExpr! {
 	toks := lex(text, line)?
-	var parser = ExprParser(toks: toks, at: 0, line: line)
+	var parser = ExprParser(
+		toks: toks,
+		end: Tok(kind: "end", text: ""),
+		at: 0,
+		line: line,
+	)
 	if parser.toks.is_empty() {
 		return error(syntax_error(line: line, reason: "empty action"))
 	}

@@ -40,7 +40,7 @@ fn request(method HttpMethod, path String) HttpRequest {
 	)
 }
 
-fn say(label String) fn(var HttpExchange, RouteParams) Void! {
+fn say(move label String) fn(var HttpExchange, RouteParams) Void! {
 	return (var exchange, params) => reply(exchange, text(200, label.clone()))
 }
 
@@ -177,7 +177,7 @@ test "invalid and duplicate patterns are rejected" {
 	r.post("/a/:y", say("y")).get()
 }
 
-fn tag(label String) fn(var HttpExchange, fn(var HttpExchange) Void!) Void! {
+fn tag(move label String) fn(var HttpExchange, fn(var HttpExchange) Void!) Void! {
 	return (var exchange, next) => tagged(label.clone(), exchange, next)
 }
 

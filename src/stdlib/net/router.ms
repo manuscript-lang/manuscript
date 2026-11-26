@@ -987,10 +987,11 @@ type AccessEntry {
 export fn access_log(
 	logger Logger
 ) fn(var HttpExchange, fn(var HttpExchange) Void!) Void! {
+	owned := logger.clone()
 	return fn(
 		var exchange HttpExchange,
 		next fn(var HttpExchange) Void!
-	) => with_access_log(logger, exchange, next)
+	) => with_access_log(owned, exchange, next)
 }
 
 fn with_access_log(

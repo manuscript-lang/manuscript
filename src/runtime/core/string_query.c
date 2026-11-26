@@ -55,12 +55,6 @@ int64_t msrt_string_char_width(const MsString *s, int64_t at) {
   return rune_at(s, at).width;
 }
 
-/* The scalar value and byte width of the character at byte `at` in one decode, as scalar << 3 | width. */
-int64_t msrt_string_scalar_step(const MsString *s, int64_t at) {
-  const MsRune rune = rune_at(s, at);
-  return (int64_t)(((uint64_t)rune.rune << 3) | rune.width);
-}
-
 int64_t msrt_string_scalar_at_byte(const MsString *s, int64_t at) {
   return rune_at(s, at).rune;
 }

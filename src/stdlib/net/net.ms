@@ -307,8 +307,9 @@ fn move Listener.close() Void! {
 // handshake drops that connection and gives EIO.
 fn Listener.accept(timeout Duration? = null) Promise[Connection] {
 	native := msstd_net_listener_share(self.native)
+	owned_timeout := timeout.clone()
 	return promise(
-		() => accepted(native, timeout),
+		() => accepted(native, owned_timeout),
 		options: PromiseOptions(placement: Placement.Here),
 	)
 }
@@ -319,8 +320,9 @@ fn Listener.accept(timeout Duration? = null) Promise[Connection] {
 // accepting thread.
 fn Listener.accept_pending(timeout Duration? = null) Promise[PendingConnection] {
 	native := msstd_net_listener_share(self.native)
+	owned_timeout := timeout.clone()
 	return promise(
-		() => accepted_pending(native, timeout),
+		() => accepted_pending(native, owned_timeout),
 		options: PromiseOptions(placement: Placement.Here),
 	)
 }
@@ -622,8 +624,9 @@ export fn connect(
 ) Promise[Connection] {
 	owned_address := address.clone()
 	owned_tls := tls.clone()
+	owned_timeout := timeout.clone()
 	return promise(
-		() => host_network().connect(owned_address, owned_tls, timeout),
+		() => host_network().connect(owned_address, owned_tls, owned_timeout),
 		options: PromiseOptions(placement: Placement.Here),
 	)
 }
@@ -634,8 +637,9 @@ export fn connect(
 // ms: effect std.net.connect
 export fn connect_unix(path String, timeout Duration? = null) Promise[Connection] {
 	owned_path := path.clone()
+	owned_timeout := timeout.clone()
 	return promise(
-		() => host_network().connect_unix(owned_path, timeout),
+		() => host_network().connect_unix(owned_path, owned_timeout),
 		options: PromiseOptions(placement: Placement.Here),
 	)
 }

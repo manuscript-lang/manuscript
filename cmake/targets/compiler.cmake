@@ -113,7 +113,7 @@ ms_library(ms_opt compiler/opt
 
 ms_library(ms_lower compiler/lower
   SOURCES
-    lower_types.c lower_scope.c lower_unwind.c lower_func.c lower_expr.c lower_temporary.c lower_stmt.c lower_destructure.c lower_field.c lower_call.c lower_var_slot.c lower_native.c lower_native_update.c
+    lower_types.c lower_scope.c lower_unwind.c lower_func.c lower_expr.c lower_temporary.c lower_stmt.c lower_var_scan.c lower_destructure.c lower_field.c lower_call.c lower_var_slot.c lower_native.c lower_native_update.c
     lower_native_list.c lower_native_roles.c lower_scalar_ops.c lower_object.c lower_extern.c lower_conv.c lower_for.c lower_close.c lower_parts.c
     lower_temp.c lower_text.c lower_match.c lower_list.c lower_iflet.c lower_closure.c lower_captures.c
     lower_map_entry.c lower_or.c lower_assign_take.c lower_funcval.c lower_default.c lower_glue.c lower_hooks.c lower_result.c lower_tests.c lower_entry.c

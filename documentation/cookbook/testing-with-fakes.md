@@ -53,10 +53,6 @@ test "a failing mailbox is reported" {
 ```
 
 ```text
-RUN notify_test.ms::every user gets a message
-PASS notify_test.ms::every user gets a message
-RUN notify_test.ms::a failing mailbox is reported
-PASS notify_test.ms::a failing mailbox is reported
 2 tests, 0 failed
 ```
 
@@ -83,8 +79,6 @@ test "a token expires at the end of its lifetime" {
 ```
 
 ```text
-RUN clock_test.ms::a token expires at the end of its lifetime
-PASS clock_test.ms::a token expires at the end of its lifetime
 1 tests, 0 failed
 ```
 

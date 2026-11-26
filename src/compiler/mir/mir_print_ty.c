@@ -132,7 +132,7 @@ static const char *const role_names[] = {
     [MR_BYTES_READ_WORD] = "bytes_read_word", [MR_BYTES_INDEX_OF_BYTE] = "bytes_index_of_byte",
     [MR_STRING_PARSE_INT] = "string_parse_int", [MR_STRING_CONTAINS] = "string_contains",
     [MR_STRING_STARTS_WITH] = "string_starts_with", [MR_STRING_ENDS_WITH] = "string_ends_with",
-    [MR_STRING_COMPARE] = "string_compare", [MR_STRING_SCALAR_STEP] = "string_scalar_step",
+    [MR_STRING_COMPARE] = "string_compare",
     [MR_STRING_SCALAR_AT] = "string_scalar_at",
     [MR_STRING_SCALAR_TEXT] = "string_scalar_text", [MR_STRING_TO_BYTES] = "string_to_bytes"};
 
