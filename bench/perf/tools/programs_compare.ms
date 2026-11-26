@@ -22,7 +22,7 @@ import (
 )
 
 fn lines_of(version, content String) List[String] {
-	return content.split("\n").collect().filter(l => l != "").map(l => f"{version} {l}")
+	return content.split("\n").filter(l => l != "").map(l => f"{version} {l}")
 }
 
 fn run(opts Map[String, String], n Int) Result[String, Error] {

@@ -5,7 +5,7 @@ fn main() Void {
 	var total = 0
 
 	for i in 0..100000 {
-		f := line.split(" ").collect()
+		f := line.split(" ")
 		total += (f[5].parse_int() or 0) + f[3].length()
 	}
 

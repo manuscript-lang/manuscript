@@ -31,7 +31,7 @@ export fn bench_string() Void {
 		fn() Int {
 			var n = 0
 			for i in 0..200 {
-				n += text.split(" ").collect().length()
+				n += text.split(" ").length()
 			} return n
 		}
 	)

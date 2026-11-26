@@ -414,7 +414,7 @@ fn string_chains() Int {
 
 	for r in 0..3 {
 		for line in lines {
-			parts := line.split("=").collect()
+			parts := line.split("=")
 
 			if parts.length() != 2 {
 				bad += 1

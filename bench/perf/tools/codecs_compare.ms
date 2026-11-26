@@ -134,9 +134,7 @@ fn decode(before, after, out String, pairs Int) Result[Void, Error] {
 					[f"{c.size}", f"{c.count}", f"{c.rounds}"],
 					"",
 				)?
-				parts := text.replace("\n", " ").split(" ").collect().filter(
-					p => (p != "")
-				)
+				parts := text.replace("\n", " ").split(" ").filter(p => p != "")
 				if parts.length() != 5 {
 					return invalid(f"invalid output {name}: {text}")
 				}
@@ -223,9 +221,7 @@ fn json_failure(before, after, out String, pairs Int) Result[Void, Error] {
 					[f"{c.size}", f"{c.rounds}", c.shape.clone()],
 					"",
 				)?
-				fields := text.replace("\n", " ").split(" ").collect().filter(
-					p => (p != "")
-				)
+				fields := text.replace("\n", " ").split(" ").filter(p => p != "")
 				if (
 					fields.length() != 6
 					or fields[0] != f"{c.size}"

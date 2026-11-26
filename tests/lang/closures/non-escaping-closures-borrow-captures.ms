@@ -64,7 +64,7 @@ type Box {
 fn lit(text String) Int {
 	var t = 0
 
-	for p in text.split(",").collect().clone() {
+	for p in text.split(",").clone() {
 		fs := [fn() Int => return p.length()]
 		t += fs[0]()
 	}
@@ -74,7 +74,7 @@ fn lit(text String) Int {
 
 fn keep_rec(text String) List[Box] {
 	var out List[Box] = []
-	for p in text.split(",").collect().clone() {
+	for p in text.split(",").clone() {
 		out.append(Box(f: fn() Int => return p.length()))
 	}
 	return out
@@ -84,7 +84,7 @@ fn keep_map(text String) Int {
 	var m Map[Int, fn() Int] = {}
 	var i = 0
 
-	for p in text.split(",").collect().clone() {
+	for p in text.split(",").clone() {
 		m.add(i, fn() Int => return p.length())
 		i += 1
 	}
@@ -98,7 +98,7 @@ fn keep_map(text String) Int {
 
 fn keep_opt(text String) Int {
 	var os List[(fn() Int)?] = []
-	for p in text.split(",").collect().clone() {
+	for p in text.split(",").clone() {
 		os.append((fn() Int => return p.length()))
 	}
 
@@ -115,7 +115,7 @@ fn store(var fs List[fn() Int], f fn() Int) Void {
 
 fn keep_user(text String) Int {
 	var fs List[fn() Int] = []
-	for p in text.split(",").collect().clone() {
+	for p in text.split(",").clone() {
 		store(fs, fn() Int => return p.length())
 	}
 

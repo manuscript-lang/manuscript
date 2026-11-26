@@ -55,7 +55,7 @@ fn run(work String, n Int) Result[String, Error] {
 			exe := if v == "ms" { f"{work}/ms/bench" } else { f"{work}/{v}" }
 
 			for line in (sample(exe, [])?).split("\n") {
-				f := line.split(" ").collect().filter(p => p != "")
+				f := line.split(" ").filter(p => p != "")
 				if f.length() < 2 or f[0] == "check" { continue }
 
 				key := f"{f[0]} {v}"

@@ -25,9 +25,7 @@ fn count_tokens(paths List[String]) List[Int]? {
 	ran := bash(f"python3 -c \"{program}\" {quoted}", ".", 600, "")
 	if ran.code != 0 { return null }
 
-	counts List[Int] := ran.out.trim().split("\n").collect().map(
-		n => n.parse_int() or 0
-	)
+	counts List[Int] := ran.out.trim().split("\n").map(n => n.parse_int() or 0)
 	return counts
 }
 

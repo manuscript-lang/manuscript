@@ -161,7 +161,7 @@ fn bench_string(n Int) Int {
 	}
 
 	text := sb
-	parts := text.split(" ").collect()
+	parts := text.split(" ")
 	joined := parts.join("-")
 	replaced := joined.replace("word", "w")
 	report("string_build_split_join_replace", n, t)

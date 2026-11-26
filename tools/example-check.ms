@@ -117,7 +117,7 @@ fn is_comment(line String) Bool {
 // removed.
 fn examples_of(path, text String, var problems List[String]) List[Example] {
 	var found = List[Example]()
-	lines := text.split("\n").collect()
+	lines := text.split("\n")
 	var at = 0
 
 	while at < lines.length() {
@@ -190,7 +190,7 @@ fn examples_of(path, text String, var problems List[String]) List[Example] {
 
 // How many times `mark` occurs in `line`.
 fn occurrences(line, mark String) Int {
-	return line.split(mark).collect().length() - 1
+	return line.split(mark).length() - 1
 }
 
 // Whether `line` starts a top-level declaration.

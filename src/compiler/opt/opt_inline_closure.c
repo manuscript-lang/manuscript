@@ -382,10 +382,6 @@ bool ic_closure_body(MirModule *m, const MirFunc *f, MirFunc *out) {
 
 /* ---- constant closure fields ---- */
 
-static void ic_field_escape(void *context, MirValue value) {
-  ((bool *)context)[value] = false;
-}
-
 
 static uint32_t ic_field_slot(const IcFields *t, uint32_t type, uint32_t field) {
   uint32_t h = (type * 0x9e3779b1u) ^ (field * 0x85ebca6bu);
@@ -447,30 +443,6 @@ static uint32_t ic_capture_free_code(const MirInst *const *defs, MirValue v) {
   return MIR_NONE;
 }
 
-/* The `ptr.field` values whose only uses are loads: reads of the field through a pointer, which change nothing. */
-static const bool *ic_field_reads(MsArena *arena, const MirFunc *f) {
-  bool *read_only = MS_ARENA_NEW_ARRAY(arena, bool, f->values.len + 1);
-  for (uint32_t b = 0; b < f->blocks.len; b++) {
-    for (uint32_t i = 0; i < f->blocks.ptr[b].insts.len; i++) {
-      const MirInst *in = &f->blocks.ptr[b].insts.ptr[i];
-      if (in->op == MOP_PtrField && in->res != MIR_NONE) {
-        read_only[in->res] = true;
-      }
-    }
-  }
-  for (uint32_t b = 0; b < f->blocks.len; b++) {
-    const MirBlockData *blk = &f->blocks.ptr[b];
-    for (uint32_t i = 0; i < blk->insts.len; i++) {
-      const MirInst *in = &blk->insts.ptr[i];
-      for (uint32_t k = in->op == MOP_Load ? 1 : 0; k < in->nargs; k++) {
-        read_only[in->args[k]] = false;
-      }
-    }
-    mir_term_each_value(&blk->term, ic_field_escape, read_only);
-  }
-  return read_only;
-}
-
 static void ic_fields_scan(IcFields *t, MsArena *arena, const MirModule *m, const MirFunc *f) {
   const MirInst **defs = MS_ARENA_NEW_ARRAY(arena, const MirInst *, f->values.len);
   for (uint32_t b = 0; b < f->blocks.len; b++) {
@@ -481,12 +453,11 @@ static void ic_fields_scan(IcFields *t, MsArena *arena, const MirModule *m, cons
       }
     }
   }
-  const bool *read_only = ic_field_reads(arena, f);
   for (uint32_t b = 0; b < f->blocks.len; b++) {
     for (uint32_t i = 0; i < f->blocks.ptr[b].insts.len; i++) {
       const MirInst *in = &f->blocks.ptr[b].insts.ptr[i];
       if ((in->op == MOP_TypeSet || in->op == MOP_TypeFill || in->op == MOP_PtrField) &&
-        in->imm.tag == MI_FIELD && !(in->op == MOP_PtrField && read_only[in->res])) {
+        in->imm.tag == MI_FIELD) {
         ic_fields_note(t, in->imm.a, in->imm.b, MIR_NONE, true);
       }
       if (in->op != MOP_TypeNew || in->imm.tag != MI_TYPE) {
@@ -537,23 +508,13 @@ IcKnown ic_known_aliased(MsArena *arena, const MirModule *m, const MirFunc *f) {
 static IcKnown ic_known_with_fields(MsArena *arena, const MirModule *m, const MirFunc *f,
                   const IcFields *fields) {
   IcKnown known = ic_known_aliased(arena, m, f);
-  const MirInst **defs = MS_ARENA_NEW_ARRAY(arena, const MirInst *, f->values.len + 1);
-  for (uint32_t b = 0; b < f->blocks.len; b++) {
-    for (uint32_t i = 0; i < f->blocks.ptr[b].insts.len; i++) {
-      if (f->blocks.ptr[b].insts.ptr[i].res != MIR_NONE) {
-        defs[f->blocks.ptr[b].insts.ptr[i].res] = &f->blocks.ptr[b].insts.ptr[i];
-      }
-    }
-  }
   for (uint32_t b = 0; b < f->blocks.len; b++) {
     for (uint32_t i = 0; i < f->blocks.ptr[b].insts.len; i++) {
       const MirInst *in = &f->blocks.ptr[b].insts.ptr[i];
-      const MirInst *source = in->op == MOP_Load && in->nargs == 1 ? defs[in->args[0]] : in;
-      if (in->res == MIR_NONE || source == NULL || (source != in && source->op != MOP_PtrField) ||
-          (source == in && in->op != MOP_TypeGet) || source->imm.tag != MI_FIELD) {
+      if (in->op != MOP_TypeGet || in->imm.tag != MI_FIELD || in->res == MIR_NONE) {
         continue;
       }
-      const uint32_t s = ic_field_slot(fields, source->imm.a, source->imm.b);
+      const uint32_t s = ic_field_slot(fields, in->imm.a, in->imm.b);
       if (fields->used[s] && fields->code[s] != MIR_NONE) {
         if (known.n == 0) {
           known = ic_known_new(arena, (uint32_t)f->values.len);

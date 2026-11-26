@@ -44,7 +44,7 @@ fn report(mir String) List[String] {
 			colon := line.index_of(":") or (-1)
 			id := line.slice(2, colon)
 			eq := line.index_of(" = ") or (-1)
-			words := line.slice(eq + 3, line.length()).split(" ").collect()
+			words := line.slice(eq + 3, line.length()).split(" ")
 			op := words[0].clone()
 			defs.add(id.clone(), op.clone())
 

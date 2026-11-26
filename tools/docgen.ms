@@ -167,7 +167,7 @@ fn old_stem(module_path String) String {
 }
 
 fn last_part(path String) String {
-	return (path.split("/").collect().last() or "").clone()
+	return (path.split("/").last() or "").clone()
 }
 
 type Tree {
@@ -233,7 +233,7 @@ fn site_tree(modules List[Module]) Tree {
 			f"+++\ntitle = {quote(title.clone())}\nslug = {quote(last_part(path.clone()))}\nedit_source = {quote(source)}\n{aliases}+++\n\n{render(module.clone(), true)}",
 		)
 
-		parts := path.split("/").collect()
+		parts := path.split("/")
 		var parent = ""
 
 		for at in 0..parts.length() - 1 {
@@ -512,7 +512,7 @@ fn coverage_json(entries List[Entry]) String {
 // ---- files ----
 
 fn parent_of(path String) String {
-	parts := path.split("/").collect()
+	parts := path.split("/")
 	if parts.length() < 2 { return "" }
 
 	return parts.slice(0, parts.length() - 1).get().join("/")

@@ -40,20 +40,7 @@ bool ms_own_look_carrier(const MsCheckProgram *program, const MsCall *call, uint
     return false;
   }
   const MsDef *def = ms_defs_get(&program->defs, row->def);
-  if (index >= def->fields.len) {
-    return false;
-  }
-  /* A field written as a type variable (`source I`) is a look when the instance names one (`Mapped[Words, ...]`). */
-  const MsTy built = ms_ty_result(&program->types, call->callee_ty);
-  const size_t count = ms_ty_arg_count(&program->types, built);
-  MsTy field = def->fields.ptr[index].ty;
-  for (size_t at = 0; count == def->variables.len && at < count; at++) {
-    if (def->variables.ptr[at] == field) {
-      field = ms_ty_args(&program->types, built)[at];
-      break;
-    }
-  }
-  return ms_check_look_record(program, field);
+  return index < def->fields.len && ms_check_look_record(program, def->fields.ptr[index].ty);
 }
 
 bool ms_own_look_member(const MsCheckProgram *program, const MsFacts *facts, const MsExpr *member) {

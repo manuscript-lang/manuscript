@@ -209,7 +209,7 @@ fn upgrade_status(address String, version String, extra String) String! {
 	send(client, request)?
 
 	reply := (recv(client, 2.seconds())?) or Bytes([])
-	return ok((reply.decode_utf8() or "").split("\r\n").collect().first() or "")
+	return ok((reply.decode_utf8() or "").split("\r\n").first() or "")
 }
 
 test "WebSocket client options bound messages and reject bad values" {

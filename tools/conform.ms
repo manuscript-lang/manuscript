@@ -239,7 +239,7 @@ fn retag_command(corpus String) Int {
 		var out = render_meta(meta)
 
 		if not fx.is_dir {
-			var lines = source.split("\n").collect()
+			var lines = source.split("\n")
 			var skipped = 0
 			while (
 				skipped < lines.length()

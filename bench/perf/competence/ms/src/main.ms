@@ -112,7 +112,7 @@ fn text_build_parse(n Int) Int {
 		i += 1
 	}
 
-	parts := b.split(",").collect()
+	parts := b.split(",")
 	var total = 0
 	for p in parts {
 		total += p.parse_int() or 0

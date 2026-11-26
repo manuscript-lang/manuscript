@@ -385,7 +385,7 @@ fn parse_pattern(pattern String) List[Segment]! {
 // The segments of an absolute path; "/" has null.
 fn split_path(path String) List[String] {
 	if path == "/" { return [] }
-	return path.view(1, path.length()).split("/").collect().clone()
+	return path.view(1, path.length()).split("/").clone()
 }
 
 fn segment_of(part String) Segment {

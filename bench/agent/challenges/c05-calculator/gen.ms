@@ -136,7 +136,7 @@ fn evaluate(line String) String {
 }
 
 fn solve(s String) String {
-	return s.split("\n").collect().filter(l => not l.trim().is_empty()).map(
+	return s.split("\n").filter(l => not l.trim().is_empty()).map(
 		l => (evaluate(l) + "\n")
 	).join("")
 }

@@ -123,7 +123,7 @@ export fn verify_token[T Data = JsonValue](
 		return error(Error("jwt: malformed token", kind: "EBADMSG"))
 	}
 
-	parts := token.split(".").collect()
+	parts := token.split(".")
 	if parts.length() != 3 {
 		return error(Error("jwt: malformed token", kind: "EBADMSG"))
 	}

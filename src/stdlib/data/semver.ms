@@ -55,7 +55,7 @@ fn Version.to_string() String {
 export fn parse(text String) Version! {
 	build_parts := split_first(text, "+")
 	core_and_pre := split_first(build_parts[0].clone(), "-")
-	numbers := core_and_pre[0].split(".").collect()
+	numbers := core_and_pre[0].split(".")
 	if numbers.length() != 3 {
 		return error(Error("semver: invalid data", kind: "EBADMSG"))
 	}

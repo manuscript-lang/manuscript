@@ -281,9 +281,7 @@ fn convert_fences(source String) String {
 
 		if body.trim() == "```" and lead == prefix {
 			if not block.is_empty() {
-				converted := (convert(block.join("\n")) or block.join("\n")).split(
-					"\n"
-				).collect()
+				converted := (convert(block.join("\n")) or block.join("\n")).split("\n")
 
 				for i in 0..converted.length() {
 					if block[i] == "" {

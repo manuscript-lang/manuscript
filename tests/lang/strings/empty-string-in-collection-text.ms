@@ -4,7 +4,7 @@ import expect_equal from "@std/test/test.ms"
 
 test "an empty string inside a container shows as quotes" {
 	expect_equal([""].to_string(), "[\"\"]")?
-	expect_equal("a,,b".split(",").collect().to_string(), "[a, \"\", b]")?
+	expect_equal("a,,b".split(",").to_string(), "[a, \"\", b]")?
 	expect_equal(List[String]().to_string(), "[]")?
 }
 

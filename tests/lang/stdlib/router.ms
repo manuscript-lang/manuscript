@@ -537,7 +537,7 @@ test "access_log writes one record per request" {
 	expect_true(text_out.contains("\"status\":200"))?
 	expect_true(text_out.contains("\"bytes\":5"))?
 	expect_true(text_out.contains("\"status\":404"))?
-	expect_equal(text_out.lines().collect().length(), 2)?
+	expect_equal(text_out.lines().length(), 2)?
 }
 
 fn no_content(var exchange HttpExchange, params RouteParams) Void! {
@@ -565,7 +565,7 @@ test "access_log counts only the body bytes that are sent" {
 	expect_equal((r.call(get("/a"))?).status, 200)?
 	expect_equal(body_of(r.call(get("/s"))?), "onetwo")?
 
-	records := logged(lines.clone()).lines().collect()
+	records := logged(lines.clone()).lines()
 	expect_equal(records.length(), 5)?
 	expect_true(records[0].contains("\"method\":\"HEAD\""))?
 	expect_true(records[0].contains("\"bytes\":0"))?

@@ -188,7 +188,7 @@ test "expanded packages run through compiler" {
 			return fail(message: "archive failed")
 		}
 	}
-	("a,,b").split(separator: ",").collect() | expect_equal(["a", "", "b"])?
+	("a,,b").split(separator: ",") | expect_equal(["a", "", "b"])?
 	("é🙂").scalar_length() | expect_equal(2)?
 	("é").scalar_values() | expect_equal([233])?
 

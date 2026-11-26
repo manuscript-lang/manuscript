@@ -11,7 +11,7 @@ fn main() Void {
 	for line in data.split("\n") {
 		if line.is_empty() { continue }
 
-		f := line.split(" ").collect()
+		f := line.split(" ")
 		score := f[1].parse_int() or 0
 		total += score
 		out += f"{f[0].pad_end(12, " ")} {score.to_string().pad_start(8, " ")} {score * 3 / 7}\n"

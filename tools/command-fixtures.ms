@@ -44,10 +44,7 @@ fn text_of(data Bytes) String {
 fn normalize(text, dir String) String {
 	marker := "\"duration_ns\": "
 	slashed := dir.replace("\\", "/")
-	parts := text.replace(dir, "<DIR>").replace(
-		slashed,
-		"<DIR>",
-	).split(marker).collect()
+	parts := text.replace(dir, "<DIR>").replace(slashed, "<DIR>").split(marker)
 	var out = parts[0].clone()
 
 	for index in 1..parts.length() {
@@ -124,9 +121,9 @@ fn execute(ms, case_dir String) Outcome {
 		input = read_file(f"{case_dir}/stdin").wait().get()
 	}
 
-	args := text_of(read_file(f"{case_dir}/args").wait().get()).split(
-		"\n"
-	).collect().filter(line => (line != "")).map(line => line.clone())
+	args := text_of(read_file(f"{case_dir}/args").wait().get()).split("\n").filter(
+		line => (line != "")
+	).map(line => line.clone())
 	out := run(
 		ms.clone(),
 		args,
@@ -150,7 +147,7 @@ fn record(case_dir String, outcome Outcome) Void {
 	for item in outcome.files.entries() {
 		path := item.key.clone()
 		content := item.value.clone()
-		parts := path.split("/").collect()
+		parts := path.split("/")
 		if parts.length() > 1 {
 			create_directory(
 				f"{expected}/tree/{path.slice(0, path.length() - parts[parts.length() - 1].length() - 1)}",

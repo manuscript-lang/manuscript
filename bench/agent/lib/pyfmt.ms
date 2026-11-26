@@ -44,10 +44,10 @@ export fn fmt_g(x Float, digits Int) String {
 	if x == 0.0 { return "0" }
 
 	sci := x.abs().to_exponential(digits - 1)
-	exp := sci.split("e").collect()[1].replace("+", "").parse_int() or 0
+	exp := sci.split("e")[1].replace("+", "").parse_int() or 0
 
 	if exp < -4 or exp >= digits {
-		mantissa := strip_zeros(x.to_exponential(digits - 1).split("e").collect()[0])
+		mantissa := strip_zeros(x.to_exponential(digits - 1).split("e")[0])
 		sign := if exp < 0 { "-" } else { "+" }
 		mag := f"{if exp < 0 { 0 - exp } else { exp }}".pad_start(2, "0")
 		return f"{mantissa}e{sign}{mag}"
