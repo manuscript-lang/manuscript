@@ -94,7 +94,7 @@ MirValue fn_lower_or_null(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   const bool owns = (fresh_left && (named->kind != MS_E_NAME || moving)) || (named->kind == MS_E_CALL && moving) ||
                     (!place && named->kind != MS_E_CALL && fresh_left);
   /* `x or panic(..)` read in place: nothing else reaches the join, so the payload stays a view of `x` */
-  const bool view_only = !owns && fn->or_view == expr && ms_ty_is(&fn->cx->program->types, ms_facts_type(fn->facts, expr->u.bin.right->id), MS_BUILTIN_Never) &&
+  const bool view_only = !owns && (fn->or_view == expr || want == LW_BORROW) && ms_ty_is(&fn->cx->program->types, ms_facts_type(fn->facts, expr->u.bin.right->id), MS_BUILTIN_Never) &&
                          ms_facts_use(fn->facts, expr->id) != MS_USE_MOVE;
   /* Read in place (a receiver, an operand, a borrowed argument): the result is a view of `x`'s payload or of the default,
    * which a holder owned by the enclosing scope keeps alive, so nothing is copied. */

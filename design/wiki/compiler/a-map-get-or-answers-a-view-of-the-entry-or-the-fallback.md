@@ -7,3 +7,5 @@
 - A value that is itself an Optional is stored as it is and the answer wraps it once more, so there is no entry to view. `fn_map_entry_view` declines and `borrows_result` keeps such an instance an owner (`returns_entry_or`).
 
 A `var` bound to a borrowing call holds the view only while every later store is a borrowing call too (`var_stores_owned`); `found = own.clone()` or `found += "!"` makes it an owner, so the binding copies. Before, the owned store in an inner scope was dropped at its end and the verifier reported a value used after it was consumed.
+
+`x or panic(..)` read in place (an argument or a receiver) and `n := x or panic(..)` answer a view of the payload: the right side never returns, so nothing else reaches the join. A fresh `x` (a call result) is still taken, not viewed. Probe the hidden copies of tests with `MS_COPY_PROBE=1 ms test <file>`; `copy-check` builds programs only.
