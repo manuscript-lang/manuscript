@@ -22,7 +22,6 @@ static MirRole string_role(MsSpan name) {
                {"msrt_string_ends_with", MR_STRING_ENDS_WITH},
                {"msrt_string_slice", MR_STRING_SLICE},
                {"msrt_string_scalar_at", MR_STRING_SCALAR_AT},
-               {"msrt_string_scalar_text", MR_STRING_SCALAR_TEXT},
                {"msrt_string_to_bytes", MR_STRING_TO_BYTES}};
   for (size_t at = 0; at < sizeof table / sizeof table[0]; at++) {
     if (ms_span_is_text(name, table[at].name)) {

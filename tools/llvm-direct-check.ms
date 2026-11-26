@@ -124,7 +124,7 @@ fn build(source, dir String, cranelift, verify Bool) Built! {
 	return ok(
 		Built(
 			seconds,
-			ir.split("\n").collect().length(),
+			ir.split("\n").length(),
 			counts[0],
 			counts[1],
 			f"{dir}/prog{exe()}",
@@ -155,7 +155,7 @@ fn parse_kernels(text String) List[List[String]] {
 	var rows = List[List[String]]()
 
 	for line in text.split("\n") {
-		parts := line.split(" ").collect()
+		parts := line.split(" ")
 		if parts.length() == 3 {
 			rows.append([parts[0].clone(), parts[1].clone(), parts[2].clone()])
 		}

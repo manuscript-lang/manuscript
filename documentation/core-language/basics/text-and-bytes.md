@@ -122,11 +122,11 @@ Bytes, scalars, and graphemes differ: `"é"` is two UTF-8 bytes; `"e\u{301}"` is
 - `index_of` and `last_index_of` return the byte offset of the first or last match, or `null`. An empty search matches at 0 (`index_of`) or `length()` (`last_index_of`).
 - `scalar_at(offset, default:)` returns the code point that starts at byte `offset` as an Int. An offset that is out of range or inside another scalar gives the default, or a fault without one.
 - `scalar_length()` counts scalars in linear time; `is_empty()` tests for zero length.
-- `chars()` returns a `List[String]` that borrows the receiver; `scalar_values()` returns code points.
+- `chars()` returns a `List[String]` that borrows the receiver, like `split` and `lines`; `scalar_values()` returns code points.
 - `reverse()` reverses scalars without normalization: `"e\u{301}".reverse()` is `"\u{301}e"`.
 - `compare(other:)` returns `-1`, `0`, or `1` by scalar order, case-sensitive, a prefix first: `"Z".compare("a")` is `-1`; `"é".compare("e\u{301}")` is `1`.
-- `lines()` splits at LF or CRLF, drops those terminators, keeps interior empty lines and lone CRs, and adds no item for a final newline: `"a\r\nb\n".lines().collect()` is `["a", "b"]`, `"\n\n".lines().collect()` is `["", ""]`, `"a\r".lines().collect()` is `["a\r"]`.
-- `split`, `lines` and `fields_by` are lazy: each returns an iterator (`Split`, `Lines`, `Fields`) that yields one piece at a time, a view of the receiver, and builds no list. Walk it with `for`, or call `.collect()` for a `List` of the pieces that remain. `chars` returns a list that borrows the receiver. A piece, like the list `collect()` returns, is used in place while the receiver stays unchanged; keeping it (storing, returning, a `var` binding, an escaping closure) needs `.clone()`, as `Row(line.split(" ").collect().clone())` does. A loop variable over an iterator borrows its piece, so `out.append(piece.clone())` keeps it.
+- `lines()` splits at LF or CRLF, drops those terminators, keeps interior empty lines and lone CRs, and adds no item for a final newline: `"a\r\nb\n".lines()` is `["a", "b"]`, `"\n\n".lines()` is `["", ""]`, `"a\r".lines()` is `["a\r"]`.
+- `split`, `lines` and `chars` borrow their receiver: the result is used in place while the receiver stays unchanged, and keeping it (storing, returning, a `var` binding, an escaping closure) needs `.clone()`, as `Row(line.split(" ").clone())` does. A loop variable over a borrowed result borrows its piece, so `out.append(piece.clone())` keeps it.
 
 ### Half-open slices
 

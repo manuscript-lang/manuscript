@@ -414,7 +414,6 @@ test "malformed and bounded inputs return errors" {
 // expect-formatted: \t\t\treturn fail(message: "archive failed")
 // expect-formatted: \t\t}
 // expect-formatted: \t}
-// expect-formatted:
 // expect-formatted: \t("a,,b").split(separator: ",") | expect_equal(["a", "", "b"])?
 // expect-formatted: \t("é🙂").scalar_length() | expect_equal(2)?
 // expect-formatted: \t("é").scalar_values() | expect_equal([233])?

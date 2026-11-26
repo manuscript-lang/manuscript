@@ -359,7 +359,7 @@ fn run_phases(ms, program String, n, limit Int) Map[String, Int] {
 	if ran.get().exit_code != 0 { return phases }
 
 	for line in (ran.get().stdout.decode_utf8() or "").split("\n") {
-		parts := line.split(" ").collect()
+		parts := line.split(" ")
 		if parts.length() != 2 { continue }
 
 		phases[parts[0].clone()] = parts[1].parse_int() or 0

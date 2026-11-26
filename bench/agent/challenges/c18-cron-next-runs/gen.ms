@@ -97,7 +97,7 @@ fn parse_field(text String, lo, hi Int) List[Int]? {
 		} else {
 			if not full_match("[0-9]{1,2}-[0-9]{1,2}", body) { return null }
 
-			ends := body.split("-").collect()
+			ends := body.split("-")
 			a = ends[0].parse_int() or 0
 			b = ends[1].parse_int() or 0
 			if a > b { return null }
@@ -118,7 +118,7 @@ fn parse_field(text String, lo, hi Int) List[Int]? {
 }
 
 fn solve(s String) String {
-	var lines = s.split("\n").collect().clone()
+	var lines = s.split("\n").clone()
 	if not lines.is_empty() and lines[lines.length() - 1] == "" { lines.pop() }
 
 	var out = List[String]()
@@ -127,7 +127,7 @@ fn solve(s String) String {
 		l := lines[n - 1].clone()
 		if l.replace(" ", "") == "" { continue }
 
-		t := l.split(" ").collect()
+		t := l.split(" ")
 		pre := f"line {n}:"
 
 		if t.length() != 7 {

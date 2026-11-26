@@ -112,7 +112,7 @@ export fn case_labels(names List[String]) Map[String, String] {
 	var short = Map[String, String]()
 
 	for name in names {
-		parts := name.split("::").collect()
+		parts := name.split("::")
 		s := parts.slice(1, parts.length()).get_or([]).join("::")
 		label := if parts.length() > 1 { s } else { name.clone() }
 		short.add(name.clone(), label.clone())

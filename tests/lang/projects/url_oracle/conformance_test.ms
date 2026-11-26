@@ -114,7 +114,7 @@ test "url operations match the recorded corpus" {
 	for line in data.split("\n") {
 		if line.is_empty() or line.starts_with("#") { continue }
 
-		f := line.split("\t").collect()
+		f := line.split("\t")
 		want := f[f.length() - 1]
 		got := answer(f)
 		checked += 1

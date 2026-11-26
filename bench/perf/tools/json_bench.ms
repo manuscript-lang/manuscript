@@ -82,7 +82,7 @@ fn load(text String) Map[String, Rate] {
 	var rows = Map[String, Rate]()
 
 	for line in text.split("\n") {
-		f := line.split("\t").collect()
+		f := line.split("\t")
 		if f.length() != 4 { continue }
 
 		rows.add(f"{f[0]}\t{f[1]}", Rate(f[2].parse_int() or 1, f[3].parse_int() or 0))
@@ -130,7 +130,7 @@ fn run(names List[String]) Result[String, Error] {
 	for key in n.keys() {
 		if not (m.contains(key) and r.contains(key)) { continue }
 
-		f := key.split("\t").collect()
+		f := key.split("\t")
 		nr := n.get_or(key, Rate(1, 0))
 		rr := r.get_or(key, Rate(1, 0))
 		mr := m.get_or(key, Rate(1, 0))
@@ -157,6 +157,6 @@ fn run(names List[String]) Result[String, Error] {
 fn main() Int {
 	names := env("NAMES", "small twitter canada citm_catalog records").split(
 		" "
-	).collect().filter(s => (s != ""))
+	).filter(s => (s != ""))
 	return finish(run(names))
 }

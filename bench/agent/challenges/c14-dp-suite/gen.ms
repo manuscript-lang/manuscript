@@ -89,7 +89,7 @@ fn coins(amount Int, cs List[Int]) String {
 }
 
 fn solve_line(line String) String {
-	t := line.split(" ").collect()
+	t := line.split(" ")
 	bad := "error: bad command"
 	cmd := t[0].clone()
 
@@ -104,7 +104,7 @@ fn solve_line(line String) String {
 		var items = List[Thing]()
 
 		for tok in t.slice(2, t.length()).get_or([]) {
-			p := tok.split(":").collect()
+			p := tok.split(":")
 			if (
 				p.length() != 2
 				or not full_match(NUM, p[0])
@@ -134,7 +134,7 @@ fn solve_line(line String) String {
 }
 
 fn solve(s String) String {
-	var lines = s.split("\n").collect().clone()
+	var lines = s.split("\n").clone()
 	if not lines.is_empty() and lines[lines.length() - 1] == "" { lines.pop() }
 	return lines.filter(l => l.replace(" ", "") != "").map(
 		l => solve_line(l) + "\n"

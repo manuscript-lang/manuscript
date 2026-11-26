@@ -55,10 +55,10 @@ export fn which(name String) String? {
 		for entry in env.get_or(Map[String, String]()).entries() {
 			key := if windows { entry.key.upper() } else { entry.key.clone() }
 			if key == "PATH" {
-				directories = entry.value.split(separator).collect().clone()
+				directories = entry.value.split(separator).clone()
 			}
 			if key == "PATHEXT" and windows {
-				extensions = entry.value.split(";").collect().clone()
+				extensions = entry.value.split(";").clone()
 			}
 		}
 	}

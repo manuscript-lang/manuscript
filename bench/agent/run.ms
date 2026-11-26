@@ -62,7 +62,7 @@ type Options {
 }
 
 fn split_ids(text String) List[String] {
-	return text.split(",").collect().filter(x => not x.is_empty())
+	return text.split(",").filter(x => not x.is_empty())
 }
 
 // Source size in LLM tokens (tiktoken o200k_base, a proxy for Claude's tokenizer); none
@@ -116,7 +116,7 @@ fn run_one(
 		src := reference_for(ch, lang)
 		size := stat(src).to_optional()
 		create_directory(
-			f"{ws}/{lang.solution.split("/").collect().take(lang.solution.split("/").collect().length() - 1).join("/")}",
+			f"{ws}/{lang.solution.split("/").take(lang.solution.split("/").length() - 1).join("/")}",
 			recursive: true,
 		).get()
 		if size != null { copy(src, f"{ws}/{lang.solution}", CopyOptions(replace: true)).get() }

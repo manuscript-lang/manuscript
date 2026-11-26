@@ -29,7 +29,7 @@ fn trials(per Int) List[String] {
 fn row(report, name String) List[String] {
 	for line in report.split("\n") {
 		if line.starts_with(name + " ") {
-			parts := line.split(" ").collect().filter(p => p != "")
+			parts := line.split(" ").filter(p => p != "")
 			return parts.slice(1, parts.length()).get_or([])
 		}
 	}

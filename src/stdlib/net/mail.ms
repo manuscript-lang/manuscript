@@ -214,7 +214,7 @@ export fn decode_words(text String) String {
 	// Splitting at `?` once keeps decoding linear. A word starts where a field ends in
 	// `=` and takes the next three fields (charset, encoding, payload); the field after
 	// them must start with the closing `=`.
-	fields := text.split("?").collect()
+	fields := text.split("?")
 	var out = ""
 	var head = ""
 	var previous_encoded = false

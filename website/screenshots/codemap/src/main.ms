@@ -70,7 +70,7 @@ fn place_order(var w Warehouse, id, sku String, count Int) String {
 fn report(w Warehouse) String => f"{w.orders.length()} orders"
 
 fn run_command(var w Warehouse, line String) String {
-	t := line.split(" ").collect()
+	t := line.split(" ")
 	name := t[0]
 	want := arity(name)
 	if want == 0 {

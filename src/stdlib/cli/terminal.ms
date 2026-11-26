@@ -226,14 +226,14 @@ fn code_key(code Int) TerminalEvent? {
 
 // The first colon-separated sub-parameter of a CSI parameter, as a number.
 fn first_number(part String) Int {
-	head := part.split(":").collect()[0].clone()
+	head := part.split(":")[0].clone()
 	return head.parse_int() or 0
 }
 
 // The key a CSI sequence with parameters `params` and final byte `last` reports, if
 // any.
 fn csi_key(params String, last Int) TerminalEvent? {
-	numbers := params.split(";").collect().map(first_number)
+	numbers := params.split(";").map(first_number)
 	modifier := numbers.get_or(1, 1)
 
 	if last == 90 {

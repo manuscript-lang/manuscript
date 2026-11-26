@@ -74,6 +74,11 @@ interface StringOperations {
 	fn reverse() String
 	// Returns -1, 0 or 1 in lexical scalar order, without locale or normalization.
 	fn compare(other String) Int
+	// Splits at LF and CRLF, keeping interior empty lines and any standalone CR.
+	// Text that ends in a newline yields no extra empty item, and empty text returns
+	// an empty list. The result borrows the receiver: use it in place, or `.clone()`
+	// it to keep it.
+	hold fn lines() List[&String]
 	// Normalizes to the form named by `form`, which must be exactly `"NFC"`, `"NFD"`,
 	// `"NFKC"` or `"NFKD"`. `max_bytes` optionally bounds the UTF-8 output. An invalid
 	// form or negative bound returns `EINVAL`; exceeding the bound returns `EOVERFLOW`.
@@ -103,6 +108,10 @@ interface StringOperations {
 	fn scalar_length() Int
 	// Returns each Unicode scalar value as an integer.
 	fn scalar_values() List[Int]
+	// Splits at every exact separator, keeping empty pieces. Empty text with a nonempty
+	// separator yields `[""]`; an empty separator splits into scalars. The pieces
+	// borrow the receiver: use them in place, or `.clone()` the result to keep it.
+	hold fn split(separator String) List[&String]
 	// Tests whether the receiver begins with this exact prefix.
 	fn starts_with(prefix String) Bool
 	// Removes Unicode whitespace at both ends. The exact set is listed in the text

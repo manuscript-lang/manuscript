@@ -4,9 +4,9 @@
 import expect_true from "@std/test/test.ms"
 
 test "split keeps every piece" {
-	expect_true(("a,b,c".split(separator: ",").collect().length() == 3))?
-	expect_true(("".split(separator: ",").collect().length() == 1))?
-	expect_true(("abc".split(separator: "").collect().length() == 3))?
+	expect_true(("a,b,c".split(separator: ",").length() == 3))?
+	expect_true(("".split(separator: ",").length() == 1))?
+	expect_true(("abc".split(separator: "").length() == 3))?
 	expect_true(("a-b-c".replace(old: "-", new: "+") == "a+b+c"))?
 	expect_true(("a-b-c".replace_first(old: "-", new: "+") == "a+b-c"))?
 	expect_true(("ab".replace(old: "", new: "_") == "_a_b_"))?

@@ -62,7 +62,7 @@ fn place_order(var w Warehouse, t List[String]) String {
 	var items = List[Item]()
 
 	for token in t.slice(2, t.length()).get() {
-		p := token.split(":").collect()
+		p := token.split(":")
 		if (
 			p.length() != 2
 			or not valid_sku(p[0])
@@ -139,7 +139,7 @@ fn report(w Warehouse) String {
 }
 
 fn run_command(var w Warehouse, line String) String {
-	t := line.split(" ").collect()
+	t := line.split(" ")
 	name := t[0]
 	arity := (
 		{"stock": 3, "price": 3, "cancel": 2, "ship": 2, "report": 1}.get(name)

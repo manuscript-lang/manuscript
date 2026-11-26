@@ -61,7 +61,7 @@ export fn catch_fault(operation fn() Void, site String = caller_frame()) String?
 	cause := result.err()
 	if cause.kind != "EIO" { return null }
 
-	return cause.details["report"].split("\n").collect()[0].clone()
+	return cause.details["report"].split("\n")[0].clone()
 }
 
 // Fails unless `actual` is true. `site` names the call in the failure and defaults to

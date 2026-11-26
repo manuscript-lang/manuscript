@@ -6,17 +6,17 @@ test "lines preserve boundaries across search windows and unaligned starts" {
 	for width in [0, 1, 7, 8, 15, 16, 31, 32, 63, 64, 1024] {
 		prefix := "x".repeat(width)
 		text := prefix + "\n\r\né日😀\r\n\nlast\r"
-		expect_equal(text.lines().collect(), [prefix.clone(), "", "é日😀", "", "last\r"])?
-		expect_equal((prefix + "\n").lines().collect(), [prefix.clone()])?
-		expect_equal((prefix + "\r\n").lines().collect(), [prefix])?
+		expect_equal(text.lines(), [prefix.clone(), "", "é日😀", "", "last\r"])?
+		expect_equal((prefix + "\n").lines(), [prefix.clone()])?
+		expect_equal((prefix + "\r\n").lines(), [prefix])?
 	}
 }
 
 test "lines leave embedded NUL and non LF separators unchanged" {
 	text := "a\u{0}b\r漢\u{85}\u{2028}\u{2029}😀"
-	expect_equal(text.lines().collect(), [text])?
-	expect_equal("".lines().collect(), [])?
-	expect_equal("\n\n".lines().collect(), ["", ""])?
+	expect_equal(text.lines(), [text])?
+	expect_equal("".lines(), [])?
+	expect_equal("\n\n".lines(), ["", ""])?
 }
 // expect-exit: 0
 // expect-tests: passed=2 failed=0

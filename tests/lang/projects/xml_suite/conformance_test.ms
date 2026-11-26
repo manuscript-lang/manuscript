@@ -38,7 +38,7 @@ test "the W3C XML suite agrees with the parser except for the listed cases" {
 	var failing List[String] = []
 
 	for line in read(tree, "cases.txt").split("\n") {
-		parts := line.split(" ").collect()
+		parts := line.split(" ")
 		if parts.length() != 2 or line.starts_with("#") { continue }
 
 		cases += 1
@@ -53,7 +53,7 @@ test "the W3C XML suite agrees with the parser except for the listed cases" {
 	var by_design = 0
 
 	for line in read(tree, "expect-fail.txt").split("\n") {
-		name := line.split(" ").collect().get_or(0, "")
+		name := line.split(" ").get_or(0, "")
 		if name != "" and not name.starts_with("#") {
 			expected.append(name.clone())
 		}

@@ -4,7 +4,7 @@ fn main() Void {
 	var n = 0
 
 	for i in 0..200000 {
-		name := line.split(" ").collect()[0].clone()
+		name := line.split(" ")[0].clone()
 		n += name.length()
 	}
 

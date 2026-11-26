@@ -10,7 +10,7 @@ import (
 fn count(text, ch String) Int => text.chars().count(c => c == ch)
 
 fn solve(s String) String {
-	var rows = s.split("\n").collect().clone()
+	var rows = s.split("\n").clone()
 	while not rows.is_empty() and rows[rows.length() - 1] == "" { rows.pop() }
 
 	for r in 0..rows.length() {

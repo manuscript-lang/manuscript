@@ -35,7 +35,7 @@ export fn count_workspace(root, suffix String) Int {
 
 	for entry in glob(root, GlobOptions(patterns: [f"**/*{suffix}"])).get_or([]) {
 		path := entry.path.clone()
-		parts := path.split("/").collect()
+		parts := path.split("/")
 		dirs := parts.take(parts.length() - 1)
 		if dirs.any(d => SKIP_DIRS.contains(d)) { continue }
 

@@ -15,7 +15,7 @@ fn main() Void {
 	for line in data.split("\n") {
 		if line.is_empty() { continue }
 
-		f := line.split(" ").collect()
+		f := line.split(" ")
 		recs.append(Rec(f[0].clone(), f[1].parse_int() or 0))
 	}
 

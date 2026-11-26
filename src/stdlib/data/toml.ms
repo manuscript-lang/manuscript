@@ -798,7 +798,7 @@ fn scalar(reader Reader, text String, at Int) Node! {
 		or clean.contains("E")
 	) {
 		if clean != "inf" and clean != "nan" {
-			parts := clean.lower().split("e").collect()
+			parts := clean.lower().split("e")
 			if parts.length() > 2 {
 				return error(invalid_at(reader, at, "invalid float"))
 			}
@@ -813,7 +813,7 @@ fn scalar(reader Reader, text String, at Int) Node! {
 				}
 			}
 
-			fraction := (parts.first().clone() or "").split(".").collect()
+			fraction := (parts.first().clone() or "").split(".")
 			if (
 				fraction.length() > 2
 				or not decimal_part(fraction.first().clone() or "")
