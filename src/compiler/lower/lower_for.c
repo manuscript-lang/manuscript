@@ -534,6 +534,9 @@ static bool for_iterator(LowerFn *fn, const MsStmt *stmt, const MsRef *binding) 
   MirMode mode = MM_BORROW;
   const bool result_owned = result != MIR_NONE && mir_result_mode(fn->cx->module, &fn->b.func, &insts->ptr[insts->len - 1], &mode) &&
                             mode == MM_MOVE;
+  if (result != MIR_NONE) {
+    fn_unwind_site(fn, result); /* a cancel or fault `next` posted leaves here: its result is dead, not an answer to test */
+  }
   const MirValue more = fn_iflet_test(fn, result);
   if (more == MIR_NONE) {
     return false;

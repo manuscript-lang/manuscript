@@ -91,7 +91,7 @@ fn test_run(ms, file, filter String, cancel_at, threads Int) List[Counted] {
 	if threads > 0 { settings["MS_THREADS"] = f"{threads}" }
 	if cancel_at > 0 { settings["MS_CANCEL_AT_PARK"] = f"{cancel_at}" }
 
-	var arguments = ["test", file.clone()]
+	var arguments = ["test", file.clone(), "--verbose"]
 	if filter != "" {
 		arguments = arguments.concat(["--test", filter.clone()])
 	}
