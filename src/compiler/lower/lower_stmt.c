@@ -806,7 +806,21 @@ static bool lower_if(LowerFn *fn, const MsStmt *stmt) {
       return false;
     }
   } else {
+    /* A plain condition's temporaries close before the branch, as in `while`: what it tests is a scalar. */
+    const bool scoped = stmt->u.branch.binding == NULL && !fn->temps && fn_expr_has_temporary(fn, stmt->u.branch.cond);
+    if (scoped) {
+      (void)fn_scope_begin(fn);
+      fn->temps = true;
+    }
     MirValue tested = fn_expr(fn, stmt->u.branch.cond, owns && !from_call ? LW_MOVE : LW_BORROW);
+    if (scoped) {
+      fn->temps = false;
+      if (!fn->terminated) {
+        fn_scope_end(fn);
+      } else {
+        fn->nopen--;
+      }
+    }
     if (owns && from_call && tested != MIR_NONE && fn_is_borrowed_view(fn, tested)) {
       /* A call that answers a part of something else is a view, unless it answers a temporary the binding can take. */
       const MirValue taken = fn_take_from_temporary(fn, stmt->u.branch.cond, tested);

@@ -46,11 +46,18 @@ fn replaced_by_value() Void {
 	set(0, mk(6))
 }
 
+fn tested_in_condition() Void {
+	if mk(7).view().id == 7 {
+		print("then")
+	}
+}
+
 export fn main() Int {
 	get_or_named()
 	discarded_view()
 	removed_by_value()
 	replaced_by_value()
+	tested_in_condition()
 	return 0
 }
 // expect-exit: 0
@@ -68,3 +75,6 @@ export fn main() Int {
 // expect-stdout: made-6
 // expect-stdout: closed-5
 // expect-stdout: closed-6
+// expect-stdout: made-7
+// expect-stdout: closed-7
+// expect-stdout: then
