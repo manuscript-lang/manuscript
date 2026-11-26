@@ -269,7 +269,9 @@ static MirValue collection_items(LowerFn *fn, const MsExpr *iter, MirValue value
 
 static bool source_list(LowerFn *fn, const MsExpr *iter, ForSource *src) {
   bool moved = ms_facts_use(fn->facts, iter->id) == MS_USE_MOVE;
-  MirValue list = fn_expr(fn, iter, moved ? LW_MOVE : LW_BORROW);
+  /* `for x in make()?`: the payload of a Result the call made is the loop's own, so each element leaves it. */
+  const bool unwrapped = iter->kind == MS_E_UNARY && iter->op == MS_U_TRY;
+  MirValue list = fn_expr(fn, iter, moved || unwrapped ? LW_MOVE : LW_BORROW);
   if (list == MIR_NONE) {
     return false;
   }

@@ -73,7 +73,7 @@ export type Drawn[T] {
 // Draws an integer from 0 through `max`, both included, and returns it with the
 // advanced source; `max` must not be negative. Fresh draws favor the two ends.
 // Shrinking lowers each draw toward 0, so 0 is the simplest outcome.
-export fn draw(source Source, max Int) Drawn[Int] {
+export fn draw(move source Source, max Int) Drawn[Int] {
 	var s = source
 	var value = 0
 
@@ -111,25 +111,27 @@ export fn draw(source Source, max Int) Drawn[Int] {
 // with `check`.
 export type Gen[T] {
 	// Reads draws from the source and builds a value.
-	make fn(Source) Drawn[T]
+	make fn(move Source) Drawn[T]
 }
 
 // Returns a generator that applies `transform` to every generated value.
 fn Gen[T].map[B](transform fn(T) B) Gen[B] {
-	return Gen[B](s => map_draw(self, transform, s))
+	source := self.clone()
+	return Gen[B](s => map_draw(source, transform, s))
 }
 
 // Generates a value, then generates again with the generator that `next` returns for
 // it (dependent generation).
 fn Gen[T].flat_map[B](next fn(T) Gen[B]) Gen[B] {
-	return Gen[B](s => flat_map_draw(self, next, s))
+	source := self.clone()
+	return Gen[B](s => flat_map_draw(source, next, s))
 }
 
 // Keeps only the values for which `keep` is true. After 50 consecutive rejections the
 // case is marked invalid and discarded.
 fn Gen[T].filter(keep fn(T) Bool) Gen[T] {
 	source := self.clone()
-	return Gen[T](s => filter_draw(source, keep, s.clone()))
+	return Gen[T](s => filter_draw(source, keep, s))
 }
 
 // Generates one value from this generator and one from `other`, and combines them
@@ -144,10 +146,10 @@ fn Gen[T].zip[B, C](other Gen[B], combine fn(T, B) C) Gen[C] {
 // value nearest 0. When the range spans 0, a sign draw comes first and the magnitude
 // after it. `high - low` must fit in Int.
 export fn ints(low, high Int) Gen[Int] {
-	return Gen[Int](s => ints_draw(s.clone(), low, high))
+	return Gen[Int](s => ints_draw(s, low, high))
 }
 
-fn ints_draw(s Source, low, high Int) Drawn[Int] {
+fn ints_draw(move s Source, low, high Int) Drawn[Int] {
 	if low >= 0 {
 		{value, source} := draw(s, high - low)
 		return Drawn(low + value, source)
@@ -171,10 +173,10 @@ fn ints_draw(s Source, low, high Int) Drawn[Int] {
 
 // Generates `true` and `false`, shrinking toward `false`.
 export fn bools() Gen[Bool] {
-	return Gen[Bool](s => bool_draw(s.clone()))
+	return Gen[Bool](s => bool_draw(s))
 }
 
-fn bool_draw(s Source) Drawn[Bool] {
+fn bool_draw(move s Source) Drawn[Bool] {
 	{value, source} := draw(s, 1)
 	return Drawn(value == 1, source)
 }
@@ -182,10 +184,10 @@ fn bool_draw(s Source) Drawn[Bool] {
 // Generates floats from `low` through `high` at 2^-53 resolution, shrinking toward
 // `low`. The bounds may be as far apart as the largest finite Floats.
 export fn floats(low, high Float) Gen[Float] {
-	return Gen[Float](s => float_draw(s.clone(), low, high))
+	return Gen[Float](s => float_draw(s, low, high))
 }
 
-fn float_draw(s Source, low, high Float) Drawn[Float] {
+fn float_draw(move s Source, low, high Float) Drawn[Float] {
 	{value, source} := draw(s, 9007199254740992)
 	fraction := value.to_float() / 9007199254740992.0
 	span := high - low
@@ -201,16 +203,16 @@ fn float_draw(s Source, low, high Float) Drawn[Float] {
 // Always generates a copy of `value`, consuming no draws, so it never shrinks.
 export fn constant[T Clonable](value T) Gen[T] {
 	own := value.clone()
-	return Gen[T](s => Drawn(own.clone(), s.clone()))
+	return Gen[T](s => Drawn(own.clone(), s))
 }
 
 // Generates one of `values`, shrinking toward the first. `values` must not be empty.
 export fn element_of[T Clonable](values List[T]) Gen[T] {
 	own := values.clone()
-	return Gen[T](s => element_draw(own, s.clone()))
+	return Gen[T](s => element_draw(own, s))
 }
 
-fn element_draw[T Clonable](values List[T], s Source) Drawn[T] {
+fn element_draw[T Clonable](values List[T], move s Source) Drawn[T] {
 	{value, source} := draw(s, values.length() - 1)
 	return Drawn(values[value].clone(), source)
 }
@@ -219,25 +221,25 @@ fn element_draw[T Clonable](values List[T], s Source) Drawn[T] {
 // empty.
 export fn one_of[T](gens List[Gen[T]]) Gen[T] {
 	own := gens.clone()
-	return Gen[T](s => one_draw(own, s.clone()))
+	return Gen[T](s => one_draw(own, s))
 }
 
-fn one_draw[T](gens List[Gen[T]], s Source) Drawn[T] {
+fn one_draw[T](gens List[Gen[T]], move s Source) Drawn[T] {
 	{value, source} := draw(s, gens.length() - 1)
 	return gens[value].make(source)
 }
 
-fn map_draw[A, B](gen Gen[A], transform fn(A) B, s Source) Drawn[B] {
+fn map_draw[A, B](gen Gen[A], transform fn(A) B, move s Source) Drawn[B] {
 	{value, source} := gen.make(s)
 	return Drawn(transform(value), source)
 }
 
-fn flat_map_draw[A, B](gen Gen[A], next fn(A) Gen[B], s Source) Drawn[B] {
+fn flat_map_draw[A, B](gen Gen[A], next fn(A) Gen[B], move s Source) Drawn[B] {
 	{value, source} := gen.make(s)
 	return next(value).make(source)
 }
 
-fn filter_draw[T](gen Gen[T], keep fn(T) Bool, s Source) Drawn[T] {
+fn filter_draw[T](gen Gen[T], keep fn(T) Bool, move s Source) Drawn[T] {
 	var cursor = s
 	var tries = 0
 
@@ -260,7 +262,7 @@ fn zip_draw[A, B, C](
 	first Gen[A],
 	second Gen[B],
 	combine fn(A, B) C,
-	s Source
+	move s Source
 ) Drawn[C] {
 	{value: a, source: middle} := first.make(s)
 	{value: b, source} := second.make(middle)
@@ -269,10 +271,10 @@ fn zip_draw[A, B, C](
 
 // Generates a value or `null`, shrinking toward `null`.
 export fn optionals[T](move gen Gen[T]) Gen[T?] {
-	return Gen[T?](s => optional_draw(gen, s.clone()))
+	return Gen[T?](s => optional_draw(gen, s))
 }
 
-fn optional_draw[T](gen Gen[T], s Source) Drawn[T?] {
+fn optional_draw[T](gen Gen[T], move s Source) Drawn[T?] {
 	{value: flag, source: middle} := draw(s, 3)
 	if flag == 0 { return Drawn(null, middle) }
 
@@ -287,10 +289,10 @@ export fn lists[T](
 	min_length Int = 0,
 	max_length Int = 20,
 ) Gen[List[T]] {
-	return Gen[List[T]](s => list_draw(gen, min_length, max_length, s.clone()))
+	return Gen[List[T]](s => list_draw(gen, min_length, max_length, s))
 }
 
-fn list_draw[T](gen Gen[T], min_length, max_length Int, s Source) Drawn[List[T]] {
+fn list_draw[T](gen Gen[T], min_length, max_length Int, move s Source) Drawn[List[T]] {
 	var items = List[T]()
 	var cursor = s
 
@@ -378,7 +380,7 @@ type Outcome {
 	failure Error?
 }
 
-fn run_case[T](gen Gen[T], property fn(T) Void!, s Source) Outcome {
+fn run_case[T](gen Gen[T], property fn(T) Void!, move s Source) Outcome {
 	{value, source} := gen.make(s)
 	if source.invalid { return Outcome(source, null) }
 

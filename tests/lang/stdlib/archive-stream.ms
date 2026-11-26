@@ -278,7 +278,7 @@ fn members(paths List[String]) Bytes! {
 		name := if directory {
 			path.view(0, path.length() - 1).clone()
 		} else {
-			path
+			path.clone()
 		}
 		archive = archive.concat(member(name, directory)?)
 	}

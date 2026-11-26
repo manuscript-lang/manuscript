@@ -335,7 +335,9 @@ static bool returns_places(Lower *cx, uint32_t module, const MsFunc *func, MsTy 
 /* Whether the callee's result borrows from a parameter: the checker's fact says every path returns a part of a
  * parameter, and each return is that place itself (a wrapper such as `ok(part)` builds a value and stays an owner). */
 typedef struct BodyCloses {
+  const Lower *cx;
   const MsFacts *facts;
+  const LowerSubst *subst;
   bool found;
 } BodyCloses;
 
@@ -343,15 +345,27 @@ static void note_body_closes(void *ctx, const MsStmt *stmt) {
   BodyCloses *closes = ctx;
   const MsCloser *closer = stmt->kind == MS_S_BIND ? ms_facts_closer(closes->facts, stmt->u.bind.pattern->id) : NULL;
   /* A `var` of a plain type has a drop-only closer: it releases memory, closes nothing, and cannot replace the result. */
-  if (closer != NULL && (closer->flags & MS_CLOSER_DROP) == 0) {
-    closes->found = true;
+  if (closer == NULL || (closer->flags & MS_CLOSER_DROP) != 0) {
+    return;
   }
+  /* A binding of a type variable closes only in the instances whose type is a resource. */
+  MsCloser instance;
+  if ((closer->flags & MS_CLOSER_GENERIC) != 0) {
+    const MsTy bound = ms_facts_type(closes->facts, stmt->u.bind.pattern->id);
+    const MsTy concrete = bound == MS_TY_NONE ? bound
+                                              : ms_ty_subst((MsTyTable *)&closes->cx->program->types, bound, closes->subst->vars,
+                                                            closes->subst->args, closes->subst->count);
+    if (concrete != MS_TY_NONE && !ms_own_closer_of(closes->cx->program, concrete, &instance)) {
+      return;
+    }
+  }
+  closes->found = true;
 }
 
 /* A body that closes resources can replace its result with the close error, a new value: it never hands back a part
  * of a parameter. */
-static bool body_closes(const Lower *cx, const LowerTarget *target) {
-  BodyCloses closes = {&cx->program->modules.ptr[target->module].facts, false};
+static bool body_closes(const Lower *cx, const LowerTarget *target, const LowerSubst *subst) {
+  BodyCloses closes = {cx, &cx->program->modules.ptr[target->module].facts, subst, false};
   const MsVisitor visitor = {.ctx = &closes, .stmt = note_body_closes};
   ms_walk_block(&visitor, target->func->body);
   return closes.found;
@@ -379,7 +393,7 @@ static bool returns_entry_or(Lower *cx, const LowerTarget *target) {
   return scan.found;
 }
 
-static bool borrows_result(Lower *cx, const LowerTarget *target, MirTy ret, const MirParam *params, uint32_t count) {
+static bool borrows_result(Lower *cx, const LowerTarget *target, const LowerSubst *subst, MirTy ret, const MirParam *params, uint32_t count) {
   const MirTyData *ret_data = mir_ty_data(cx->module, ret);
   if (ret_data->kind == MK_OPT && mir_ty_opt_boxed(cx->module, ret_data->elem)) {
     return false; /* a boxed Optional owns the heap block that holds its payload: a view of a part cannot be one */
@@ -388,7 +402,7 @@ static bool borrows_result(Lower *cx, const LowerTarget *target, MirTy ret, cons
   if (ret_data->kind == MK_LIST && written != NULL && !written->is_ref) {
     return false; /* a list of looks owns its buffer: only its items look at another value */
   }
-  if (target->entry || body_closes(cx, target) || !ms_own_result_is_borrowed(cx->program, target->module, target->node) ||
+  if (target->entry || body_closes(cx, target, subst) || !ms_own_result_is_borrowed(cx->program, target->module, target->node) ||
       !mir_needs_drop(cx->module, ret)) {
     return false;
   }
@@ -449,7 +463,7 @@ static uint32_t reserve(Lower *cx, const LowerTarget *target, const MsTy *args, 
   func.display = lower_trace_name(cx, target->receiver, target->name);
   func.closer = target->receiver != MS_TY_NONE && (target->receiver_flags & MS_PARAM_MOVE) != 0 &&
                 ms_span_is_text(ms_names_span(cx->program->names, target->name), "close");
-  func.ret_borrowed = !ok_borrowed && borrows_result(cx, target, ret, mir_params, count);
+  func.ret_borrowed = !ok_borrowed && borrows_result(cx, target, &subst, ret, mir_params, count);
   const MirTyData *ret_kind = mir_ty_data(cx->module, ret);
   if (func.ret_borrowed && (ret_kind->kind == MK_IFACE ||
                             (ret_kind->kind == MK_OPT && mir_ty_data(cx->module, ret_kind->elem)->kind == MK_IFACE))) {

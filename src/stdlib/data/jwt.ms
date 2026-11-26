@@ -346,7 +346,7 @@ fn check_claims(claims JsonValue, check JwtCheck) Void! {
 // malformed.
 fn numeric_date(hold claim JsonValue, name String) String! {
 	match claim {
-		NumberValue(text) => return ok(text)
+		NumberValue(text) => return ok(text.clone())
 		_ => void
 	}
 

@@ -319,7 +319,12 @@ fn cmd_run(opts Options, oracle Bool) Int! {
 	return ok(if bad > 0 and oracle { 1 } else { 0 })
 }
 
-fn spawn(move mine List[Job], move me String, move own Options, move label String) Promise[Int] {
+fn spawn(
+	move mine List[Job],
+	move me String,
+	move own Options,
+	move label String,
+) Promise[Int] {
 	return promise(() => ok(work(mine, me, own, label)))
 }
 

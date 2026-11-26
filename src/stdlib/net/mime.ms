@@ -440,8 +440,8 @@ fn make_part(section Bytes) Part! {
 
 	if disposition != null {
 		params := disposition_params(disposition)
-		part.name = params.get_or("name", "")
-		part.filename = params.get_or("filename", "")
+		part.name = params.get_or("name", "").clone()
+		part.filename = params.get_or("filename", "").clone()
 	}
 
 	return ok(part)
