@@ -181,6 +181,7 @@ typedef struct MsFsWatcher {
   bool gone;  /* polling: the root vanished and was reported */
   bool lock_ready;
   bool ignore_overflow;
+  bool rescan_overflow; /* a full queue becomes one change of the root: look at the tree again */
   bool loop_ready;
   bool stop_ready;
   bool rescan_ready;
@@ -260,6 +261,18 @@ static void queue_event(MsFsWatcher *watcher, MsSpan path, bool rename) {
     return;
   }
   if (watcher->count >= watcher->capacity) {
+    if (watcher->rescan_overflow) {
+      /* The queue has lost events, so what it holds no longer says what changed: drop it and say "look again". */
+      for (size_t i = 0; i < watcher->count; i++) {
+        ms_string_release(&watcher->queue[(watcher->head + i) % watcher->capacity].path);
+      }
+      watcher->head = 0;
+      watcher->count = 1;
+      watcher->queue[0] = (WatchEvent){.path = ms_string_from_span(ms_string_span(&watcher->root)), .rename = false};
+      watcher_unlock(watcher);
+      watcher_wake(watcher);
+      return;
+    }
     if (!watcher->ignore_overflow && watcher->terminal == MS_STATUS_OK) {
       watcher->terminal = MS_STATUS_LIMIT_EXCEEDED;
     }
@@ -638,7 +651,8 @@ uint8_t msstd_fs_watch(const MsString *path, uint8_t recursive, int64_t interval
 }
 
 static bool native_arguments_valid(MsSpan root, int64_t max, int64_t events, MsSpan overflow) {
-  const bool overflow_known = ms_span_is_text(overflow, "error") || ms_span_is_text(overflow, "ignore");
+  const bool overflow_known = ms_span_is_text(overflow, "error") || ms_span_is_text(overflow, "ignore") ||
+                                ms_span_is_text(overflow, "rescan");
   return root.len != 0 && max > 0 && events > 0 && events <= MAX_EVENT_CAPACITY && overflow_known;
 }
 
@@ -742,6 +756,7 @@ uint8_t msstd_fs_watch_native(const MsString *path, uint8_t recursive, uint8_t h
     watcher->recursive = recursive != 0;
     watcher->capacity = (size_t)capacity;
     watcher->ignore_overflow = ms_span_is_text(ms_string_span(overflow), "ignore");
+    watcher->rescan_overflow = ms_span_is_text(ms_string_span(overflow), "rescan");
     watcher->queue = ms_alloc_zeroed(watcher->capacity * sizeof(WatchEvent));
     native_start(watcher, root, &fail);
   }
