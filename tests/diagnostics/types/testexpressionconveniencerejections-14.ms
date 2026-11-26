@@ -8,4 +8,4 @@ fn p() Int! {
 fn f() Int {
 	return p()
 }
-// expect-error: MS3001 9:12 expected Int, found Result[Int, Error] (in the return value); unwrap it with a trailing '?' inside a function that returns a compatible Result, with 'if value := x', or with '.get()'
+// expect-error: MS3001 9:12 expected Int, found Int! (in the return value); unwrap it with a trailing '?' inside a function that returns a compatible Result, with 'if value := x', or with '.get()'

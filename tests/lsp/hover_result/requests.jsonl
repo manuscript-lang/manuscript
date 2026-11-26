@@ -1,0 +1,5 @@
+{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"rootUri": "$ROOT_URI", "capabilities": {}}}
+{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms", "languageId": "manuscript", "version": 1, "text": "fn f() Int! {\n\treturn ok(1)\n}\n\nfn main() Void {\n\tr := f()\n\tprint(r.is_ok())\n}\n"}}}
+{"jsonrpc": "2.0", "id": 2, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 5, "character": 1}}}
+{"jsonrpc": "2.0", "id": 3, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 0, "character": 3}}}
+{"jsonrpc": "2.0", "id": 4, "method": "shutdown"}

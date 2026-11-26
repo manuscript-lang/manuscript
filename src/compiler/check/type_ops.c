@@ -6,6 +6,7 @@ enum { SHOW_NODE_BUDGET = 64 };
 /* The node budget of one rendering. */
 typedef struct Show {
   int budget;
+  bool sugar; /* write `Result[T, Error]` as `T!` */
 } Show;
 
 static void show_node(MsStrBuild *out, const MsNames *names, const MsTyTable *table, MsTy ty, Show *show);
@@ -38,6 +39,15 @@ static void show_optional(MsStrBuild *out, const MsNames *names, const MsTyTable
   ms_strbuild_append_text(out, wrap ? ")?" : "?");
 }
 
+/* `Result[T, Error]` is written `T!`, as source spells it; a Result with another error type keeps its name. */
+static bool is_error_result(const MsNames *names, const MsTyTable *table, MsTy ty) {
+  if (!ms_ty_is(table, ty, MS_BUILTIN_Result) || ms_ty_arg_count(table, ty) != 2) {
+    return false;
+  }
+  const MsTy error = ms_ty_args(table, ty)[1];
+  return ms_ty_arg_count(table, error) == 0 && ms_span_is_text(ms_names_span(names, ms_ty_row(table, error)->name), "Error");
+}
+
 static void show_node(MsStrBuild *out, const MsNames *names, const MsTyTable *table, MsTy ty, Show *show) {
   if (show->budget == 0) {
     ms_strbuild_append_utf8(out, 0x2026);
@@ -54,6 +64,13 @@ static void show_node(MsStrBuild *out, const MsNames *names, const MsTyTable *ta
   }
   const MsTy *args = ms_ty_args(table, ty);
   const size_t count = ms_ty_arg_count(table, ty);
+  if (show->sugar && is_error_result(names, table, ty)) {
+    const bool wrap = ms_ty_kind(table, args[0]) == MS_TY_FUNCTION;
+    ms_strbuild_append_text(out, wrap ? "(" : "");
+    show_node(out, names, table, args[0], show);
+    ms_strbuild_append_text(out, wrap ? ")!" : "!");
+    return;
+  }
   if (ms_ty_is(table, ty, MS_BUILTIN_Optional) && count == 1) {
     show_optional(out, names, table, args[0], show);
     return;
@@ -71,7 +88,12 @@ static void show_node(MsStrBuild *out, const MsNames *names, const MsTyTable *ta
 }
 
 void ms_ty_show(MsStrBuild *out, const MsNames *names, const MsTyTable *table, MsTy ty) {
-  Show show = {SHOW_NODE_BUDGET};
+  Show show = {SHOW_NODE_BUDGET, true};
+  show_node(out, names, table, ty, &show);
+}
+
+void ms_ty_show_canonical(MsStrBuild *out, const MsNames *names, const MsTyTable *table, MsTy ty) {
+  Show show = {SHOW_NODE_BUDGET, false};
   show_node(out, names, table, ty, &show);
 }
 
