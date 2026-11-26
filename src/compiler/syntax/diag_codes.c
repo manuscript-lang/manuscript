@@ -6,7 +6,7 @@
 
 static const MsCodeInfo CODES[] = {
     {"MS0000", "Unclassified diagnostic", "read the message; it names the cause and the fix"},
-    {"MS1000", "Grammar", "follow the expected token the message names; block headers end with ':'"},
+    {"MS1000", "Grammar", "follow the expected token the message names; block headers end with '{'"},
     {"MS1001", "Literals and text", "fix the literal, escape or encoding the message names"},
     {"MS1002", "Layout", "indent with four spaces (or one tab) and keep each suite aligned"},
     {"MS2001", "Names and members", "apply the `fix` edit (nearest name or import), or declare the name"},

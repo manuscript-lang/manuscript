@@ -1,4 +1,4 @@
 lonely_helper  fn  loose.ms:1:4
-  lonely_helper fn(Int) Int
+  fn lonely_helper(n Int) Int
   effects: pure (ambient authority only)
   used (0)

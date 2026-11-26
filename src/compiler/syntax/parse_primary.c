@@ -355,7 +355,7 @@ MS_NODISCARD static bool bare_lambda_parameters(Parser *p, MsParams *params, Stm
   return true;
 }
 
-/* The parameters in parentheses of `fn (a: Int) Int: ...`, and its optional result type. */
+/* The parameters in parentheses of `fn (a Int) Int { ... }`, and its optional result type. */
 MS_NODISCARD static bool lambda_signature(Parser *p, MsParams *params, MsTypeRef **result) {
   if (!parse_parameters(p, true, true, params))
     return false;

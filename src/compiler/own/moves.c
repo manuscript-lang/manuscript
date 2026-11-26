@@ -480,7 +480,7 @@ static void check_move_receiver(Moves *pass, const MsExpr *call) {
       ms_strbuild_append(&moved, root_name);
       ms_strbuild_append_text(&moved, "` only when `");
       ms_strbuild_append(&moved, root_name);
-      ms_strbuild_append_text(&moved, "` is a `let` or a parameter and no type on the path has a `close` of its own; use `");
+      ms_strbuild_append_text(&moved, "` is a local binding or a parameter and no type on the path has a `close` of its own; use `");
       ms_strbuild_append(&moved, place_span);
       ms_strbuild_append_text(&moved, "` in place, move the whole `");
       ms_strbuild_append(&moved, root_name);

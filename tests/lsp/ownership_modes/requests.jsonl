@@ -1,0 +1,10 @@
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"processId":null,"rootUri":"$ROOT_URI","capabilities":{}}}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"$ROOT_URI/main.ms","languageId":"manuscript","version":1,"text":"type Box {\n    items List[Int]\n}\n\nfn hold Box.list() &List[Int] {\n    return self.items\n}\n\nfn take(move b Box, var n Int, visit fn(move Box) Int) Int {\n    return n\n}\n\ninterface Sink {\n    move fn add(move item Int) Int\n}\n\nfn main() Void {\n    b := Box(items: [1, 2])\n    xs := b.list()\n    total := take(b, 3, fn(move q Box) Int { return 1 })\n    print(total)\n}\n"}}}
+{"jsonrpc":"2.0","id":2,"method":"textDocument/hover","params":{"textDocument":{"uri":"$ROOT_URI/main.ms"},"position":{"line":4,"character":13}}}
+{"jsonrpc":"2.0","id":3,"method":"textDocument/hover","params":{"textDocument":{"uri":"$ROOT_URI/main.ms"},"position":{"line":8,"character":4}}}
+{"jsonrpc":"2.0","id":4,"method":"textDocument/hover","params":{"textDocument":{"uri":"$ROOT_URI/main.ms"},"position":{"line":13,"character":14}}}
+{"jsonrpc":"2.0","id":5,"method":"textDocument/hover","params":{"textDocument":{"uri":"$ROOT_URI/main.ms"},"position":{"line":18,"character":14}}}
+{"jsonrpc":"2.0","id":6,"method":"textDocument/signatureHelp","params":{"textDocument":{"uri":"$ROOT_URI/main.ms"},"position":{"line":19,"character":20}}}
+{"jsonrpc":"2.0","id":7,"method":"textDocument/signatureHelp","params":{"textDocument":{"uri":"$ROOT_URI/main.ms"},"position":{"line":18,"character":17}}}
+{"jsonrpc":"2.0","id":8,"method":"textDocument/documentSymbol","params":{"textDocument":{"uri":"$ROOT_URI/main.ms"}}}

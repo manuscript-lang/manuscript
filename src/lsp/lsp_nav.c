@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "compiler/syntax/lex.h"
+#include "tooling/decl_header.h"
 #include "tooling/doc_comment.h"
 #include "base/file.h"
 #include "base/path.h"
@@ -190,7 +191,7 @@ static bool hover_expression(const LspAnalysis *analysis, const LspDoc *doc, siz
     if (!never && (ty == MS_TY_NONE || ms_ty_is_invalid(&program->types, ty))) return false;
     MsStrBuild shown = ms_strbuild_new();
     if (never) ms_strbuild_append_text(&shown, "Never");
-    else ms_ty_show_plain(&shown, program->names, &program->types, ty);
+    else ms_ty_show(&shown, program->names, &program->types, ty);
     MsStrBuild value = ms_strbuild_new();
     ms_strbuild_append_text(&value, "```manuscript\n");
     ms_strbuild_append(&value, found.text);
@@ -239,7 +240,7 @@ void lsp_nav_hover(const LspDocList *docs, const LspDoc *doc, LspPosition positi
   const MsCheckProgram *program = &analysis.checked.program;
   if (selected->ty == MS_TY_NONE || ms_ty_is_invalid(&program->types, selected->ty)) goto none;
   MsStrBuild shown = ms_strbuild_new();
-  ms_ty_show_plain(&shown, program->names, &program->types, selected->ty);
+  ms_ty_show(&shown, program->names, &program->types, selected->ty);
   MsStrBuild value = ms_strbuild_new();
   ms_strbuild_append_text(&value, "```manuscript\n");
   const char *keyword = type_keyword(program, selected);
@@ -249,9 +250,26 @@ void lsp_nav_hover(const LspDocList *docs, const LspDoc *doc, LspPosition positi
     ms_strbuild_append_text(&value, " ");
     ms_strbuild_append(&value, ms_strbuild_span(&shown));
   } else {
-    ms_strbuild_append(&value, selected->name);
-    ms_strbuild_append_text(&value, " ");
-    ms_strbuild_append(&value, ms_strbuild_span(&shown));
+    /* A function reads as its declaration header, formatted like the source: modes (`hold`, `move`, `var`), parameter
+     * names and `&` results come from the declaration, which a type shown without them would lose. */
+    const MsOccurrence *header_at = declaration_of(&analysis, selected);
+    StdDeclaration header_std;
+    MsSpan header = {0};
+    const bool callable = ms_span_starts_with_text(selected->key, "symbol:") || ms_span_starts_with_text(selected->key, "method:") ||
+                          ms_span_starts_with_text(selected->key, "operation:");
+    if (!callable) {
+    } else if (header_at != NULL) {
+      header = ms_declaration_header(analysis.arena, source_of(&analysis, header_at), header_at->offset);
+    } else if (std_declaration(&analysis, selected, &header_std)) {
+      header = ms_declaration_header(analysis.arena, header_std.source, header_std.at);
+    }
+    if (header.len > 0) {
+      ms_strbuild_append(&value, header);
+    } else {
+      ms_strbuild_append(&value, selected->name);
+      ms_strbuild_append_text(&value, " ");
+      ms_strbuild_append(&value, ms_strbuild_span(&shown));
+    }
   }
   ms_strbuild_append_text(&value, "\n```");
   const MsOccurrence *declaration = declaration_of(&analysis, selected);
@@ -858,7 +876,7 @@ void lsp_nav_inlay_hints(const LspDocList *docs, const LspDoc *doc, LspRange ran
     if (!after_start || !before_end) continue;
     MsStrBuild label = ms_strbuild_new();
     ms_strbuild_append_text(&label, " ");
-    ms_ty_show_plain(&label, program->names, &program->types, entry->ty);
+    ms_ty_show(&label, program->names, &program->types, entry->ty);
     hint_list_push(&hints, (Hint){at, ms_arena_copy(analysis.arena, ms_strbuild_span(&label))});
     ms_strbuild_free(&label);
   }
