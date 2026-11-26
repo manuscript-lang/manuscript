@@ -4,7 +4,7 @@ Verified (2026-11-23): `line.split(" ")` of a variable lowered to `msrt_string_s
 
 The twin is declared on the signature (`@twin=split_view`), not found by name. `find_byte` is `MS_ALWAYS_INLINE` because the exported wrapper gave it a second caller and the compiler stopped inlining it into `ms_needle_find`, which cost `grep` +2.6%.
 
-The loop form `for piece in text.split(..)` is done in lowering: [a split loop walks the text](a-split-loop-walks-the-text-and-makes-no-list.md).
+The loop form `for piece in text.split(..)` is lazy: [lazy text iterators](lazy-text-iterators-are-look-records-in-ms.md).
 
 `get_or` on a map with a word value (`Map[String, Int]`, the counting idiom) is answered by the same inline probe as `get`: the role `MR_MAP_PROBE_*` now covers `msrt_map_get_or`, and `opt_probe` builds a helper that stores the stored word or the fallback to the result slot. `csvgroup` -4.8% instructions. A struct value (`Map[String, Total]`) still calls the runtime: MIR has no type size to stride the slots by.
 

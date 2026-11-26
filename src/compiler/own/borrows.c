@@ -661,7 +661,7 @@ bool ms_borrows_lends_collection(const Borrows *pass, const MsExpr *call) {
   }
   const MsSpan name = ms_names_span(pass->program->names, callee->u.member.name);
   return ms_span_is_text(name, "keys") || ms_span_is_text(name, "values") || ms_span_is_text(name, "slice") ||
-         ms_span_is_text(name, "split") || ms_span_is_text(name, "lines") || ms_span_is_text(name, "chars");
+         ms_span_is_text(name, "chars");
 }
 
 static void note_return(Borrows *pass, const MsStmt *stmt) {

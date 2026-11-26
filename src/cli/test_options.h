@@ -9,7 +9,7 @@ enum { MS_TEST_DEFAULT_TIMEOUT_MS = 60000 };
 typedef struct MsTestOptions {
   MsSpanList names;      /* --test: exact identities */
   MsSpan matching, exclude, filter;
-  bool list, fail_fast;
+  bool list, fail_fast, verbose; /* verbose: print RUN and PASS lines */
   size_t repeat;         /* at least 1 */
   bool shuffled;
   int64_t shuffle_seed;

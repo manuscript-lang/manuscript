@@ -19,10 +19,10 @@ fn hex(value String) String {
 // The text between the « and » markers of the tree dump of `markup`.
 fn marked(markup String) String {
 	tree := parse(markup).get_or_else(cause => HtmlNode.Document([]))
-	parts := f"{tree}".split("«")
+	parts := f"{tree}".split("«").collect()
 	if parts.length() < 2 { return "<missing>" }
 
-	return parts[1].split("»")[0]
+	return parts[1].split("»").collect()[0]
 }
 
 fn answer(mode, input String) String {
@@ -41,7 +41,7 @@ test "html character references match the recorded corpus" {
 	for line in data.split("\n") {
 		if line.is_empty() or line.starts_with("#") { continue }
 
-		f := line.split("\t")
+		f := line.split("\t").collect()
 		got := answer(f[0], f[1])
 		checked += 1
 		if got != f[3] and failures.length() < 10 {

@@ -178,7 +178,7 @@ export fn grouped(value Int) String {
 // `value` to `digits` decimal places, with grouped thousands.
 export fn fixed(value Float, digits Int) String {
 	text := value.to_fixed(digits)
-	parts := text.split(".")
+	parts := text.split(".").collect()
 	whole := parts[0].parse_int() or 0
 	head := if text.starts_with(
 		"-"

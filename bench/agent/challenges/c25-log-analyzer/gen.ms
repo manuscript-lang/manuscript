@@ -22,7 +22,7 @@ type Entry {
 }
 
 fn parse(line String) Entry? {
-	f := line.split(" ")
+	f := line.split(" ").collect()
 	if f.length() != 6 { return null }
 	if f[0].is_empty() or not LEVELS.contains(
 		f[1]
@@ -127,7 +127,7 @@ fn good(var rnd Random, i Int) String {
 }
 
 fn mangle(var rnd Random, l String) String {
-	var f = l.split(" ").clone()
+	var f = l.split(" ").collect().clone()
 	k := rnd.randrange(0, 9)
 
 	if k == 0 {

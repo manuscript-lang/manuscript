@@ -35,7 +35,7 @@ fn mk(f fn() Int) Box {
 }
 
 fn c1(move text String) Int {
-	var out = text.split(",").map(
+	var out = text.split(",").collect().map(
 		fn(move p String) => mk(fn() Int => return p.length())
 	)
 	var t = 0
@@ -49,7 +49,7 @@ fn c2(text String) Int {
 	var m Map[Int, fn() Int] = {}
 	var i = 0
 
-	for p in text.split(",").clone() {
+	for p in text.split(",").collect().clone() {
 		m[i] = fn() Int => return p.length()
 		i += 1
 	}
@@ -63,7 +63,7 @@ fn c2(text String) Int {
 
 fn c3(text String) Int {
 	var g fn() Int = fn() Int => 0
-	for p in text.split(",").clone() {
+	for p in text.split(",").collect().clone() {
 		g = fn() Int => return p.length()
 	}
 	return g()
@@ -71,7 +71,7 @@ fn c3(text String) Int {
 
 fn c4(text String) Int {
 	var b = Box(f: fn() Int => 0)
-	for p in text.split(",").clone() {
+	for p in text.split(",").collect().clone() {
 		b.f = fn() Int => return p.length()
 	}
 	return b.f()
@@ -79,14 +79,14 @@ fn c4(text String) Int {
 
 fn c5(text String) Int {
 	var sink = ListSink(fs: [])
-	for p in text.split(",").clone() {
+	for p in text.split(",").collect().clone() {
 		sink.put(fn() Int => return p.length())
 	}
 	return sink.total()
 }
 
 fn outer(move text String) fn() Int {
-	var held = text.split(",").length()
+	var held = text.split(",").collect().length()
 	inner := fn() Int => return held + text.length()
 	return fn() Int => return inner()
 }
@@ -98,7 +98,7 @@ fn c6(move text String) Int {
 fn c7(text String) Int {
 	var fs List[fn() Int] = []
 
-	for p in text.split(",").clone() {
+	for p in text.split(",").collect().clone() {
 		f := fn() Int => return p.length()
 		fs.append(f)
 	}
@@ -123,7 +123,7 @@ fn c8(move text String) Int {
 
 fn c9(text String) (fn() Int)? {
 	var r (fn() Int)? = null
-	for p in text.split(",").clone() {
+	for p in text.split(",").collect().clone() {
 		r = fn() Int => return p.length()
 	}
 	return r

@@ -114,7 +114,7 @@ test "encoding operations match the recorded corpus" {
 	for line in data.split("\n") {
 		if line.is_empty() or line.starts_with("#") { continue }
 
-		f := line.split("\t")
+		f := line.split("\t").collect()
 		got := answer(f)
 		checked += 1
 		if got != f[f.length() - 1] and failures.length() < 10 {

@@ -65,12 +65,12 @@ fn child_path(directory, name String) String {
 }
 
 fn parent_of(path String) String {
-	parts := path.split("/")
+	parts := path.split("/").collect()
 	return (parts.slice(0, parts.length() - 1)).get().join("/")
 }
 
 fn name_of(path String) String {
-	parts := path.split("/")
+	parts := path.split("/").collect()
 	return parts.get_or(parts.length() - 1, "").clone()
 }
 

@@ -27,7 +27,7 @@ test "extra versions add columns" {
 		result,
 		"| operation | ops | Manuscript | Go | Rust | Rust, overflow checks | ms / Go | ms / Rust | ms / Rust, overflow checks |",
 	)?
-	expect_equal(result.split("1.00x").length() - 1, 3 * ops().length())?
+	expect_equal(result.split("1.00x").collect().length() - 1, 3 * ops().length())?
 }
 
 test "rejects invalid evidence" {

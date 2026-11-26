@@ -75,5 +75,23 @@ test "view of a short text agrees with slice for ASCII and non-ASCII" {
 		}
 	}
 }
+
+test "slice to the end of a string reads no byte past it" {
+	var text = ""
+	var i = 0
+
+	while i < 40 {
+		text = f"{text}é"
+		n := text.length()
+		var from = 0
+
+		while from <= n {
+			expect_equal(text.slice(from, n).length(), n - (from + from % 2))?
+			from += 1
+		}
+		i += 1
+	}
+}
+
 // expect-exit: 0
-// expect-tests: passed=5 failed=0
+// expect-tests: passed=6 failed=0

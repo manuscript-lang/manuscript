@@ -403,6 +403,18 @@ static bool borrows_result(Lower *cx, const LowerTarget *target, MirTy ret, cons
   return returns_places(cx, target->module, target->func, ms_ty_result(&cx->program->types, target->ty), 0);
 }
 
+/* Whether the function is written `hold` on some parameter or its receiver: its result keeps using that argument. */
+static bool holds_argument(const LowerTarget *target) {
+  if (target->func == NULL) {
+    return false;
+  }
+  bool holds = target->receiver != MS_TY_NONE && ms_method_of_func(target->func)->holding;
+  for (uint32_t index = 0; index < target->func->params.len && !holds; index++) {
+    holds = target->func->params.ptr[index]->holding;
+  }
+  return holds;
+}
+
 /* Reserves the MIR function of an instance: its signature, and a body that is `unreachable` until lowered. */
 static uint32_t reserve(Lower *cx, const LowerTarget *target, const MsTy *args, uint32_t nargs) {
   if (target->func != NULL && target->func->deferred) {
@@ -451,6 +463,15 @@ static uint32_t reserve(Lower *cx, const LowerTarget *target, const MsTy *args, 
                 ms_span_is_text(ms_names_span(cx->program->names, target->name), "close");
   func.ret_borrowed = !ok_borrowed && borrows_result(cx, target, ret, mir_params, count);
   const MirTyData *ret_kind = mir_ty_data(cx->module, ret);
+  /* A list of looks (`List[&T]`) owns its buffer, but its items view the held arguments: the caller drops it like any
+   * owned value and keeps those arguments alive while it lives. */
+  func.ret_view = ret_kind->kind == MK_LIST && !ok_borrowed && written_result != NULL && !written_result->is_ref &&
+                  written_result->args.len == 1 && written_result->args.ptr[0]->is_ref && holds_argument(target);
+  /* A `&String` (or `&String?`) a function builds from a view native is an owned handle on a view, which a copy must
+   * not turn into a move of its source. */
+  const bool string_look = ret == MIR_STR || (ret_kind->kind == MK_OPT && ret_kind->elem == MIR_STR);
+  func.ret_view |= string_look && !func.ret_borrowed && !ok_borrowed && written_result != NULL &&
+                   (written_result->is_ref || (written_result->args.len == 1 && written_result->args.ptr[0]->is_ref));
   if (func.ret_borrowed && (ret_kind->kind == MK_IFACE ||
                             (ret_kind->kind == MK_OPT && mir_ty_data(cx->module, ret_kind->elem)->kind == MK_IFACE))) {
     /* An interface result that borrows is a view lender: it hands back an owned box (box-only, so dropping it frees the

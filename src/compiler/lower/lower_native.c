@@ -713,12 +713,6 @@ bool fn_native_changes_receiver(LowerFn *fn, MsTy owner, MsSpan operation, MirTy
  * method value): a native that changes its receiver writes through it. */
 bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSpan operation, uint32_t argc,
                       const MirValue *args, MirTy ret, MirValue *out) {
-  /* `String.split` is declared `hold ... List[&String]`: its pieces view the receiver in place, so none is copied; the
-   * checker keeps the pieces from outliving the receiver, a temporary included. */
-  if (ms_span_is_text(operation, "split") && argc == 2 && slot == MIR_NONE &&
-      ms_ty_is(&fn->cx->program->types, owner, MS_BUILTIN_String)) {
-    operation = ms_span_of_text("split_view");
-  }
   /* `List.slice` is declared `&List[T]!`: its result views the elements in place, so no element is copied. */
   if (ms_span_is_text(operation, "slice") && ms_ty_is(&fn->cx->program->types, owner, MS_BUILTIN_List)) {
     operation = ms_span_of_text("slice_view");

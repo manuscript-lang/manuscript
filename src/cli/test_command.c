@@ -26,11 +26,13 @@ static void print_line(MsArena *arena, const char *format, MsSpan a, MsSpan b) {
   test_print(stdout, ms_message_format(arena, format, a, b));
 }
 
-static void print_outcome(MsArena *arena, MsSpan name, const TestOutcome *outcome) {
+static void print_outcome(MsArena *arena, MsSpan name, const TestOutcome *outcome, bool verbose) {
   test_print(stdout, outcome->output);
   switch (outcome->kind) {
   case TEST_PASSED:
-    print_line(arena, "PASS %S\n", name, (MsSpan){0});
+    if (verbose) {
+      print_line(arena, "PASS %S\n", name, (MsSpan){0});
+    }
     break;
   case TEST_SKIPPED:
     print_line(arena, "SKIP %S: %S\n", name, outcome->message);
@@ -81,7 +83,7 @@ static void print_summary(MsArena *arena, const Totals *t, bool filtered) {
 }
 
 /* Prints each planned test in order with its outcome; `--fail-fast` stops at the first failure. */
-static Totals report(MsArena *arena, const MsSpanList *names, const Plan *plan, size_t repeat, bool fail_fast,
+static Totals report(MsArena *arena, const MsSpanList *names, const Plan *plan, size_t repeat, bool fail_fast, bool verbose,
                      TestEntryList *results) {
   Totals totals = {.planned = plan->count * repeat, .available = names->len};
   totals.rows = MS_ARENA_NEW_ARRAY(arena, DocumentCase, plan->count * repeat + 1);
@@ -91,11 +93,13 @@ static Totals report(MsArena *arena, const MsSpanList *names, const Plan *plan, 
   for (size_t round = 0; round < repeat; round++) {
     for (size_t p = 0; p < plan->count; p++) {
       const size_t index = plan->selected[p];
-      print_line(arena, "RUN %S\n", names->ptr[index], (MsSpan){0});
+      if (verbose) {
+        print_line(arena, "RUN %S\n", names->ptr[index], (MsSpan){0});
+      }
       TestEntry *entry = test_entry_take(results, index);
       const TestOutcome missing = {.kind = TEST_FAILED, .message = ms_span_of_text("the test reported no result")};
       const TestOutcome *outcome = entry != NULL ? &entry->outcome : &missing;
-      print_outcome(arena, names->ptr[index], outcome);
+      print_outcome(arena, names->ptr[index], outcome, verbose);
       totals.passed += outcome->kind == TEST_PASSED;
       totals.nanos += outcome->nanos;
       totals.rows[round * plan->count + p] = (DocumentCase){.name = names->ptr[index], .failure = outcome->message, .fault = outcome->fault,
@@ -150,7 +154,7 @@ static int run_plan(MsArena *arena, const TestJob *job, Plan *plan) {
   for (size_t round = 0; round < options->repeat && plan->count > 0; round++) {
     test_run_all(job, plan->selected, plan->count, &results);
   }
-  const Totals totals = report(arena, job->names, plan, options->repeat, options->fail_fast, &results);
+  const Totals totals = report(arena, job->names, plan, options->repeat, options->fail_fast, options->verbose, &results);
   print_summary(arena, &totals, filtered);
   test_entry_list_free(&results);
   const int status = totals.failed > 0 ? STATUS_FAILED : 0;

@@ -35,7 +35,7 @@ its fault record (`ms_rt_abi::record`) as `\u{1}MSOUT r<file> <bytes>`.
 export fn run_test_files(files List[fn(List[Int], String) Void]) Int {
 	environment := msstd_process_environment_map().get_or(Map[String, String]())
 	results := environment.get_or("MS_TEST_RESULTS", "")
-	selected := environment.get_or("MS_TEST_SELECT", "").split(",").filter(
+	selected := environment.get_or("MS_TEST_SELECT", "").split(",").collect().filter(
 		text => not text.is_empty()
 	).map(text => (text.parse_int() or (-1)))
 

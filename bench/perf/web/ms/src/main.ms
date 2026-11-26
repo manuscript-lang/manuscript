@@ -65,7 +65,7 @@ fn top(k Int) String {
 }
 
 fn top_reply(query String) HttpResponse {
-	parts := query.split("=")
+	parts := query.split("=").collect()
 	if parts.length() != 2 or parts[0] != "n" { return reply(400, "bad n\n") }
 
 	k := parts[1].parse_int()
@@ -76,7 +76,7 @@ fn top_reply(query String) HttpResponse {
 }
 
 fn user_reply(path String) HttpResponse {
-	parts := path.split("/")
+	parts := path.split("/").collect()
 	if parts.length() != 3 { return reply(404, "not found\n") }
 
 	id := parts[2].parse_int()

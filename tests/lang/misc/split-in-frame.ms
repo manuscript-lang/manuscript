@@ -3,7 +3,7 @@
 import expect_equal from "@std/test/test.ms"
 
 fn describe(text String, sep String) String {
-	f := text.split(sep)
+	f := text.split(sep).collect()
 	var out = f"{f.length()}:"
 	for p in f { out += f"[{p}]" }
 	return out
@@ -25,7 +25,7 @@ test "a split read in place matches the list the heap builds" {
 
 test "long texts" {
 	long := "x ".repeat(100)
-	expect_equal(long.split(" ").length(), 101)?
+	expect_equal(long.split(" ").collect().length(), 101)?
 
 	wide := "abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvwxyz"
 	expect_equal(

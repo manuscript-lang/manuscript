@@ -75,7 +75,7 @@ fn rng(start, ln Int) String {
 }
 
 fn solve(s String) String {
-	var lines = s.split("\n").clone()
+	var lines = s.split("\n").collect().clone()
 	if not lines.is_empty() and lines[lines.length() - 1] == "" { lines.pop() }
 
 	head := words(lines[0])

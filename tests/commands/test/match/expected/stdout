@@ -1,3 +1,1 @@
-RUN a_test.ms::alpha one
-PASS a_test.ms::alpha one
 1 tests, 0 failed

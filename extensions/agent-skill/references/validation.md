@@ -70,7 +70,7 @@ type Pair {
 }
 
 fn parse_line(line String) Pair? {
-    parts := line.split(" ")
+    parts := line.split(" ").collect()
     if parts.length() != 2 { return null }
 
     count := parts[1].parse_int()

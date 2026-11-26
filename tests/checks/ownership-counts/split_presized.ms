@@ -10,7 +10,7 @@ export fn main() Int {
 	text := pieces()
 	var n = 0
 	for i in 0..1000 {
-		n += text.split(",").length() + i - i
+		n += text.split(",").collect().length() + i - i
 	}
 	return n % 100
 }

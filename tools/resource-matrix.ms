@@ -266,15 +266,19 @@ fn words(text String) List[String] {
 	for mark in ["(", ")", "[", "]", ",", ":", "?", "!", "=", "&", "<", ">", ";"] {
 		spaced = spaced.replace(mark, " ")
 	}
-	return spaced.split(" ").filter(word => word != "").map(word => word.clone())
+	return spaced.split(" ").collect().filter(
+		word => word != ""
+	).map(word => word.clone())
 }
 
 // Whether the declaration `signature` changes its receiver, or takes or returns one of
 // `names` outside a callback.
 fn mentions_parameter(signature String, names List[String]) Bool {
-	if signature.contains("var fn") { return true }
+	if signature.contains(
+		"var fn"
+	) { return true }
 
-	parts := signature.split("fn ")
+	parts := signature.split("fn ").collect()
 	if parts.length() < 2 { return false }
 
 	var depth = 0
@@ -315,7 +319,7 @@ fn declared_operations(ms, name String) List[String]! {
 			if field(entry, "kind") != "operation" { continue }
 			if not mentions_parameter(field(entry, "type"), names.clone()) { continue }
 
-			last := field(entry, "name").split(".")
+			last := field(entry, "name").split(".").collect()
 			found.append(f"{name}.{last[last.length() - 1]}")
 		}
 	}
@@ -336,7 +340,9 @@ fn uncovered(ms String, ops List[Operation]) Int {
 			}
 		}
 	}
-	for line in exempt() { known.append(line.split(":")[0].clone()) }
+	for line in exempt() {
+		known.append(line.split(":").collect()[0].clone())
+	}
 
 	var missing = 0
 
@@ -492,7 +498,7 @@ fn main() Int {
 					}
 
 					child := ran.get()
-					lines := (child.stdout.decode_utf8() or "").split("\n")
+					lines := (child.stdout.decode_utf8() or "").split("\n").collect()
 
 					if child.exit_code != 0 {
 						failures += 1

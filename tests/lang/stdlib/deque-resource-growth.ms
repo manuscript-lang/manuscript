@@ -60,7 +60,7 @@ fn grow(log String, front Bool, wrapped Bool) Void! {
 }
 
 fn expect_once(log String, ids List[Int]) Void! {
-	actual := (events(log)?).split(",").filter(value => value != "").sorted()
+	actual := (events(log)?).split(",").collect().filter(value => value != "").sorted()
 	expect_equal(actual, ids.map(id => f"{id}").sorted())?
 }
 

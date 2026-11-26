@@ -17,11 +17,10 @@ typedef struct ForSource {
   uint32_t cursor_type;
   MirTy list_ty;
   MirValue text;  /* a `chars` walk: the string, whose scalars are read in place */
-  MirValue sep;   /* a `split` walk: the separator */
-  MirVar width;   /* a `chars` or `split` walk: the bytes the round reads (a piece and its separator) */
+  MirVar width;   /* a `chars` walk: the bytes the round reads */
   MirVar var;     /* a borrowed walk of an owning `var`: the loop reads the variable's value, which the loop carries */
   bool has_var;
-  bool cursor, range, chars, split;
+  bool cursor, range, chars;
 } ForSource;
 
 static MirImm imm_field(uint32_t type, uint32_t field) {
@@ -149,19 +148,6 @@ static const MsExpr *chars_receiver(const LowerFn *fn, const MsExpr *iter) {
   return ms_ty_is(&fn->cx->program->types, type, MS_BUILTIN_String) ? receiver : NULL;
 }
 
-/* `text.split(sep)` on a String written as the iterable: the loop reads each piece from the text by byte offset, with
- * no list of them. The pieces view the text in place, as in `native_on`; the checker keeps them from outliving it. */
-static const MsExpr *split_receiver(const LowerFn *fn, const MsExpr *iter) {
-  if (iter->kind != MS_E_CALL || iter->u.call.args.len != 1 || iter->u.call.callee->kind != MS_E_MEMBER ||
-      !ms_span_is_text(ms_names_span(fn->cx->program->names, iter->u.call.callee->u.member.name), "split")) {
-    return NULL;
-  }
-  const MsExpr *receiver = iter->u.call.callee->u.member.left;
-  const MsTy type = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, receiver->id), fn->subst.vars,
-                                fn->subst.args, fn->subst.count);
-  return ms_ty_is(&fn->cx->program->types, type, MS_BUILTIN_String) ? receiver : NULL;
-}
-
 static bool source_chars(LowerFn *fn, const MsExpr *receiver, ForSource *src) {
   const MirValue text = fn_expr(fn, receiver, LW_BORROW);
   if (text == MIR_NONE) {
@@ -173,46 +159,6 @@ static bool source_chars(LowerFn *fn, const MsExpr *receiver, ForSource *src) {
   src->width = mir_b_declare_var(&fn->b, MIR_INT, MM_BORROW);
   mir_b_def_var(&fn->b, src->width, mir_b_iconst(&fn->b, 1));
   return true;
-}
-
-/* The offsets a split walk visits: 0 up to the text's length, one past it when the separator has bytes (the piece after
- * the last separator is empty). The separator is read before the first piece, as a list's would be. */
-static bool source_split(LowerFn *fn, const MsExpr *receiver, const MsExpr *separator, ForSource *src) {
-  const MirValue text = fn_expr(fn, receiver, LW_BORROW);
-  const MirValue sep = text == MIR_NONE ? MIR_NONE : fn_expr(fn, separator, LW_BORROW);
-  if (sep == MIR_NONE) {
-    return false;
-  }
-  *src = (ForSource){.elem = MIR_STR, .text = text, .sep = sep, .split = true};
-  src->start = mir_b_iconst(&fn->b, 0);
-  const MirValue bytes = emit(fn, MOP_StrBytes, &text, 1, (MirImm){0}, MIR_INT);
-  const MirValue cut = emit(fn, MOP_StrBytes, &sep, 1, (MirImm){0}, MIR_INT);
-  const MirValue zero = mir_b_iconst(&fn->b, 0);
-  const MirValue has_bytes = mir_b_icmp(&fn->b, MCC_GT, cut, zero);
-  const MirValue extra = mir_b_select(&fn->b, has_bytes, mir_b_iconst(&fn->b, 1), zero);
-  src->len = mir_b_binop(&fn->b, MOP_IAdd, bytes, extra);
-  src->width = mir_b_declare_var(&fn->b, MIR_INT, MM_BORROW);
-  mir_b_def_var(&fn->b, src->width, zero);
-  return true;
-}
-
-/* The piece that starts at byte offset `index`: a view or an inline string, which the loop body's scope drops. The
- * round advances past the piece and its separator. */
-static MirValue split_piece(LowerFn *fn, const ForSource *src, MirValue index) {
-  MirParam *wanted = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirParam, 3);
-  wanted[0] = (MirParam){MIR_STR, (uint8_t)MM_BORROW};
-  wanted[1] = (MirParam){MIR_STR, (uint8_t)MM_BORROW};
-  wanted[2] = (MirParam){MIR_INT, (uint8_t)MM_BORROW};
-  const MirExtern def = {.name = mir_name(fn->cx->module, ms_span_of_text("msrt_string_split_at")),
-                         .params = wanted, .nparams = 3, .ret = MIR_STR, .leaf = true, .role = MR_VIEW_RESULT};
-  const uint32_t ext = mir_extern_intern(fn->cx->module, &def);
-  const MirValue args[3] = {src->text, src->sep, index};
-  const MirValue piece = mir_b_call_rt(&fn->b, ext, args, 3);
-  fn_own_result(fn, piece);
-  const MirValue used = emit(fn, MOP_StrBytes, &piece, 1, (MirImm){0}, MIR_INT);
-  const MirValue cut = emit(fn, MOP_StrBytes, &src->sep, 1, (MirImm){0}, MIR_INT);
-  mir_b_def_var(&fn->b, src->width, mir_b_binop(&fn->b, MOP_IAdd, used, cut));
-  return piece;
 }
 
 /* The scalar at byte offset `index` of the string, an inline string whose length is the bytes the round used. */
@@ -339,9 +285,6 @@ static MirValue element(LowerFn *fn, const ForSource *src, MirValue index, MirVa
   if (src->chars) {
     return scalar_at(fn, src, index);
   }
-  if (src->split) {
-    return split_piece(fn, src, index);
-  }
   if (!src->cursor) {
     const MirValue args[2] = {src->has_var ? mir_b_use_var(&fn->b, src->var) : src->list, index};
     const MirValue element = emit(fn, MOP_ListGet, args, 2, (MirImm){0}, src->elem);
@@ -379,10 +322,10 @@ static bool for_body(LowerFn *fn, const MsStmt *stmt, const ForSource *src, MirV
     if (closes) { /* each element of a consumed list closes in its round unless the body moves it on */
       ok = fn_bind_closing(fn, local, ms_ty_args(types, list)[0], item, false);
     } else {
-      if (!src->cursor && !src->split && fn->local_owns != NULL && local < fn->nvars && mir_needs_drop(fn->cx->module, src->elem)) {
+      if (!src->cursor && fn->local_owns != NULL && local < fn->nvars && mir_needs_drop(fn->cx->module, src->elem)) {
         fn->local_owns[local] = 2; /* an element of a list the loop only borrows: moving it out copies it */
       }
-      if ((src->cursor || src->split) && fn->local_owns != NULL && local < fn->nvars && mir_needs_drop(fn->cx->module, src->elem)) {
+      if (src->cursor && fn->local_owns != NULL && local < fn->nvars && mir_needs_drop(fn->cx->module, src->elem)) {
         fn->local_owns[local] = 1; /* an element the loop took out of a list it owns: the body owns it */
       }
       mir_b_def_var(&fn->b, fn_local(fn, local, src->elem), item);
@@ -636,8 +579,7 @@ bool fn_for(LowerFn *fn, const MsStmt *stmt) {
   const MsExpr *iter = stmt->u.each.iter;
   (void)fn_scope_begin(fn);
   const MsExpr *chars = chars_receiver(fn, iter);
-  const MsExpr *split = split_receiver(fn, iter);
-  const MirTy iter_ty = is_range(fn, iter) || chars != NULL || split != NULL ? MIR_INT : fn_type(fn, fn_read_type(fn, iter));
+  const MirTy iter_ty = is_range(fn, iter) || chars != NULL ? MIR_INT : fn_type(fn, fn_read_type(fn, iter));
   const MirTyData *iter_data = mir_ty_data(fn->cx->module, iter_ty);
   const bool collection = iter_data->kind == MK_OBJ && iter_data->obj_class == MIR_OBJ_COLLECTION;
   if (iter_ty != MIR_INT && iter_data->kind != MK_LIST && !collection) {
@@ -645,12 +587,11 @@ bool fn_for(LowerFn *fn, const MsStmt *stmt) {
   }
   ForSource src;
   const bool sourced = chars != NULL ? source_chars(fn, chars, &src)
-                       : split != NULL ? source_split(fn, split, iter->u.call.args.ptr[0].value, &src)
                        : is_range(fn, iter) ? source_range(fn, iter, &src) : source_list(fn, iter, &src);
   if (!sourced) {
     return false;
   }
-  if (!src.range && !src.chars && !src.split) {
+  if (!src.range && !src.chars) {
     src.start = mir_b_iconst(&fn->b, 0);
     const MirValue list = src.cursor ? cursor_list(fn, &src) : src.list;
     src.len = emit(fn, MOP_ListLen, &list, 1, (MirImm){0}, MIR_INT);
@@ -673,7 +614,7 @@ bool fn_for(LowerFn *fn, const MsStmt *stmt) {
   if (fn->b.links.ptr[step].preds.len > 0) {
     enter(fn, step);
     mir_b_set_loc(&fn->b, fn_loc(fn, stmt->pos));
-    const MirValue by = src.chars || src.split ? mir_b_use_var(&fn->b, src.width) : one;
+    const MirValue by = src.chars ? mir_b_use_var(&fn->b, src.width) : one;
     mir_b_def_var(&fn->b, index, mir_b_binop(&fn->b, MOP_IAdd, mir_b_use_var(&fn->b, index), by));
     mir_b_br(&fn->b, head, NULL, 0);
   }

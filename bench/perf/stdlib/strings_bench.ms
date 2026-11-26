@@ -48,7 +48,7 @@ bench "string.append_interpolated" per 20000 {
 bench "string.split" per 200 {
 	var n = 0
 	for i in 0..200 {
-		n += fixture.text.split(" ").length()
+		n += fixture.text.split(" ").collect().length()
 	}
 	n
 }

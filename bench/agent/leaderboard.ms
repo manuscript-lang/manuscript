@@ -159,7 +159,7 @@ fn read_trial(dir String) Trial? {
 	task := r.get("task_name")
 	if task == null { return null }
 
-	name := ((task).as_string() or "").split("/").last() or ""
+	name := ((task).as_string() or "").split("/").collect().last() or ""
 	cut := name.last_index_of("-") or 0
 	cid := name.slice(0, cut)
 	lang := name.slice(cut + 1, name.length())
@@ -263,11 +263,11 @@ fn collect(dirs List[String]) Int {
 		for entry in glob(jobs, GlobOptions(patterns: ["**/*__*"])).get_or([]) {
 			path := entry.path.clone()
 			dir := f"{jobs}/{path}"
-			leaf := path.split("/").last() or ""
+			leaf := path.split("/").collect().last() or ""
 			info := stat(dir).to_optional()
 			is_dir := info != null and info.is_directory()
 
-			if is_dir and leaf.split("__").length() == 2 {
+			if is_dir and leaf.split("__").collect().length() == 2 {
 				t := read_trial(dir)
 
 				if t != null {

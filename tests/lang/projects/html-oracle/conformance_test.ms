@@ -75,7 +75,7 @@ test "parse matches the recorded Go html trees" {
 	var cases = 0
 
 	for line in text.lines() {
-		f := line.split("\t")
+		f := line.split("\t").collect()
 		if f[0] != "parse" { continue }
 
 		options := HtmlOptions(
@@ -101,7 +101,7 @@ test "parse trees keep their size and checksum for the recorded large documents"
 	var cases = 0
 
 	for line in text.lines() {
-		f := line.split("\t")
+		f := line.split("\t").collect()
 		if f[0] != "parsehash" { continue }
 
 		got := render(parse(unhex(f[1])))

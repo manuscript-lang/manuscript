@@ -16,7 +16,7 @@ Save this as `words.ms`. It splits a short line repeatedly and prints the number
 import arguments from "@std/os/env.ms"
 
 fn count_words(text String) Int {
-    return text.split(" ").length()
+    return text.split(" ").collect().length()
 }
 
 fn main() Void {

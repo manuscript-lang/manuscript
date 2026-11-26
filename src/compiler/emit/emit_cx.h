@@ -30,6 +30,9 @@ typedef struct EmitPoison {
 
 /* The empty metadata node `!invariant.load` points to: a load marked so never changes while its function runs. */
 #define EMIT_METADATA_EMPTY 900005
+/* Branch weights: the first target of a conditional branch is unlikely, or the second is. */
+#define EMIT_PROF_FIRST_COLD 900006
+#define EMIT_PROF_SECOND_COLD 900007
 
 typedef struct EmitCx {
   const MirModule *module;

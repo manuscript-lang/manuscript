@@ -225,7 +225,16 @@ static void emit_store(EmitCx *cx, const MirInst *inst) {
     return;
   }
   cx->tbaa = header_tbaa(cx, inst->args[1]);
-  emit_store_value(cx, inst->args[1], base);
+  if (inst->op == MOP_Put && inst->imm.tag == MI_INT) {
+    /* The one leaf that differs from what the place holds (the length of a list that had room for the element). */
+    uint32_t *offsets = emit_leaf_offsets(cx, inst->args[1]);
+    const uint32_t leaf = (uint32_t)inst->imm.i;
+    emit_store_leaf(cx, emit_value_leaves(cx, inst->args[1]).ptr[leaf], inst->args[1], leaf,
+                    emit_address(cx, base, offsets[leaf]));
+    ms_free(offsets);
+  } else {
+    emit_store_value(cx, inst->args[1], base);
+  }
   cx->tbaa = NULL;
 }
 
