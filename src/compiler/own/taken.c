@@ -7,13 +7,13 @@
 
 typedef struct Scan {
   const MsFacts *facts;
-  uint32_t local;
+  MsNode param; /* the declaration of the parameter: a closure's own parameter may share its position */
   bool found;
 } Scan;
 
 static bool names_param(const Scan *scan, const MsExpr *expr) {
   const MsRef *ref = expr != NULL && expr->kind == MS_E_NAME ? ms_facts_ref(scan->facts, expr->id) : NULL;
-  return ref != NULL && ref->kind == MS_REF_PARAM && ref->local == scan->local;
+  return ref != NULL && ref->kind == MS_REF_PARAM && ref->decl.node == scan->param;
 }
 
 /* The parameter at the root of a field path: `param`, `param.a`, `param.a.b`. */
@@ -78,7 +78,7 @@ static uint32_t mask_of(MsCheckProgram *program, const MsFacts *facts, MsParams 
          !ms_ty_has_variable(&program->types, ty) && !ms_check_holds_resource(program, ty))) {
       continue;
     }
-    Scan scan = {facts, ref->local, false};
+    Scan scan = {facts, param->id, false};
     const bool generic = ms_ty_kind(&program->types, ty) == MS_TY_VARIABLE;
     /* A container of a generic payload (`T?`) is judged as a generic parameter is: by what stores or extracts it. */
     const bool open = generic || (ms_ty_has_variable(&program->types, ty) && !ms_check_holds_resource(program, ty));
