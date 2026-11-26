@@ -78,6 +78,36 @@ static bool var_stores_owned(const LowerFn *fn, uint32_t local) {
   return scan.found;
 }
 
+/* Whether the local is assigned after `after` in the function's text: a name that took the local's value by a last-use move
+ * must not read a later assignment. */
+typedef struct LaterStores {
+  const LowerFn *fn;
+  uint32_t local;
+  MsPos after;
+  bool found;
+} LaterStores;
+
+static void note_later_store(void *ctx, const MsStmt *stmt) {
+  LaterStores *scan = ctx;
+  if (stmt->kind != MS_S_ASSIGN || scan->found || stmt->u.assign.member_target) {
+    return;
+  }
+  const MsRef *ref = ms_facts_ref(scan->fn->facts, stmt->u.assign.target != NULL ? stmt->u.assign.target->id : stmt->id);
+  const bool later = stmt->pos.line > scan->after.line || (stmt->pos.line == scan->after.line && stmt->pos.column > scan->after.column);
+  scan->found = ref != NULL && ref->kind == MS_REF_LOCAL && ref->local == scan->local && later;
+}
+
+static bool stored_after(const LowerFn *fn, uint32_t local, MsPos after) {
+  LaterStores scan = {.fn = fn, .local = local, .after = after};
+  const MsVisitor visitor = {.ctx = &scan, .stmt = note_later_store};
+  if (fn->func != NULL) {
+    ms_walk_block(&visitor, fn->func->body);
+  } else if (fn->lambda != NULL) {
+    ms_walk_block(&visitor, fn->lambda->expr->u.lambda.body);
+  }
+  return scan.found;
+}
+
 static MirValue take_value(LowerFn *fn, const MsExpr *expr) {
   const MirValue value = fn_expr(fn, expr, LW_MOVE);
   return value;
@@ -325,6 +355,17 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
                  (!mir_needs_drop(fn->cx->module, ty) || fresh))) {
     return fn_bind_closing_in(fn, fn->bind_scope != 0 ? fn->bind_scope - 1 : fn_scope(fn), local,
                               ms_facts_type(fn->facts, pattern->id), value, stmt->u.bind.is_mutable);
+  }
+  /* `text := json` over the owning `var` `json` that is not assigned again: the name is the same owner under another name, so
+   * a loop reads the variable and the carry stays one owner. */
+  MirVar alias_of = 0;
+  const MsRef *alias_ref = kind == MS_E_NAME ? ms_facts_ref(fn->facts, stmt->u.bind.value->id) : NULL;
+  if (!stmt->u.bind.is_mutable && alias_ref != NULL && alias_ref->kind == MS_REF_LOCAL && local < fn->nvars && fn->vars[local] == 0 &&
+      mir_needs_drop(fn->cx->module, ty) && fn_owned_local(fn, stmt->u.bind.value, &alias_of) && var_owns(fn, alias_of) &&
+      mir_b_use_var(&fn->b, alias_of) == value && !fn_closer_for(fn, closer, ms_facts_type(fn->facts, pattern->id)) &&
+      !stored_after(fn, alias_ref->local, stmt->pos)) {
+    fn->vars[local] = alias_of + 1;
+    return !fn->failed;
   }
   /* A record whose fields leave keeps the rest in a variable, released where the record was declared. */
   const bool fields_leave = !stmt->u.bind.is_mutable && fresh && fn_leaves_fields(fn, local, ty);

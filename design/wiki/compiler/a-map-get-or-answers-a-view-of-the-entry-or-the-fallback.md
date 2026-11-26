@@ -9,3 +9,5 @@
 A `var` bound to a borrowing call holds the view only while every later store is a borrowing call too (`var_stores_owned`); `found = own.clone()` or `found += "!"` makes it an owner, so the binding copies. Before, the owned store in an inner scope was dropped at its end and the verifier reported a value used after it was consumed.
 
 `x or panic(..)` read in place (an argument or a receiver) and `n := x or panic(..)` answer a view of the payload: the right side never returns, so nothing else reaches the join. A fresh `x` (a call result) is still taken, not viewed. Probe the hidden copies of tests with `MS_COPY_PROBE=1 ms test <file>`; `copy-check` builds programs only.
+
+`text := json` over an owning `var` that is not assigned again later makes `text` the same variable (`fn->vars[local]`), not a second single-valued name for the variable's value. The variable is carried through a loop as one owner, and a single-valued alias of its value read inside the loop was reported by the verifier as used after it was consumed (#7125, `bench/perf/codecs`).
