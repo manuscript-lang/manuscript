@@ -8,6 +8,7 @@ name: Nightly safety
 #   ownership-fuzz  random move/borrow/closure programs, leak-counted, Debug vs Release
 #   view-matrix   generated view programs (trim, slice, split) with temporaries after them, poisoned, in Debug and Release
 #   close-matrix  generated resource programs (every shape and construct that ends a life) must close each resource once, in Debug and Release
+#   resource-matrix  every standard operation, call form and argument form closes each resource once
 #   stress-sched  runs the stdlib sweep under the scheduler stress mode
 #   bench-gate    `ms bench` on bench/perf/guards; fails when an allocation or copy count rose more than 3% over baseline.json
 #   perf-counts   instructions of the suite and guard programs under callgrind against bench/perf/counts.txt; opens an issue when one is over 3% higher
@@ -31,7 +32,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        check: [cancel-sweep, conform-release, poison-check, view-matrix, close-matrix, ownership-fuzz, stress-sched, bench-gate]
+        check: [cancel-sweep, conform-release, poison-check, view-matrix, close-matrix, resource-matrix, ownership-fuzz, stress-sched, bench-gate]
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/toolchain
