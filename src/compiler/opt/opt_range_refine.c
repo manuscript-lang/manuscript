@@ -249,11 +249,7 @@ RgEnv rg_edge_env(RgFa *fa, MsArena *arena, const RgEdge *e) {
 static const RgEdge *rg_entry_edge(const RgFa *fa, uint32_t bi) {
   const RgEdge *entry = NULL;
   for (uint32_t k = fa->in_start[bi]; k < fa->in_start[bi + 1]; k++) {
-    uint32_t b = fa->in[k].pred;
-    while (b != bi && b != 0) {
-      b = fa->idom[b];
-    }
-    if (b == bi) {
+    if (mir_tree_dominates(&fa->dom, bi, fa->in[k].pred)) {
       continue;
     }
     if (entry != NULL) {

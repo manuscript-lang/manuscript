@@ -63,28 +63,66 @@ static MirBlock chain_root(ElEm *em) {
   return root;
 }
 
+/* The block that drops `owner` and continues in `next`. */
+static MirBlock chain_link(ElEm *em, MirBlock next, MirValue owner) {
+  const uint64_t key = (uint64_t)next << 32 | owner;
+  uint64_t found = 0;
+  if (mh_get(&em->chain, key, &found)) {
+    return (MirBlock)found;
+  }
+  const MirBlock drop = new_cold_block(em);
+  em_push(em, drop, MOP_Drop, &owner, 1, mir_imm_none(), EM_NO_RESULT);
+  em->f->blocks.ptr[drop].insts.ptr[0].loc = em->tail->loc;
+  em_br(em, drop, next, NULL, 0);
+  em->f->blocks.ptr[drop].term_loc = em->tail->loc;
+  (void)mh_put(em->cx->ma, &em->chain, key, drop);
+  return drop;
+}
+
+static void leave_by(ElEm *em, uint32_t at, MirBlock chain) {
+  em_br(em, at, chain, NULL, 0);
+  em->f->blocks.ptr[at].term_loc = em->tail->loc;
+  em->exited = true;
+}
+
 bool el_share_drops(ElEm *em, uint32_t at, const MirValue *owners, uint32_t count) {
   MirBlock next = chain_root(em);
   if (next == MIR_NONE) {
     return false;
   }
   for (uint32_t i = count; i-- > 0;) {
-    const uint64_t key = (uint64_t)next << 32 | owners[i];
-    uint64_t found = 0;
-    if (mh_get(&em->chain, key, &found)) {
-      next = (MirBlock)found;
-      continue;
-    }
-    const MirBlock drop = new_cold_block(em);
-    em_push(em, drop, MOP_Drop, &owners[i], 1, mir_imm_none(), EM_NO_RESULT);
-    em->f->blocks.ptr[drop].insts.ptr[0].loc = em->tail->loc;
-    em_br(em, drop, next, NULL, 0);
-    em->f->blocks.ptr[drop].term_loc = em->tail->loc;
-    (void)mh_put(em->cx->ma, &em->chain, key, drop);
-    next = drop;
+    next = chain_link(em, next, owners[i]);
   }
-  em_br(em, at, next, NULL, 0);
-  em->f->blocks.ptr[at].term_loc = em->tail->loc;
-  em->exited = true;
+  leave_by(em, at, next);
+  return true;
+}
+
+bool el_share_list(ElEm *em, uint32_t at, ElNode *tip) {
+  const MirBlock root = chain_root(em);
+  if (root == MIR_NONE) {
+    return false;
+  }
+  uint32_t fresh = 0; /* the newest owners no chain holds yet */
+  const ElNode *base = tip;
+  while (base != NULL && base->block == MIR_NONE) {
+    if (base->bad || mh_has(&em->flagged, base->v)) {
+      return false;
+    }
+    fresh++;
+    base = base->next;
+  }
+  if (fresh > 0) {
+    ElNode **nodes = MS_ARENA_NEW_ARRAY(em->cx->ma, ElNode *, (size_t)fresh + 1);
+    ElNode *node = tip;
+    for (uint32_t i = fresh; i-- > 0; node = (ElNode *)(uintptr_t)node->next) {
+      nodes[i] = node;
+    }
+    MirBlock next = base != NULL ? base->block : root;
+    for (uint32_t i = 0; i < fresh; i++) {
+      next = chain_link(em, next, nodes[i]->v);
+      nodes[i]->block = next;
+    }
+  }
+  leave_by(em, at, tip->block);
   return true;
 }

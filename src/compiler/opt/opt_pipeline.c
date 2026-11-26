@@ -164,7 +164,8 @@ static const Step late_steps[] = {
     {"bytetake", opt_bytetake},
     {"copyelim takes", opt_copyelim_takes},
     {"simplify", opt_simplify},
-    {"fastpaths", fastpaths_step}, /* last, with no cleanup: LLVM cleans the expansion, and the passes above never walk it */
+    {"fastpaths", fastpaths_step}, /* with no cleanup: LLVM cleans the expansion, and the passes above never walk it */
+    {"unwind tails", opt_unwind_tails}, /* after the passes that inline an exit's closing work into each branch; LLVM cleans up the forwarding blocks it leaves */
 };
 
 static void run_steps(MirModule *m, const Step *steps, size_t count) {
