@@ -335,7 +335,7 @@ static uint32_t runtime_extern(LowerFn *fn, MsName name, const MirValue *args, u
   const MirExtern def = {.name = name, .params = params, .nparams = nargs, .ret = ret,
                          .twin = (uint8_t)fn_native_twin(sig),
                          .fresh = !views && mir_needs_drop(fn->cx->module, ret), .pure = pure,
-                         .leaf = sig != NULL && sig->leaf,
+                         .leaf = sig != NULL && sig->leaf, .views = views,
                          .role = (uint8_t)(views ? MR_VIEW_RESULT
                                            : sig != NULL && sig->keeps ? MR_KEEPS_SLOT
                                            : fn_native_takes_dying(sig) ? MR_TAKES_DYING

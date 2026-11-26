@@ -155,7 +155,7 @@ fn msstd_status_error(
 fn override_words(overrides String, number Int) String? {
 	for line in overrides.split("\n") {
 		words := line.cut_prefix(f"{number} ")
-		if words != null { return words }
+		if words != null { return words.clone() }
 	}
 
 	return null

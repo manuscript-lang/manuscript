@@ -250,7 +250,7 @@ static bool native_returns_element(const PlaceReturns *counts, const MsCall *cal
 static bool call_borrows(const PlaceReturns *counts, const MsExpr *value) {
   const MsCall *call = ms_facts_call(counts->facts, value->id);
   if (call != NULL && call->callee.kind == MS_REF_NATIVE) {
-    return native_returns_element(counts, call, value);
+    return ms_own_declared_ref_result(counts->cx->program, &call->callee) || native_returns_element(counts, call, value); /* a declared `&T` views its arguments */
   }
   if (call == NULL || counts->depth >= 4 || (call->callee.kind != MS_REF_FUNCTION && call->callee.kind != MS_REF_METHOD)) {
     return false;
@@ -260,7 +260,7 @@ static bool call_borrows(const PlaceReturns *counts, const MsExpr *value) {
     return true; /* a recursive call answers what the function's other returns answer */
   }
   if (callee != NULL && (callee->bodiless || callee->external)) {
-    return native_returns_element(counts, call, value);
+    return ms_own_declared_ref_result(counts->cx->program, &call->callee) || native_returns_element(counts, call, value);
   }
   if (callee == NULL || !ms_own_result_is_borrowed(counts->cx->program, call->callee.decl.module, call->callee.decl.node) ||
       (call->callee.kind == MS_REF_METHOD && ms_method_of_func(callee)->consuming)) {

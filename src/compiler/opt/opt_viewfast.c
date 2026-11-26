@@ -208,6 +208,11 @@ static void vf_entry(MirBuilder *b, VfView *v, MirBlock inline_block, MirBlock f
   mir_b_seal_block(b, flat_block);
 }
 
+/* The string the view was written to: a view is only read (it answers no owner), a slice is taken out of its slot. */
+static MirValue vf_piece(MirBuilder *b, MirValue out) {
+  return mir_b_emit(b, b->func.ret_borrowed ? MOP_Load : MOP_Take, &out, 1, (MirImm){.tag = MI_TY, .a = MIR_STR}, MIR_STR);
+}
+
 /* The short result: the bytes packed inline, then on to `join`. */
 static void vf_short_join(MirBuilder *bp, const VfView *vp, MirBlock short_block, MirValue short_p, MirValue short_n,
                           MirBlock join, bool slice) {
@@ -215,7 +220,7 @@ static void vf_short_join(MirBuilder *bp, const VfView *vp, MirBlock short_block
   mir_b_switch_to(bp, short_block);
   vf_short_block(bp, &v, short_p, short_n);
   if (slice) {
-    const MirValue piece = mir_b_emit(bp, MOP_Take, &v.out, 1, (MirImm){.tag = MI_TY, .a = MIR_STR}, MIR_STR);
+    const MirValue piece = vf_piece(bp, v.out);
     mir_b_br(bp, join, &piece, 1);
   } else {
     mir_b_br(bp, join, NULL, 0);
@@ -254,6 +259,7 @@ static uint32_t vf_build(MirModule *m, uint32_t slow_ext, VfKind kind) {
   MirBuilder b;
   mir_b_init_fast_path(&b, m, mir_name(m, ms_span_of_text(borrowed ? "string_view_value" : slice ? "string_slice" : "string_view")), params,
             slice ? 3 : 4, slice ? MIR_STR : MIR_VOID);
+  b.func.ret_borrowed = borrowed; /* a view answers no owner */
   VfView v = {0};
   MirValue ps[4];
   mir_b_params(&b, ps, slice ? 3 : 4);
@@ -265,7 +271,7 @@ static uint32_t vf_build(MirModule *m, uint32_t slow_ext, VfKind kind) {
   const MirBlock join = mir_b_new_block(&b);
   MirValue result = MIR_NONE;
   if (slice) {
-    result = mir_b_add_block_param(&b, join, MIR_STR, MM_MOVE);
+    result = mir_b_add_block_param(&b, join, MIR_STR, borrowed ? MM_BORROW : MM_MOVE);
   }
   const MirBlock flat_block = mir_b_new_block(&b);
   const MirBlock inline_block = mir_b_new_block(&b);
@@ -297,7 +303,7 @@ static uint32_t vf_build(MirModule *m, uint32_t slow_ext, VfKind kind) {
     mir_b_switch_to(&b, long_block); // longer text: a view over the bytes, tagged as borrowed
     vf_store_words(&b, v.out, flat_from, ob_int(&b, MOP_Or, flat_n, (int64_t)(3ULL << VF_TAG_SHIFT)));
     if (slice) {
-      const MirValue view = mir_b_emit(&b, MOP_Take, &v.out, 1, (MirImm){.tag = MI_TY, .a = MIR_STR}, MIR_STR);
+      const MirValue view = vf_piece(&b, v.out);
       mir_b_br(&b, join, &view, 1);
     } else {
       mir_b_br(&b, join, NULL, 0);
