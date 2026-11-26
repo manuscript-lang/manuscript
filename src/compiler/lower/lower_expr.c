@@ -792,10 +792,18 @@ bool fn_names_borrowed_param(LowerFn *fn, const MsExpr *expr) {
          fn->b.func.params[param_at].mode != MM_MOVE && !(expr->kind == MS_E_NAME && fn_owned_local(fn, expr, &param_var));
 }
 
-/* Whether `expr` is a parameter taken by borrow, or a field of one: as much the caller's as the parameter. */
+/* Whether `expr` is a parameter taken by borrow, or a field or element of one: as much the caller's as the parameter. */
 bool fn_names_borrowed_place(LowerFn *fn, const MsExpr *expr) {
-  while (expr->kind == MS_E_MEMBER) {
-    expr = expr->u.member.left;
+  MsExpr *container = NULL;
+  MsExpr *key = NULL;
+  for (;;) {
+    if (expr->kind == MS_E_MEMBER) {
+      expr = expr->u.member.left;
+    } else if (ms_expr_index(expr, &container, &key)) {
+      expr = container; /* an element lies in the caller's container */
+    } else {
+      break;
+    }
   }
   return fn_names_borrowed_param(fn, expr);
 }

@@ -191,11 +191,12 @@ typedef struct PlaceReturns {
   const MsFunc *func; /* the function whose returns are counted */
   MsTy result; /* the declared result type, or MS_TY_NONE when unknown */
   uint32_t depth;
+  bool boxed; /* the result is a boxed Optional: a wrapped return must be a list element, the one place with a cell of its own */
   uint32_t returns;
   uint32_t places;
 } PlaceReturns;
 
-static bool returns_places(Lower *cx, uint32_t module, const MsFunc *func, MsTy result, uint32_t depth);
+static bool returns_places(Lower *cx, uint32_t module, const MsFunc *func, MsTy result, uint32_t depth, bool boxed);
 
 /* A native whose result is a type argument of one of its arguments (`Map[K, V].get` answers a `V` of a `Map[K, V]`): it can
  * only hand back a part of what it was given, so its result is a view. A native with any other result (a status, a
@@ -273,7 +274,7 @@ static bool call_borrows(const PlaceReturns *counts, const MsExpr *value) {
   const MsTyTable *types = &counts->cx->program->types;
   const MsTy signature = ms_facts_type(&counts->cx->program->modules.ptr[call->callee.decl.module].facts, call->callee.decl.node);
   const MsTy result = signature != MS_TY_NONE && ms_ty_kind(types, signature) == MS_TY_FUNCTION ? ms_ty_result(types, signature) : MS_TY_NONE;
-  return !built_source(counts, call, value) && returns_places(counts->cx, call->callee.decl.module, callee, result, counts->depth + 1);
+  return !built_source(counts, call, value) && returns_places(counts->cx, call->callee.decl.module, callee, result, counts->depth + 1, counts->boxed);
 }
 
 /* Whether a returned expression is a part of something the caller keeps: a parameter or local, a member, an element, a call
@@ -295,6 +296,14 @@ static bool returns_a_place(const PlaceReturns *counts, const MsExpr *value) {
   return value->kind == MS_E_MEMBER || value->kind == MS_E_INDEX || value->kind == MS_E_APPLY;
 }
 
+/* Whether `value` is an element of a list: a view of it points at the element's cell in the list. */
+static bool returns_list_element(const PlaceReturns *counts, const MsExpr *value) {
+  MsExpr *container = NULL;
+  MsExpr *key = NULL;
+  return ms_expr_index(value, &container, &key) &&
+         ms_ty_is(&counts->cx->program->types, ms_facts_type(counts->facts, container->id), MS_BUILTIN_List);
+}
+
 static void count_place_returns(void *ctx, const MsStmt *stmt) {
   PlaceReturns *counts = ctx;
   if (stmt->kind != MS_S_RETURN || stmt->u.expr == NULL) {
@@ -314,6 +323,9 @@ static void count_place_returns(void *ctx, const MsStmt *stmt) {
                                conversion->kind != MS_CONV_NARROW)) {
       return; /* any other conversion builds a new owner; a wrapped, narrowed or interface-viewed place stays a view of it */
     }
+    if (counts->boxed && conversion->kind == MS_CONV_OPTIONAL_WRAP && !returns_list_element(counts, value)) {
+      return;
+    }
     if (conversion->kind == MS_CONV_INTERFACE_VIEW) {
       /* Only a value that lives in memory can be viewed in place; a flat one is copied into the interface's block. */
       const LowerSubst none = {0};
@@ -326,8 +338,8 @@ static void count_place_returns(void *ctx, const MsStmt *stmt) {
   counts->places += returns_a_place(counts, value) ? 1u : 0u;
 }
 
-static bool returns_places(Lower *cx, uint32_t module, const MsFunc *func, MsTy result, uint32_t depth) {
-  PlaceReturns counts = {cx, &cx->program->modules.ptr[module].facts, func, result, depth, 0, 0};
+static bool returns_places(Lower *cx, uint32_t module, const MsFunc *func, MsTy result, uint32_t depth, bool boxed) {
+  PlaceReturns counts = {cx, &cx->program->modules.ptr[module].facts, func, result, depth, boxed, 0, 0};
   const MsVisitor visitor = {.ctx = &counts, .stmt = count_place_returns};
   ms_walk_block(&visitor, func->body);
   return counts.returns != 0 && counts.returns == counts.places;
@@ -396,9 +408,6 @@ static bool returns_entry_or(Lower *cx, const LowerTarget *target) {
 
 static bool borrows_result(Lower *cx, const LowerTarget *target, const LowerSubst *subst, MirTy ret, const MirParam *params, uint32_t count) {
   const MirTyData *ret_data = mir_ty_data(cx->module, ret);
-  if (ret_data->kind == MK_OPT && mir_ty_opt_boxed(cx->module, ret_data->elem)) {
-    return false; /* a boxed Optional owns the heap block that holds its payload: a view of a part cannot be one */
-  }
   const MsTypeRef *written = target->func != NULL ? target->func->result : NULL;
   if (ret_data->kind == MK_LIST && written != NULL && !written->is_ref) {
     return false; /* a list of looks owns its buffer: only its items look at another value */
@@ -417,7 +426,8 @@ static bool borrows_result(Lower *cx, const LowerTarget *target, const LowerSubs
   if (ret_data->kind == MK_OPT && returns_entry_or(cx, target)) {
     return false;
   }
-  return returns_places(cx, target->module, target->func, ms_ty_result(&cx->program->types, target->ty), 0);
+  return returns_places(cx, target->module, target->func, ms_ty_result(&cx->program->types, target->ty), 0,
+                        ret_data->kind == MK_OPT && mir_ty_opt_boxed(cx->module, ret_data->elem));
 }
 
 /* Reserves the MIR function of an instance: its signature, and a body that is `unreachable` until lowered. */
