@@ -36,7 +36,7 @@ fn Capture.spawn(
 }
 
 fn generic_run[T Commands](service T) Bytes! {
-	return ok((service.run("fake", [])?).stdout)
+	return ok((service.run("fake", [])?).stdout.clone())
 }
 
 type Override {

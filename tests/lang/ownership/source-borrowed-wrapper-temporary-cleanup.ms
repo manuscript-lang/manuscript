@@ -146,9 +146,9 @@ fn result_observed(value Resource!Int) Bool => value.is_ok()
 fn branched_transfers(path String) Void! {
 	for i in 0..3 {
 		value := if i == 1 {
-			identity(identity(present(path, 20 + i)))
+			identity(identity(present(path, 20 + i))).clone()
 		} else {
-			identity(present(path, 20 + i))
+			identity(present(path, 20 + i)).clone()
 		}
 		expect_equal(mapped(value), 20 + i)?
 	}
@@ -371,7 +371,7 @@ test "borrowed optional transport copies leave fault cleanup with original owner
 
 fn optional_identity(move value Resource?) Resource? => value
 
-fn with_borrowed_default(value Resource?, same Resource? = value) Bool {
+fn with_borrowed_default(value Resource?, same Resource? = value.clone()) Bool {
 	return (value != null) or (same != null)
 }
 

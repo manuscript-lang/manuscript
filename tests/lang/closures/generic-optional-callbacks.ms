@@ -22,8 +22,8 @@ fn nested[T](value T, predicate fn(T) Bool) Bool {
 	return outer()
 }
 
-fn defaulted[T](move fallback T, supplied T, equal fn(T, T) Bool) Bool {
-	choose := fn(value T = fallback) Bool => equal(value, fallback)
+fn defaulted[T Clonable](move fallback T, supplied T, equal fn(T, T) Bool) Bool {
+	choose := fn(value T = fallback.clone()) Bool => equal(value, fallback)
 	omitted := choose()
 	supplied_result := choose(supplied)
 	required fn(T) Bool := choose

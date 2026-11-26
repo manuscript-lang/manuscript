@@ -22,11 +22,11 @@ test "list elements read before a later match assigns them" {
 	expect_equal(items, [1, 5, 50])?
 
 	texts := [
-		y.clone(),
+		y,
 		match present("b") {
 			value => {
 				y = "z"
-				value
+				value.clone()
 			} null => ""
 		}
 	]

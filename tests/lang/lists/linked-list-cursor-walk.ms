@@ -25,7 +25,7 @@ fn build(count Int) Node? {
 // Each walk advances an owning cursor with `get()` and a field move at the last use. A
 // copy of the rest of the list per step makes it quadratic, so 100000 nodes would not
 // finish.
-fn sum_bound(head Node?) Int {
+fn sum_bound(move head Node?) Int {
 	var total = 0
 	var cur = head
 
@@ -38,7 +38,7 @@ fn sum_bound(head Node?) Int {
 	return total
 }
 
-fn sum_chained(head Node?) Int {
+fn sum_chained(move head Node?) Int {
 	var total = 0
 	var cur = head
 
@@ -50,7 +50,7 @@ fn sum_chained(head Node?) Int {
 	return total
 }
 
-fn count_and_last(head Node?) Int {
+fn count_and_last(move head Node?) Int {
 	var cur = head
 	var last = 0
 

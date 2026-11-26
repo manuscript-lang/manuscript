@@ -29,9 +29,9 @@ type Data {
 	)
 }
 
-type Box[T] {
+type Box[T Clonable] {
 	value T
-	copy T = value
+	copy T = value.clone()
 }
 
 fn unit_default(var calls List[Int]) Void {
