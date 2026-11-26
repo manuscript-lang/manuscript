@@ -310,15 +310,15 @@ static bool thread_func(Ut *t) {
   return changed;
 }
 
+static bool thread_one(MirModule *view, MirFunc *f, void *context) {
+  Ut t = {.m = view, .f = f, .resume = *(const MsName *)context};
+  return thread_func(&t);
+}
+
 bool opt_unwind_thread(MirModule *m) {
-  Ut t = {.m = m, .resume = MS_NAME_EMPTY};
-  if (!ms_names_find(&m->names, ms_span_of_text("msrt_unwinding_resume"), &t.resume)) {
+  MsName resume = MS_NAME_EMPTY;
+  if (!ms_names_find(&m->names, ms_span_of_text("msrt_unwinding_resume"), &resume)) {
     return false;
   }
-  bool changed = false;
-  for (size_t fi = 0; fi < m->funcs.len; fi++) {
-    t.f = &m->funcs.ptr[fi];
-    changed = thread_func(&t) || changed;
-  }
-  return changed;
+  return opt_for_each_func(m, thread_one, &resume);
 }

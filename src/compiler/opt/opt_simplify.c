@@ -9,6 +9,7 @@
 #include <math.h>
 
 #include "compiler/opt/opt_simplify.h"
+#include "compiler/opt/opt_util.h"
 
 /* ---- helpers for the rewrites below ---- */
 
@@ -692,10 +693,11 @@ bool opt_simplify_func(MirModule *m, MirFunc *f) {
   return sm_rounds(m, f);
 }
 
+static bool simplify_one(MirModule *view, MirFunc *f, void *context) {
+  (void)context;
+  return opt_simplify_func(view, f);
+}
+
 bool opt_simplify(MirModule *m) {
-  bool changed = false;
-  for (uint32_t fi = 0; fi < m->funcs.len; fi++) {
-    changed |= opt_simplify_func(m, &m->funcs.ptr[fi]);
-  }
-  return changed;
+  return opt_for_each_func(m, simplify_one, NULL);
 }

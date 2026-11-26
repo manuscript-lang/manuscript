@@ -73,4 +73,15 @@ MirInst opt_inst_make(MirModule *m, MirOp op, const MirValue *args, uint32_t nar
 /* A copy of `f` that shares nothing mutable with it: operand arrays and targets are copied too. */
 void opt_func_deep_clone(MirModule *m, const MirFunc *f, MirFunc *out);
 
+/* Runs `step(context, view, fi)` once for every function index of `m`, on every core, in batches of `grain`. `view` is
+ * the module as the step may read it plus an arena of the worker's own: a step reads the module's tables and adds to
+ * none of them (a change is a fatal error here, not a race), and what it allocates from `view->arena` stays valid for as
+ * long as `m` does. A step must not depend on the order functions run in or on the thread it runs on. */
+void opt_parallel_funcs(MirModule *m, size_t grain, void (*step)(void *context, MirModule *view, uint32_t fi), void *context);
+
+/* Runs `pass(view, f, context)` on every function of `m` that way and returns whether any call returned true. `pass`
+ * changes only `f`, in place; `context` is shared by every call and read only. A pass that reads the bodies of other
+ * functions cannot use this: they change as it runs. */
+bool opt_for_each_func(MirModule *m, bool (*pass)(MirModule *view, MirFunc *f, void *context), void *context);
+
 #endif
