@@ -1,5 +1,6 @@
 /* Owns how a block ends: the edges and their phis, returns, switches and faults. */
 #include "compiler/emit/emit_func.h"
+#include "compiler/mir/mir_analysis.h"
 
 /* `ret`: nothing, the one leaf, or the leaves written through the hidden result pointer. */
 static void emit_return(EmitCx *cx, MirValue value) {
@@ -28,6 +29,52 @@ typedef struct FaultCall {
 static const FaultCall fault_calls[] = {
     {"msrt_fault_posted", 0, MF_POSTED},
 };
+
+/* Whether `b` emits nothing: no parameters, only `forget`s (and undefined values only they read), and a branch without arguments to a block with no
+ * parameters (so no phi names it as a predecessor). */
+static bool writes_nothing(const MirFunc *f, const uint32_t *uses, uint32_t block) {
+  const MirBlockData *b = &f->blocks.ptr[block];
+  if (block == 0 || b->params.len != 0 || b->term.kind != MT_BR || b->term.a.nargs != 0 || b->term.a.block == block ||
+      f->blocks.ptr[b->term.a.block].params.len != 0) {
+    return false;
+  }
+  for (uint32_t k = 0; k < b->insts.len; k++) {
+    const MirInst *inst = &b->insts.ptr[k];
+    if (inst->op == MOP_Forget) {
+      continue;
+    }
+    if (inst->op != MOP_Undef || inst->res == MIR_NONE) {
+      return false;
+    }
+    /* An undefined value only the `forget`s of this block read is never written. */
+    uint32_t forgets = 0;
+    for (uint32_t q = k + 1; q < b->insts.len; q++) {
+      forgets += b->insts.ptr[q].op == MOP_Forget && b->insts.ptr[q].args[0] == inst->res;
+    }
+    if (uses[inst->res] != forgets) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void emit_plan_forwards(EmitCx *cx, MsArena *arena) {
+  const MirFunc *f = cx->func;
+  const uint32_t *uses = mir_use_counts(arena, f);
+  MirBlock *forward = MS_ARENA_NEW_ARRAY(arena, MirBlock, f->blocks.len + 1);
+  for (uint32_t block = 0; block < f->blocks.len; block++) {
+    forward[block] = writes_nothing(f, uses, block) ? f->blocks.ptr[block].term.a.block : MIR_NONE;
+  }
+  cx->forward = forward;
+}
+
+uint32_t emit_block_target(const EmitCx *cx, uint32_t block) {
+  /* A chain of such blocks is followed to its end; a cycle of them would never end, so the walk is bounded. */
+  for (uint32_t steps = 0; cx->forward != NULL && cx->forward[block] != MIR_NONE && steps < cx->func->blocks.len; steps++) {
+    block = cx->forward[block];
+  }
+  return block;
+}
 
 uint32_t emit_edge_count(const MirTerm *term) {
   switch ((MirTermKind)term->kind) {
@@ -70,7 +117,7 @@ static void edge_label(const EmitCx *cx, MsStrBuild *out, const MirTerm *term, u
   if (edge_split(cx, term, index)) {
     ms_strbuild_printf(out, "%%t%u_%u", from, index);
   } else {
-    ms_strbuild_printf(out, "%%b%u", emit_edge(term, index)->block);
+    ms_strbuild_printf(out, "%%b%u", emit_block_target(cx, emit_edge(term, index)->block));
   }
 }
 
@@ -114,7 +161,7 @@ bool emit_terminator(EmitCx *cx, const MirTerm *term, uint32_t from) {
     if (emit_wide_edge_copies(cx, term, 0)) {
       emit_wide_copy_edge(cx, term, 0);
     }
-    ms_strbuild_printf(out, "  br label %%b%u\n", term->a.block);
+    ms_strbuild_printf(out, "  br label %%b%u\n", emit_block_target(cx, term->a.block));
     return true;
   case MT_CONDBR:
     ms_strbuild_printf(out, "  br i1 %%v%u, label ", term->value);
@@ -157,7 +204,7 @@ void emit_edge_blocks(EmitCx *cx, const MirTerm *term, uint32_t from) {
       if (emit_wide_edge_copies(cx, term, index)) {
         emit_wide_copy_edge(cx, term, index);
       }
-      ms_strbuild_printf(cx->out, "  br label %%b%u\n", emit_edge(term, index)->block);
+      ms_strbuild_printf(cx->out, "  br label %%b%u\n", emit_block_target(cx, emit_edge(term, index)->block));
     }
   }
 }

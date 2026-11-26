@@ -50,6 +50,7 @@ typedef struct EmitCx {
    * edge `into_edge[k]` for `k` from `into_start[b]` to `into_start[b + 1]`. Built once per function. */
   const uint32_t *into_start, *into_from, *into_edge;
   const bool *is_iconst;   /* per value: defined by an `iconst`; NULL outside a function */
+  const MirBlock *forward; /* per block: where a block that emits nothing leads (MIR_NONE for the others); NULL outside a function */
   bool unwind_byte;        /* the function tests the `unwinding` byte: its address is `%ubp`, made once in the entry block */
   const int64_t *iconst;   /* per value: that constant */
   uint32_t wide_leaves;    /* a value of more leaves than this lives in a stack cell (emit_wide.c); 0 for never */
@@ -206,6 +207,10 @@ bool emit_wide_move_leaves(EmitCx *cx, MirValue dst, uint32_t to, MirValue src, 
 /* After an instruction is written: the loads of the leaves it read from cells, to go before it. */
 void emit_wide_loads(EmitCx *cx);
 bool emit_wide_edge_copies(const EmitCx *cx, const MirTerm *term, uint32_t index);
+/* The block an edge to `block` reaches in the text: a block holding only `forget`s and a branch is not written. */
+uint32_t emit_block_target(const EmitCx *cx, uint32_t block);
+/* Fills `cx->forward` for the function being written. */
+void emit_plan_forwards(EmitCx *cx, MsArena *arena);
 void emit_wide_copy_edge(EmitCx *cx, const MirTerm *term, uint32_t index);
 bool emit_wide_return(EmitCx *cx, MirValue value);
 bool emit_wide_held(const EmitCx *cx, MirValue value);
