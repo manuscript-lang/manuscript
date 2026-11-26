@@ -737,7 +737,7 @@ static MirValue expr_value(LowerFn *fn, const MsExpr *expr, LowerWant want) {
       const MirValue view = want == LW_BORROW ? fn_map_get_view(fn, expr) : MIR_NONE;
       return view != MIR_NONE ? view : fn_call(fn, expr, want);
     }
-    case MS_E_MATCH: return fn_match(fn, expr);
+    case MS_E_MATCH: return fn_match(fn, expr, want);
     case MS_E_LIST: return fn_list(fn, expr);
     case MS_E_INDEX:
     case MS_E_APPLY: {

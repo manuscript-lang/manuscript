@@ -642,7 +642,8 @@ bool fn_probe_bind(LowerFn *fn, const MsStmt *stmt, MirValue address, MirTy ty);
 void fn_probe_end(LowerFn *fn, bool falls_out);
 void fn_writebacks_put(LowerFn *fn, uint32_t keep);
 /* `match` over an alternative (lower_match.c). */
-MirValue fn_match(LowerFn *fn, const MsExpr *expr);
+MirValue fn_match(LowerFn *fn, const MsExpr *expr, LowerWant want);
+bool fn_match_names_places(const MsExpr *expr);
 
 /* The value of a variable, and a new one for local `local` of the function. */
 MirVar fn_local(LowerFn *fn, uint32_t local, MirTy ty);

@@ -178,7 +178,7 @@ export fn compressed(
 	var step = Compressing(encoder: null, failure: null)
 
 	if made.is_error() {
-		step.failure = made.err()
+		step.failure = made.err().clone()
 	} else {
 		step.encoder = made.get()
 	}
@@ -230,7 +230,7 @@ export fn decompressed(
 	var step = Decompressing(decoder: null, failure: null)
 
 	if made.is_error() {
-		step.failure = made.err()
+		step.failure = made.err().clone()
 	} else {
 		step.decoder = made.get()
 	}
