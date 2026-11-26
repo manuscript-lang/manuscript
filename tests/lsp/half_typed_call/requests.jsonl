@@ -1,0 +1,8 @@
+{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"processId": null, "rootUri": "$ROOT_URI", "capabilities": {}}}
+{"jsonrpc": "2.0", "method": "initialized", "params": {}}
+{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms", "languageId": "manuscript", "version": 1, "text": "fn add(a Int, b Int) Int {\n\treturn a + b\n}\n\nfn main() Void {\n\tr := add(1,\n\tprint(add(2, 3))\n}\n"}}}
+{"jsonrpc": "2.0", "id": 2, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 6, "character": 8}}}
+{"jsonrpc": "2.0", "id": 3, "method": "textDocument/definition", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 6, "character": 8}}}
+{"jsonrpc": "2.0", "id": 4, "method": "textDocument/documentSymbol", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}}}
+{"jsonrpc": "2.0", "id": 5, "method": "shutdown"}
+{"jsonrpc": "2.0", "method": "exit"}

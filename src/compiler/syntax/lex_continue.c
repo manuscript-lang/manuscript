@@ -146,3 +146,34 @@ bool *ms_lex_continuations(MsArena *arena, MsSpan source, const bool *roots, siz
   *nlines = count;
   return lines;
 }
+
+/* An offset of the normalised text as an offset of the source it came from. */
+static size_t source_offset(const Scanner *s, size_t offset, uint32_t line) {
+  return s->line_offsets == NULL ? offset : offset + s->line_offsets[line - 1];
+}
+
+size_t ms_lex_skim(MsArena *arena, MsSpan source, MsSkimSpan **out) {
+  const uint32_t *offsets = NULL;
+  MsSpan text = lex_normalize(arena, source, &offsets);
+  MsDiag scratch = {0};
+  Scanner s;
+  lex_scanner_init(&s, arena, text, offsets, &scratch);
+  Continuations c = {0};
+  MsSkimSpan *spans = MS_ARENA_NEW_ARRAY(arena, MsSkimSpan, source.len + 1);
+  size_t count = 0;
+  while (s.offset < s.n) {
+    const size_t start = s.offset;
+    const uint32_t line = s.line;
+    const bool prefix = prefixes_text(&s, "f\"");
+    const bool comment = lex_at_line_comment(&s) || lex_at_block_comment(&s);
+    const bool text_start = prefix || s.src[s.offset] == '"' || lex_starts_with(&s, s.offset, "r\"");
+    skip_one(&s, &c);
+    if (prefix) skip_one(&s, &c); /* the quote after the `f` */
+    if (!comment && !text_start) continue;
+    spans[count++] = (MsSkimSpan){comment ? MS_SKIM_COMMENT : MS_SKIM_TEXT, source_offset(&s, start, line),
+                                  source_offset(&s, s.offset, s.line)};
+  }
+  lex_scanner_free(&s);
+  *out = spans;
+  return count;
+}
