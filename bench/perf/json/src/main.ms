@@ -55,7 +55,7 @@ fn row_list() List[Row] {
 	return rows
 }
 
-fn records_body(rows List[Row]) fn() Int {
+fn records_body(move rows List[Row]) fn() Int {
 	return fn() Int {
 		if out := stringify(rows) { return out.length() }
 		return 0
@@ -117,21 +117,21 @@ type Nothing {
 	placeholder Int? = null
 }
 
-fn doc_body(text String) fn() Int {
+fn doc_body(move text String) fn() Int {
 	return fn() Int {
 		if _v := parse[Nothing](text) { return 1 }
 		return 0
 	}
 }
 
-fn parse_body(text String) fn() Int {
+fn parse_body(move text String) fn() Int {
 	return fn() Int {
 		if _v := parse(text) { return 1 }
 		return 0
 	}
 }
 
-fn stringify_body(tree JsonValue) fn() Int {
+fn stringify_body(move tree JsonValue) fn() Int {
 	return fn() Int {
 		if out := stringify(tree) { return out.length() }
 		return 0
