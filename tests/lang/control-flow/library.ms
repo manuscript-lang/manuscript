@@ -230,10 +230,5 @@ test "malformed and bounded inputs return errors" {
 	failure4 JsonValue! := error(Error("JSON: limit exceeded", kind: "EOVERFLOW"))
 	parse(text: "[[[]]]", options: limits) | expect_equal(failure4)?
 }
-// expect-exit: 1
-// expect-tests: passed=0 failed=0
-// expect-stderr: internal compiler error: the checker recorded no usable call at 191:14 (node 364, 85 calls)
-// expect-stderr: internal compiler error: argument 1 of the call at 191:38 has no value (callee kind 3)
-// expect-stderr:
-// expect-stderr: This is a bug in ms, not in your program. Please report it at https://github.com/manuscript-lang/manuscript/issues with the code that triggers it.
-// expect-stderr:
+// expect-exit: 0
+// expect-tests: passed=2 failed=0
