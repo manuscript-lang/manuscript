@@ -19,4 +19,4 @@ fn main() Void! {
 	close_first([Item("a")])?
 	return ok()
 }
-// expect-error: MS3000 14:5 cannot move the resource `members[..]` out of `members`: a resource cannot be cloned, and it leaves `members` only when `members` is a `let` or a parameter and no type on the path has a `close` of its own; use `members[..]` in place, move the whole `members`, or take it with `part := members[..]` and refill `members[..] = ...` in the next statement
+// expect-error: MS3000 14:5 cannot move the resource `members[..]` out of `members`: a resource cannot be cloned, and it leaves `members` only when `members` is a local binding or a parameter and no type on the path has a `close` of its own; use `members[..]` in place, move the whole `members`, or take it with `part := members[..]` and refill `members[..] = ...` in the next statement

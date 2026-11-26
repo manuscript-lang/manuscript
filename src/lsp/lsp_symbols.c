@@ -95,7 +95,7 @@ static void write_declaration(const Outline *outline, MsStrBuild *out, uint32_t 
     const MsSymbol *symbol = symbol_of(outline, module, decl, declared);
     if (symbol != NULL && (decl->kind == MS_D_FN || decl->kind == MS_D_CONST) && symbol->ty != MS_TY_NONE &&
         !ms_ty_is_invalid(&outline->program->types, symbol->ty)) {
-      ms_ty_show_plain(&detail, outline->program->names, &outline->program->types, symbol->ty);
+      ms_ty_show(&detail, outline->program->names, &outline->program->types, symbol->ty);
     }
     if (decl->kind == MS_D_CONST) kind = KIND_CONSTANT;
   }
