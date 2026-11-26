@@ -4,12 +4,33 @@
  * linear. Offsets are bytes; SIZE_MAX means absent. */
 #include "base/search.h"
 
-/* memchr for a short haystack: eight bytes per step, testing each word for a byte equal to c with the
- * zero-byte trick. */
+typedef uint8_t MsByteVector __attribute__((vector_size(16)));
+/* Loads through unaligned addresses, kept apart from the value type. */
+typedef uint8_t MsByteVectorLoad __attribute__((vector_size(16), aligned(1), may_alias));
+
+/* memchr for a short haystack: sixteen bytes per step with the compiler's portable vectors (SSE2, NEON), the last
+ * step overlapping the one before it, then eight bytes per step with the zero-byte trick for a text under sixteen. */
 static inline size_t memchr_short(uint8_t c, const uint8_t *hay, size_t n) {
   const uint64_t lo = UINT64_C(0x0101010101010101), hi = UINT64_C(0x8080808080808080);
-  uint64_t pat = lo * c;
   size_t at = 0;
+  if (n >= 16) {
+    const MsByteVector zero = {0};
+    const MsByteVector wanted = zero + c;
+    for (;;) {
+      const MsByteVector lanes = *(const MsByteVectorLoad *)(hay + at) == wanted;
+      uint64_t halves[2];
+      __builtin_memcpy(halves, &lanes, 16);
+      if ((halves[0] | halves[1]) != 0) {
+        return halves[0] != 0 ? at + (size_t)__builtin_ctzll(halves[0]) / 8
+                              : at + 8 + (size_t)__builtin_ctzll(halves[1]) / 8;
+      }
+      if (at + 16 >= n) {
+        return SIZE_MAX;
+      }
+      at = at + 32 <= n ? at + 16 : n - 16;
+    }
+  }
+  uint64_t pat = lo * c;
   for (; at + 8 <= n; at += 8) {
     uint64_t x = ms_load64(hay + at) ^ pat;
     uint64_t hit = (x - lo) & ~x & hi;
@@ -138,10 +159,6 @@ static size_t two_way_from(const uint8_t *hay, size_t n, const uint8_t *nd, size
   const size_t found = ms_two_way(hay + from, n - from, nd, m);
   return found == SIZE_MAX ? SIZE_MAX : found + from;
 }
-
-typedef uint8_t MsByteVector __attribute__((vector_size(16)));
-/* Loads through unaligned addresses, kept apart from the value type. */
-typedef uint8_t MsByteVectorLoad __attribute__((vector_size(16), aligned(1), may_alias));
 
 /* Two bytes of the needle, tested together at every start of a 16-byte window: the rare byte and the last one
  * (the first when the rare one is the last). A start where both match is a candidate. */
