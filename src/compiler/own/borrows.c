@@ -265,13 +265,36 @@ static void note_kept_captures(Borrows *pass, const MsStmt *stmt) {
 
 static void note_keep(Borrows *pass, const MsExpr *kept);
 
-/* Whether `value` is a call of a declared function or method that answers a view. */
-static bool declared_view_call(const Borrows *pass, const MsExpr *value) {
+/* Whether `value` is a call whose declaration writes its result as `&T` or `&T!`. */
+static bool declares_view(const Borrows *pass, const MsExpr *value) {
   const MsCall *called = value != NULL && value->kind == MS_E_CALL ? ms_facts_call(pass->facts, value->id) : NULL;
-  if (called != NULL && called->callee.kind == MS_REF_NATIVE) {
-    return ms_own_declared_ref_result(pass->program, &called->callee); /* a native declares `&T` like any function */
+  const MsFunc *declared = called != NULL ? ms_own_find_func(pass->program, &called->callee) : NULL;
+  return declared != NULL && declared->result != NULL &&
+         (declared->result->is_ref || (ms_span_is_text(ms_names_span(pass->program->names, declared->result->name), "Result") &&
+                                       ms_own_written_ok_is_ref(pass->program, declared->result)));
+}
+
+/* Whether `value` is a call of a declared function or method that answers a view; `written_only` counts only a result the
+ * declaration writes as `&T` or `&T!` (storage of the source itself), not a function the analysis found to borrow. */
+static bool declared_view_call(Borrows *pass, const MsExpr *value, bool written_only) {
+  if (value != NULL && value->kind == MS_E_UNARY && value->op == MS_U_TRY) {
+    return declared_view_call(pass, value->u.bin.left, written_only); /* `?` hands the payload of a view on as a view */
   }
-  return called != NULL && (called->callee.kind == MS_REF_FUNCTION || called->callee.kind == MS_REF_METHOD) &&
+  if (value != NULL && value->kind == MS_E_BINARY && value->op == MS_B_OR) {
+    return declared_view_call(pass, value->u.bin.left, written_only);
+  }
+  const MsCall *called = value != NULL && value->kind == MS_E_CALL ? ms_facts_call(pass->facts, value->id) : NULL;
+  if (called == NULL) {
+    return false;
+  }
+  if (declares_view(pass, value)) { /* a declaration answers `&T` or `&T!` whatever its body */
+    return true;
+  }
+  if (called->callee.kind != MS_REF_FUNCTION && value->u.call.callee->kind == MS_E_MEMBER && is_value_ref(called->callee.kind) &&
+      borrows_from(pass, called, 0) && declared_view_call(pass, value->u.call.callee->u.member.left, written_only)) {
+    return true; /* `get_or` and its kin unwrap a view without owning it */
+  }
+  return !written_only && (called->callee.kind == MS_REF_FUNCTION || called->callee.kind == MS_REF_METHOD) &&
          ms_own_result_is_borrowed(pass->program, called->callee.decl.module, called->callee.decl.node);
 }
 
@@ -303,7 +326,10 @@ static void note_bind(Borrows *pass, const MsStmt *stmt) {
       !local_of(pass->facts, pattern->id, &binding)) {
     return;
   }
-  if (stmt->u.bind.is_mutable && declared_view_call(pass, value)) {
+  /* A `var` that holds a call's `&T` answer stays a view (it may be pointed at another); one that unwraps it (`?`, `get_or`, `or`) owns the payload. */
+  if (stmt->u.bind.is_mutable && declared_view_call(pass, value, true) && !declares_view(pass, value)) {
+    note_keep(pass, value); /* a `var` that changes what it holds owns it: a written view needs `.clone()` */
+  } else if (stmt->u.bind.is_mutable && declared_view_call(pass, value, false)) {
     use_list_push(&pass->view_vars, (Use){.binding = binding}); /* the `var` holds the view; nothing is kept */
   }
   /* A resource field bound by name leaves its record (the next statement refills it): that is a take, not a borrow. */
@@ -767,7 +793,7 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
   } else if (stmt->kind == MS_S_ASSIGN) {
     note_change(pass, stmt->u.assign.target, true, false);
     uint32_t root = 0;
-    if (!stmt->u.assign.has_compound && declared_view_call(pass, stmt->u.assign.value) &&
+    if (!stmt->u.assign.has_compound && declared_view_call(pass, stmt->u.assign.value, false) &&
         (stmt->u.assign.member_target || (local_of(pass->facts, stmt->id, &root) && !holds_view(pass, root)))) {
       note_keep(pass, stmt->u.assign.value); /* a field, or an owning `var`, would keep the view: clone it */
     }

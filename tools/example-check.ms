@@ -122,7 +122,8 @@ fn examples_of(path, text String, var problems List[String]) List[Example] {
 
 	while at < lines.length() {
 		commented := path.ends_with(".ms") and is_comment(lines[at])
-		opener := if commented { uncomment(lines[at]).trim_end() } else { lines[at].trim_end() }
+		var opener = lines[at].trim_end().clone()
+		if commented { opener = uncomment(lines[at]).trim_end().clone() }
 
 		if not is_open(opener) {
 			at += 1

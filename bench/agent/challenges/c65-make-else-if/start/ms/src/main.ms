@@ -997,7 +997,7 @@ fn var Ctx.parse(src List[String]) Void! {
 
 			if semi >= 0 {
 				pre_text = sub(cs, col + 1, semi)
-				cmd = sub(cs, semi + 1, tn).trim()
+				cmd = sub(cs, semi + 1, tn).trim().clone()
 			} else {
 				pre_text = sub(cs, col + 1, tn)
 			}
@@ -1245,7 +1245,7 @@ fn var Ctx.run_recipe(
 		self.line = cmd.line
 
 		exp := self.expand(cmd.text)?
-		var s = exp.trim()
+		var s = exp.trim().clone()
 		var silent = false
 		var ignore = false
 
@@ -1260,7 +1260,7 @@ fn var Ctx.run_recipe(
 				break
 			}
 
-			s = bs(s, 1, s.length()).trim_start()
+			s = bs(s, 1, s.length()).trim_start().clone()
 		}
 
 		if self.dry {

@@ -39,7 +39,7 @@ fn branch(b Big, flag Bool) Int {
 }
 
 fn reinit(b Big) Int {
-	var c = b
+	var c = b.clone()
 	n := size(c.items)
 	c.items = [n, n]
 	return c.items.length()
