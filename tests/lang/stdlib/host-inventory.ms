@@ -1,0 +1,56 @@
+// conform: tags=control-flow,stdlib-system,stdlib-testing,testing,tier-io,try-result
+// conform: phase=test
+import (
+	IpFamily from "@std/net/ip.ms",
+	cpus, metrics, network_interfaces from "@std/os/system.ms",
+	expect_equal, expect_false, expect_true from "@std/test/test.ms",
+)
+
+test "network interfaces describe each address and include a loopback" {
+	found := network_interfaces()
+
+	if items := found {
+		var loopback = false
+
+		for item in items {
+			expect_false(item.name.length() == 0)?
+			expect_false(item.address.length() == 0)?
+			expect_false(item.netmask.length() == 0)?
+			expect_true(item.scope_id > 0)?
+			expect_equal(item.family == IpFamily.IPv6, item.address.contains(":"))?
+
+			if item.internal {
+				loopback = true
+				expect_equal(item.mac, "")?
+			}
+		}
+
+		expect_true(loopback)?
+	}
+}
+
+test "cpus report non-negative cumulative times" {
+	found := cpus()?
+	expect_false(found.is_empty())?
+
+	for cpu in found {
+		expect_true(cpu.speed_mhz >= 0)?
+		expect_true(cpu.user >= 0 and cpu.nice >= 0)?
+		expect_true(cpu.system >= 0 and cpu.idle >= 0 and cpu.irq >= 0)?
+	}
+}
+
+test "metrics report memory, uptime, load averages and parallelism" {
+	m := metrics()?
+	expect_true(m.total_memory > 0)?
+	expect_true(m.free_memory <= m.total_memory)?
+	expect_true(m.available_memory <= m.total_memory)?
+	expect_true(m.uptime.to_nanoseconds() > 0)?
+	expect_equal(m.load_average.length(), 3)?
+	for load in m.load_average {
+		expect_true(load >= 0.0)?
+	}
+	expect_true(m.available_parallelism >= 1)?
+}
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

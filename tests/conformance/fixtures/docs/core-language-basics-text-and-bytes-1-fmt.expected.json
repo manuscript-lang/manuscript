@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "quote := \"She said \\\"hello\\\".\"\ntemplate := \"Literal braces: {name}\"\nlines := \"first\\nsecond\"\nsymbol := \"\\u{1F642}\"\n"
-  }
-}

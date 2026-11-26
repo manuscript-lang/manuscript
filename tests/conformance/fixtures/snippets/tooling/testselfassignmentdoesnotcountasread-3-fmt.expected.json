@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn answer() Int {\n\tvar total = 0\n\tvar other = 0\n\tother = total + 1\n\ttotal += 2\n\treturn other\n}\n"
-  }
-}

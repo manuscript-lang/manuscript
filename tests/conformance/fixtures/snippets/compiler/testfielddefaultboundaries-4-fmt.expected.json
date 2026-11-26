@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type Options {\n\trequired Int\n\tcount Int = 1\n}\n\nfn f() Options => return Options()\n"
-  }
-}

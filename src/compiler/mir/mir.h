@@ -288,6 +288,13 @@ typedef struct MirNamedValue {
 
 MS_LIST_DEFINE(MirNamedValueList, mir_named_value_list, MirNamedValue)
 
+/* A block parameter the range pass bounded: LLVM is told the interval, since the pass may have removed the test that
+ * showed it. */
+typedef struct MirFact {
+  MirValue value;
+  int64_t lo, hi;
+} MirFact;
+
 typedef struct MirFunc {
   MsName name;
   MsName display; /* what a fault trace calls the function, when that is not `name`: MS_NAME_EMPTY otherwise */
@@ -323,6 +330,12 @@ typedef struct MirFunc {
    * replaces the array instead of editing it, so a copy of the function may share it. */
   uint64_t *exact; /* in the module arena */
   uint32_t nexact;
+  /* Set by the entry-ranges step: `lo, hi` for every parameter, then every capture, that holds on every call and
+   * closure construction (`nentry` slots, 2 words each); null when nothing is known. Read only by the range pass. */
+  int64_t *entry; /* in the module arena */
+  uint32_t nentry;
+  MirFact *facts; /* set by the range pass, ascending by value; in the module arena */
+  uint32_t nfacts;
   uint8_t linkage, kind, inline_hint, sort; /* MirLinkage, MirFuncKind, MirInline, MirSort */
   MirTy *captures; /* MFK_CLOSURE: in the module arena */
   uint32_t ncaptures;

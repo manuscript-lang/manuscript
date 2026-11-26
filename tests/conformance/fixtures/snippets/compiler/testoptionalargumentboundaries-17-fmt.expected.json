@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "enum Optional[T] {\n\tT\n\tnull\n}\n\nfn f(value Int?) Void => return\n\nfn call() Void => f(4)\n"
-  }
-}

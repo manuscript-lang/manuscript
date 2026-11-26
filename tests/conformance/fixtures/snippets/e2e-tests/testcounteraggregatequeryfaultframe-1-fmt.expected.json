@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn probe() Int {\n\tvar sum = 0\n\tvar i = 0\n\n\twhile i < 321 {\n\t\tsum += i\n\t\ti += 1\n\t}\n\n\treturn sum\n}\n"
-  }
-}

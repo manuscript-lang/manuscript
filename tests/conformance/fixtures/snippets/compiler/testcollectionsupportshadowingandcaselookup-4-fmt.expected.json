@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type ListEntry[T] {\n\tpayload T\n}\n\nfn get() List[ListEntry[Int]] => [1].entries()\n"
-  }
-}

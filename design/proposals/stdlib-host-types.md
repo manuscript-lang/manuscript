@@ -25,7 +25,7 @@ client := try network().http_client(HttpClientOptions())
 - The getter adds a line and a name that carry no meaning. Only `FileSystem` (conformance snippet `testfilesystemimplementationdefaultsoverrideonlyco-3.ms`, `tests/e2e/testdata/stdlib/fs-defaults.ms`, which exercises interface default methods) and `Commands`/`Entropy` are implemented by user code; no user code implements `Network`, `Clock`, `WallClock`, `System`, `ProcessControl`, `Terminal` or `Files`. The `FileSystem` fixtures move to a source type in the test that exercises interface defaults.
 - `fs.ms` already mixes both: `basename`, `join` are free functions, `posix()` returns a `PathOperations` interface with the same methods.
 - Constants are calls: `math.pi()`, `max_int()`, `process.os_type()`, `end_of_line()`.
-- Only `Commands` (`tests/e2e/testdata/stdlib/defaults.ms:12`) and `Entropy` (`tests/conformance/fixtures/e2e/stdlib/random.ms:12`) are implemented by user code, for fakes.
+- Only `Commands` (`tests/e2e/testdata/stdlib/defaults.ms:12`) and `Entropy` (`tests/lang/stdlib/random.ms:12`) are implemented by user code, for fakes.
 
 ## Design
 

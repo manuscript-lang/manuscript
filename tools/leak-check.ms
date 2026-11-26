@@ -5,7 +5,7 @@
 // finish normally against the counting runtime (`cmake --preset stats`), which prints
 // the count of live heap blocks at exit. A correct program frees everything it
 // allocated, so any nonzero count is a leak. Faulting and rejected programs print no
-// count and are skipped. The `test` blocks of tests/conformance/fixtures/e2e run the
+// count and are skipped. The `test` blocks of tests/lang run the
 // same way, one count per test. Arguments name the files to sweep instead; a file with
 // test blocks is run with `ms test`. MS names the ms that runs the programs (default
 // .artifacts/build/ci/src/cli/ms). Usage: ms run tools/leak-check.ms [-- files]
@@ -115,10 +115,7 @@ fn main() Int {
 	var files = arguments().map(f => f.clone())
 
 	if files.is_empty() {
-		for dir in [
-			"tests/conformance/fixtures/fuzz/run", "tests/conformance/fixtures/e2e",
-			"tests/conformance/fixtures/examples"
-		] {
+		for dir in ["tests/lang"] {
 			for f in glob(dir, GlobOptions(patterns: ["**/*.ms"])).get_or([]) {
 				path := f"{dir}/{f.path}"
 				if (read_file(path.clone()).wait().get().decode_utf8() or "").contains(
@@ -129,11 +126,8 @@ fn main() Int {
 	}
 
 	if files.is_empty() {
-		for f in glob(
-			"tests/conformance/fixtures/e2e",
-			GlobOptions(patterns: ["**/*.ms"]),
-		).get_or([]) {
-			path := f"tests/conformance/fixtures/e2e/{f.path}"
+		for f in glob("tests/lang", GlobOptions(patterns: ["**/*.ms"])).get_or([]) {
+			path := f"tests/lang/{f.path}"
 			if has_tests(read_file(path.clone()).wait().get().decode_utf8() or "") {
 				files.append(path.clone())
 			}

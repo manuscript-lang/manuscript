@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import panic from \"@std/core.ms\"\n\ntype Node {\n\tvalue Int\n\tnext Node?\n}\n\nfn read(node Node) Int {\n\treturn (node.next or panic(\"called Optional.get() on null\")).value\n}\n"
-  }
-}

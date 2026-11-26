@@ -7,7 +7,7 @@ Verified (a Go-era crash class; the invariant is language-level): reporting an i
 Verified: interface operations and implementation methods need the same bound validation as named declarations. Their former separate resolution paths accepted bounds such as `T: Int`. The shared validator now rejects these before attaching evidence; operation-bound regressions cover explicit interfaces, implementations, inherent methods, and preservation of valid recursive bounds.
 
 Apply when: resolving generic bounds, copying implementation variables, or traversing recovered types for diagnostics and editor queries.
-Evidence: [recursive interface bound fixture](../../../tests/conformance/fixtures/e2e/accept/recursive-interface-bound.ms).
+Evidence: [recursive interface bound fixture](../../../tests/lang/control-flow/recursive-interface-bound.ms).
 Verify: a program with `T: T` reports a diagnostic and the checker and language server both terminate.
 
 Register nominal generic parameter lists before resolving any declaration bounds, including across a bundled module group. Otherwise a forward `Reader[Int]` bound sees zero parameters, while a missing required argument can pass silently. Resolve bounds before defaults because deferred default validation snapshots them. The declaration-order regressions and arity rejections cover both orders (#3489).

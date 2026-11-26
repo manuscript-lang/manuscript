@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn read(values List[Int], index Int) Int {\n\tresult := match values.take(index).first() {\n\t\tnumber => {\n\t\t\tdoubled := number * 2\n\t\t\tdoubled\n\t\t}\n\t\tnull => 0\n\t}\n\n\treturn result\n}\n"
-  }
-}

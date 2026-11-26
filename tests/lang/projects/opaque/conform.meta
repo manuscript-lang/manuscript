@@ -1,0 +1,5 @@
+// conform: tags=projects,testing,tier-stdlib
+// conform: phase=test
+// conform: entry=conformance_test.ms
+// expect-exit: 0
+// expect-tests: passed=6 failed=0

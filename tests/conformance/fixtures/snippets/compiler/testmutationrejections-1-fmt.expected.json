@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import (\n\tQueue from \"@std/collections/queue.ms\",\n\tstdout from \"@std/io/io.ms\",\n\tFileHandle from \"@std/os/fs.ms\",\n)\n\ninterface Read {\n\tfn get() Int\n}\n\ntype Val {\n\tval Int\n}\n\nfn Val.get() Int {\n\treturn self.val\n}\n"
-  }
-}

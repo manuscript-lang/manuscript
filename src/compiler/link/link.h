@@ -14,6 +14,7 @@ typedef struct LinkOptions {
   MsSpan llvm;  /* the shared LLVM library, already loaded, that makes the glibc stubs in this process */
   MsSpan files; /* the directory with the startup files, runtime libraries and the glibc export table */
   bool strip;   /* drop the symbol table */
+  bool quick;   /* a Debug build: skip the linker's size optimizations (Linux; no measurable change on Windows or macOS) */
   bool musl;    /* static musl instead of the glibc 2.28 stubs; the inputs must be the musl runtime */
 } LinkOptions;
 
@@ -22,6 +23,7 @@ typedef struct LinkRequest {
   const MsSpan *inputs; /* borrowed: the runtime archive and any `--link` files, in order */
   size_t input_count;
   MsSpan output;        /* the executable to write */
+  bool temporary;       /* the executable is run once and discarded (`run`, `test`): macOS skips its dSYM bundle */
 } LinkRequest;
 
 /* Links the request. On failure `why` gets the reason, with the linker's output and advice. */

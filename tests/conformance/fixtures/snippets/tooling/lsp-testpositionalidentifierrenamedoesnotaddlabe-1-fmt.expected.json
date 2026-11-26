@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn subtract(amount, deduction Int) Int => amount - deduction\n\nfn run() Int {\n\tnumber := 10\n\treturn subtract(number, 3)\n}\n"
-  }
-}

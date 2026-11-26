@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "interface Counter {\n\tfn bump(by Int) Int\n}\n\ntype Cell {\n\ttotal Int\n}\n\nfn Cell.bump(by Int) Int {\n\tself.total += by\n\treturn self.total\n}\n\nfn probe() Int {\n\tvar sum = 0\n}\n"
-  }
-}

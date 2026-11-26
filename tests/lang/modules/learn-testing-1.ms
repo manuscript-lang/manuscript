@@ -1,0 +1,18 @@
+// conform: tags=modules,stdlib-testing,testing,tier-core,try-result
+// conform: phase=test
+// conform: origin=documentation/learn/testing.md:13
+import expect_equal from "@std/test/test.ms"
+
+fn add(a Int, b Int) Int {
+	return a + b
+}
+
+test "addition" {
+	expect_equal(add(1, 2), 3)?
+}
+
+test "zero is unchanged" {
+	expect_equal(add(0, 7), 7)?
+}
+// expect-exit: 0
+// expect-tests: passed=2 failed=0

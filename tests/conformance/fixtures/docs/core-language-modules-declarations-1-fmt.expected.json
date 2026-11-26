@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "export MAX_ITEMS := 100\nNAMES List[String] := [\"Ada\", \"Grace\"]\nLIMIT := MAX_ITEMS * 2\n\nfn is_full(count Int) Bool {\n\treturn count >= LIMIT\n}\n"
-  }
-}

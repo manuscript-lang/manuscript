@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn f() Int {\n\ta := Set[Int]()\n\tb := Set[Int]()\n\tvar m = Queue[Int]()\n\tvar n = Queue[Int]()\n\treturn 0\n}\n"
-  }
-}

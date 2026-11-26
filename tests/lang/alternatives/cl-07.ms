@@ -1,0 +1,27 @@
+// conform: tags=alternatives,formatter,match,modules,records,stdlib-testing,strings,testing,tier-core,try-result
+// conform: phase=test,parse
+// conform: origin=tests/e2e/testdata/accept/cl-07.ms
+import expect_equal from "@std/test/test.ms"
+
+enum Outcome {
+	Ready(value Int)
+	Failed(reason String)
+}
+
+fn score(outcome Outcome) Int {
+	match outcome {
+		Ready(value) => {
+			return value
+		}
+		Failed(_) => {
+			return 0
+		}
+	}
+}
+
+test "alternative result" {
+	expect_equal(score(Outcome.Ready(8)), 8)?
+	expect_equal(score(Outcome.Failed("unavailable")), 0)?
+}
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

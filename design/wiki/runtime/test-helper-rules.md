@@ -19,7 +19,7 @@ Verified: listing and fail-fast complete a plan with unrun entries; repeat creat
 
 
 Apply when: changing test options, event reporting, or testing helpers.
-Evidence: test runner lowering, testing lowering, [helper contracts](../../../src/stdlib/test/test.ms), [testing fixture](../../../tests/conformance/fixtures/e2e/stdlib/testing.ms).
+Evidence: test runner lowering, testing lowering, [helper contracts](../../../src/stdlib/test/test.ms), [testing fixture](../../../tests/lang/stdlib/testing.ms).
 Verify: list executes no bodies, fail-fast retains later not_run entries, repeated names retain indices, and fault assertions propagate cancellation and skip.
 
 ## File fixtures own a separate lifetime from each test
@@ -27,7 +27,7 @@ Verify: list executes no bodies, fail-fast retains later not_run entries, repeat
 Decision: the user chose an ordinary local `make_fixture()` convention and a concrete return type implementing TestHooks; tests use the implicit fixture binding, while hooks use self. No additional declaration or nesting is required. Omitted hooks are no-ops elaborated only for the canonical standard interface; written hooks retain ordinary signature checking and dispatch.
 
 Apply when: changing fixture injection, runner hook ordering, or default hooks.
-Evidence: fixture lowering, [fixture fixture](../../../tests/conformance/fixtures/e2e/stdlib/testing-fixture.ms), [testing declarations](../../../src/stdlib/test/test.ms).
+Evidence: fixture lowering, [fixture fixture](../../../tests/lang/stdlib/testing-fixture.ms), [testing declarations](../../../src/stdlib/test/test.ms).
 Verify: no setup for `--list`, one construction per file and repetition, per-file isolation, ordinary interface calls to omitted hooks, and failure/cancellation cleanup with preserved machine outcomes.
 
 ## Fault assertions need their own cleanup boundary

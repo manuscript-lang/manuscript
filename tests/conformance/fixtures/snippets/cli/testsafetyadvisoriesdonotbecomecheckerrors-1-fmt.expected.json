@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn use(value Int?) Void {\n\tmatch value {\n\t\t_value => {\n\t\t\tmatch value {\n\t\t\t\t_value => void\n\t\t\t\tnull => void\n\t\t\t}\n\t\t}\n\t\tnull => void\n\t}\n}\n"
-  }
-}

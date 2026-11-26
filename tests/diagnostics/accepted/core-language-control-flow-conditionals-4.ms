@@ -1,0 +1,13 @@
+// conform: tags=control-flow,diagnostics,formatter,optional,strings,tier-core
+// conform: phase=check,parse
+// conform: origin=documentation/core-language/control-flow/conditionals.md:51
+fn greeting(name String?) String {
+	value := name
+
+	if value != null {
+		return "Hello, " + value
+	} else {
+		return "Hello!"
+	}
+}
+// expect-exit: 0

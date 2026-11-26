@@ -12,7 +12,7 @@ Proposal, 2026-11-22, checked against `21ca3a16c9`.
 
 ## Problem
 
-- Verified with `ms emit` on `tests/conformance/fixtures/e2e/accept/borrow-whole-temporary.ms` after flipping the flag: `a value is copied ... while lowering id`, from `take_ownership` (`lower_expr.c`): a borrowed parameter used as a returned value is cloned.
+- Verified with `ms emit` on `tests/lang/lists/borrow-whole-temporary.ms` after flipping the flag: `a value is copied ... while lowering id`, from `take_ownership` (`lower_expr.c`): a borrowed parameter used as a returned value is cloned.
 - Sweep over all 1311 fixtures, first error per file: 468 in `take_ownership`'s final clone (456 are a borrowed parameter, 10 a local, 2 a member), 20 in `lower_list.c` list-literal elements, 7 closure captures, 5 natives, 3 statements.
 - The C port has no borrowing callable fact: `grep returns_borrow src` is empty. `own/borrows.c` infers a borrow per call for the borrow check (`borrows_from`) but nothing reaches lowering. MIR is ready: `ret_borrowed`, `mir_result_mode` (a call to a `ret_borrowed` function yields a borrow), the verifier rejecting an owned return from one, inlining.
 

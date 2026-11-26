@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn f() Int {\n\tv := x\n\t\t| f  // first\n\t\t// explain\n\t\t| g(a: 1)\n\t\t| .size()\n\treturn 0\n}\n"
-  }
-}

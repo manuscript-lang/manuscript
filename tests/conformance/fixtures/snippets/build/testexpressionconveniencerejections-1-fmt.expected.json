@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn optional(value Int = 1) Int => return value\n\nfn required(value Int) Int => return value\n\nfn call(x Int?) Int {\n\tchosen := match x {\n\t\tn => optional\n\t\tnull => required\n\t}\n\n\treturn chosen()\n}\n"
-  }
-}

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type Impostor {\n\tdetail String\n}\n\nfn wrong(value Impostor) Error {\n\treturn value\n}\n"
-  }
-}

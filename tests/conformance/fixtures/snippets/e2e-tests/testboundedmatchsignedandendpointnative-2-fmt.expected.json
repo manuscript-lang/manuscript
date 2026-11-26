@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "export fn main() Int {\n\tshapes := [Shape.Circle(-3), Shape.Square(4), Shape.Tri(-1)]\n\tif area(shapes.get(0)) != 4 { return 1 }\n\tif area(shapes.get(1)) != -8 { return 2 }\n\n\treturn 0\n}\n"
-  }
-}

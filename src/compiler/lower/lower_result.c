@@ -47,10 +47,9 @@ MirValue fn_view_as_plain(LowerFn *fn, MirValue result, MirTy plain) {
     return result;
   }
   const MirValue read = mir_b_emit(&fn->b, MOP_AltPlain, &result, 1, (MirImm){0}, plain);
-  if (fn->nviewed < MS_COUNT_OF(fn->viewed)) {
-    fn->viewed[fn->nviewed].plain = read;
-    fn->viewed[fn->nviewed++].owner = result;
-  }
+  fn->viewed = fn_grow(fn, fn->viewed, &fn->cviewed, fn->nviewed, sizeof(*fn->viewed));
+  fn->viewed[fn->nviewed].plain = read;
+  fn->viewed[fn->nviewed++].owner = result;
   return read;
 }
 
@@ -309,9 +308,13 @@ MirValue fn_try(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   if (value == MIR_NONE) {
     return MIR_NONE;
   }
-  if (want == LW_MOVE && expr->u.bin.left->kind == MS_E_CALL && fn_is_borrowed_view(fn, value)) {
-    /* A call that answers its dying temporary argument (`id(open(path))?`) hands the temporary's payload to the new owner. */
+  if (expr->u.bin.left->kind == MS_E_CALL && fn_is_borrowed_view(fn, value)) {
+    /* A call that answers its dying temporary argument (`id(open(path))?`) hands the temporary's payload to the new owner;
+     * a read in place (`id(open(path))?.size`) leaves it to this statement's scope, which then holds the temporary. */
     const MirValue answered = fn_take_from_temporary(fn, expr->u.bin.left, value);
+    if (answered != MIR_NONE && want != LW_MOVE) {
+      fn_own(fn, fn_scope(fn), answered);
+    }
     value = answered != MIR_NONE ? answered : value;
   }
   const bool fresh = want == LW_MOVE && fn_fresh_owner(fn, value);

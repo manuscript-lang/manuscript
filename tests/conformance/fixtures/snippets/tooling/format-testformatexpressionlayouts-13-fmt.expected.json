@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn map_box[T, U_wwwwwwwwwwww](\n\tb_wwwwwwwwwwwwwwwwwwwwwwww Box_wwwwwwwwwwwwwwwwwww[T],\n\tf_wwwwwwwwwww fn(T) U_wwwwwwwwwwww\n) Box_wwwwwwwwwwwwwwwwwww[U_wwwwwwwwwwww] {\n\treturn b_wwwwwwwwwwwwwwwwwwwwwwww\n}\n"
-  }
-}

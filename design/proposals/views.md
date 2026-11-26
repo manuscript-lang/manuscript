@@ -19,7 +19,7 @@ Measured (`23477392`, the 70 `.clone()` lines #2199 added removed, debug `ms che
 
 | Shape | Sites | Example |
 | --- | --- | --- |
-| wrapped or converted on the way out, or at a binding: `ok(inner)`, `try visit(r)`, `return cause` as `Error`, `view: Counter = tally` | 25 | `tests/conformance/fixtures/e2e/accept/result-argument-inference.ms`, `try-result-payloads.ms`, `tests/e2e/testdata/projects/error_boundaries` |
+| wrapped or converted on the way out, or at a binding: `ok(inner)`, `try visit(r)`, `return cause` as `Error`, `view: Counter = tally` | 25 | `tests/lang/lists/result-argument-inference.ms`, `try-result-payloads.ms`, `tests/e2e/testdata/projects/error_boundaries` |
 | lent path next to a new value | 16 | `stdlib/data/toml.ms:1071` `if bare: return key` / `return quote_text(key)` |
 | lent value stored or captured: `names.append(first_tag(..))`, `m.add(original, 1)`, `fn() Error: cause` | 15 | `map_add_scope/first.ms:15`, `core_parity/first.ms:54` |
 | interface implementation returning a lent value | 3 | `stdlib/collections/ordering.ms:196` `return lesser(self, other)` |

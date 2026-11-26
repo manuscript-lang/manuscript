@@ -1,0 +1,13 @@
+// conform: tags=control-flow,diagnostics,formatter,interfaces,records,strings,tier-core
+// conform: phase=check,parse
+// conform: origin=pkg/compiler/result_bounds_test.go:87 TestSuccessfulResultBoundsRejectDifferentReturns
+type Cause {
+	text String
+}
+
+interface Named {
+	fn name() String
+}
+
+fn Cause.name() String => self.text.clone()
+// expect-exit: 0

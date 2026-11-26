@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn f() String {\n\tx := nope\n\treturn \"a\" + x.foo + x.bar()\n}\n"
-  }
-}

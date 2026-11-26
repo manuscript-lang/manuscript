@@ -1,0 +1,13 @@
+// conform: tags=formatter,modules,optional,parser,stdlib-errors,tier-stdlib
+// conform: phase=parse
+// conform: origin=tests/e2e/conversions_queries_test.go:38 TestLazyConversionFaultLocation
+
+fn crash() Error {
+	return Error((1 / "".length()).to_string())
+}
+
+fn main() Void {
+	value Int? := null
+	_result := value.ok_or_else(crash)
+}
+// expect-format: unchanged

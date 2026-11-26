@@ -1,0 +1,5 @@
+src/b.ms:2:12: type: expected Int, found String (in the return value)
+   |
+ 2 |     return "x"
+   |            ^
+1 error; fix them and re-run

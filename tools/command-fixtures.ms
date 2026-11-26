@@ -5,7 +5,7 @@
 // Command fixtures: records and replays `ms` commands that the conformance corpus does
 // not cover (`lint`, `inspect`, `init`, ...).
 //
-// A fixture is a directory tests/conformance/commands/<command>/<name>/ holding
+// A fixture is a directory tests/commands/<command>/<name>/ holding
 //   args        one argument per line (the command is the first line)
 //   stdin       optional bytes fed to standard input
 //   ignore      optional paths (one per line) left out of the compared tree
@@ -248,7 +248,7 @@ fn main() Int {
 	}
 
 	ms := tool_ms(root.clone())
-	base := "tests/conformance/commands"
+	base := "tests/commands"
 	var total = 0
 	var passed = 0
 

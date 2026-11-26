@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn increment_scores(scores Map[String, Int]) Map[String, Int] {\n\treturn scores.map((name, score) => score + 1)\n}\n"
-  }
-}

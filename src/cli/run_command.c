@@ -145,7 +145,7 @@ static int build_and_run(MsArena *arena, const MsInvocation *invocation, MsCheck
   const MsLinkRequest request = {.program = &checked->program, .entry = checked->entry,
                                  .build_type = invocation->build_type, .output = executable,
                                  .link = invocation->link.ptr, .link_count = invocation->link.len,
-                                 .static_libc = invocation->static_libc};
+                                 .static_libc = invocation->static_libc, .temporary = true};
   const int status = ms_pipeline_link(&request, &error) ? execute(&context, executable, folder)
                                                          : report_error(&context, "build", error);
   ms_path_remove_tree(folder);
@@ -192,7 +192,7 @@ static bool watch_once(const MsInvocation *invocation, MsSpanList *watched, cons
       const MsLinkRequest request = {.program = &checked.program, .entry = checked.entry,
                                      .build_type = invocation->build_type, .output = executable,
                                      .link = invocation->link.ptr, .link_count = invocation->link.len,
-                                     .static_libc = invocation->static_libc};
+                                     .static_libc = invocation->static_libc, .temporary = true};
       if (!ms_pipeline_link(&request, &error)) {
         (void)report_error(&context, "build", error);
       } else {

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "\nfn fragment() String => return \"x\"\n\nfn probe(flag Bool) String {\n\tb := \"\"\n}\n"
-  }
-}

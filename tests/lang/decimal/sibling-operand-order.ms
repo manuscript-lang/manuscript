@@ -1,0 +1,87 @@
+// conform: tags=decimal,faults,formatter,match,modules,mutation,optional,records,stdlib-decimal,stdlib-testing,strings,testing,tier-stdlib,try-result
+// conform: phase=test,parse
+// conform: origin=tests/e2e/testdata/accept/sibling-operand-order.ms
+import (
+	Decimal from "@std/math/decimal.ms",
+	expect_equal from "@std/test/test.ms",
+)
+
+test "list elements read before a later match assigns them" {
+	var x = 1
+	var y = "a"
+	items := [
+		x,
+		match present(5) {
+			value => {
+				x = 50
+				value
+			} null => 0
+		},
+		x,
+	]
+	expect_equal(items, [1, 5, 50])?
+
+	texts := [
+		y,
+		match present("b") {
+			value => {
+				y = "z"
+				value
+			} null => ""
+		}
+	]
+	expect_equal(texts, ["a", "b"])?
+}
+
+test "map keys read before a later match assigns them" {
+	var key = 1
+	entries := {
+		key: match present(5) {
+			value => {
+				key = 50
+				value
+			} null => 0
+		},
+		key: key
+	}
+	expect_equal(entries.length(), 2)?
+	expect_equal(entries.get(key: 1), 5)?
+}
+
+test "generic binary operands read before a later match assigns them" {
+	var amount = 1.5d
+	sum := amount + match present(2.5d) {
+		value => {
+			amount = 100d
+			value
+		}
+		null => 0d
+	}
+	expect_equal(sum, 4d)?
+}
+
+type Cell {
+	n Int
+	s String
+}
+
+test "field assignment keeps sibling field writes made while evaluating the value" {
+	var cell = Cell(n: 1, s: "a")
+
+	cell.n = match present(2) {
+		value => {
+			cell.s = "changed"
+			value
+		}
+		null => 0
+	}
+
+	expect_equal(cell.n, 2)?
+	expect_equal(cell.s, "changed")?
+}
+
+fn present[T](hold value T) &T? {
+	return value
+}
+// expect-exit: 0
+// expect-tests: passed=4 failed=0

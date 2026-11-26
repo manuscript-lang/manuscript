@@ -178,6 +178,10 @@ const uint32_t *emit_slot_pool(MsArena *arena, EmitCx *cx, const bool *held) {
       bytes[object] = emit_slot_bytes(cx, func->values.ptr[map.value[object]]);
     }
   }
+  bool *view = MS_ARENA_NEW_ARRAY(arena, bool, (size_t)map.nobjects + 1); /* a string view's cell (`StrData`) */
+  for (uint32_t object = 0; object < map.nobjects; object++) {
+    view[object] = false;
+  }
   for (uint32_t block = 0; block < func->blocks.len; block++) {
     const MirInstList *insts = &func->blocks.ptr[block].insts;
     for (uint32_t index = 0; index < insts->len; index++) {
@@ -186,13 +190,14 @@ const uint32_t *emit_slot_pool(MsArena *arena, EmitCx *cx, const bool *held) {
         bytes[map.ordinal[inst->res]] = emit_slot_bytes(cx, inst->imm.a);
       } else if (inst->op == MOP_StrData && map.ordinal[inst->res] != MIR_NONE) {
         bytes[map.ordinal[inst->res]] = STR_DATA_BYTES;
+        view[map.ordinal[inst->res]] = true;
       }
     }
   }
   uint32_t *order = MS_ARENA_NEW_ARRAY(arena, uint32_t, (size_t)map.nobjects + 1);
   uint32_t norder = 0;
   for (uint32_t object = 0; object < map.nobjects; object++) {
-    if (map.shareable[object] && !map.promotable[object] && bytes[object] != 0) {
+    if (map.shareable[object] && !(view[object] && map.promotable[object]) && bytes[object] != 0) {
       uint32_t at = norder++;
       while (at > 0 && bytes[order[at - 1]] < bytes[object]) { /* insertion, biggest first, stable */
         order[at] = order[at - 1];
@@ -208,9 +213,11 @@ const uint32_t *emit_slot_pool(MsArena *arena, EmitCx *cx, const bool *held) {
   for (uint32_t at = 0; at < norder; at++) {
     const uint32_t object = order[at];
     uint32_t chosen = UINT32_MAX;
+    /* A cell of its own size: a small value that joins a big cell shares storage whose address is passed on, and LLVM
+     * keeps the stores into such a cell, where a cell of its own would have let it delete them. */
     for (uint32_t cell = 0; cell < ncells && chosen == UINT32_MAX; cell++) {
       const uint64_t *row = cell_rows + (size_t)cell * map.words;
-      if ((row[object / 64] >> (object % 64) & 1) == 0) {
+      if ((row[object / 64] >> (object % 64) & 1) == 0 && cell_bytes[cell] == bytes[object]) {
         chosen = cell;
       }
     }

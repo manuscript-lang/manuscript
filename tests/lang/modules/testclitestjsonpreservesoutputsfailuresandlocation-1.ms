@@ -1,0 +1,23 @@
+// conform: tags=formatter,modules,stdlib-io,stdlib-testing,testing,tier-core
+// conform: phase=test,parse
+// conform: origin=tests/e2e/cli_json_test.go:70 TestCLITestJSONPreservesOutputsFailuresAndLocations
+import (
+	stderr, stdout from "@std/io/io.ms",
+	fail from "@std/test/test.ms",
+)
+
+test "first=pass" {
+	_out := stdout().write("PASS fake test\nuser stdout\n")
+	_err := stderr().write("user stderr\n")
+}
+
+test "second=fails" {
+	return fail("expected failure")
+}
+
+test "third=after" {
+	return
+}
+// expect-exit: 1
+// expect-tests: passed=2 failed=1
+// expect-stderr: user stderr

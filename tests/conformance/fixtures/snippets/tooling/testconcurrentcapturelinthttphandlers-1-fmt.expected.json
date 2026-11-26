@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import (\n\tpanic from \"@std/core.ms\",\n\tHttpResponse, HttpServerOptions from \"@std/net/http.ms\",\n)\n\nfn run() Void {\n\t_values := [0]\n}\n"
-  }
-}

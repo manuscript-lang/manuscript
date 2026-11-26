@@ -3,6 +3,7 @@
 #include "compiler/link/link.h"
 
 #include "base/alloc.h"
+#include "base/clock.h"
 #include "base/fatal.h"
 #include "base/file.h"
 #include "base/process.h"
@@ -48,11 +49,16 @@ static bool run_lld(LinkJob *job, MsStrBuild *why) {
 
 bool link_executable(const LinkOptions *options, const LinkRequest *request, MsStrBuild *why) {
   LinkJob job = {.options = options, .request = request, .scratch = ms_string_empty()};
+  const bool report = ms_build_times_enabled();
+  int64_t mark = ms_clock_ns();
   bool ok = link_host_prepare(&job, why);
+  ms_build_time_step(report, "  prepare", &mark);
   if (ok) {
     ok = run_lld(&job, why);
   }
+  ms_build_time_step(report, "  lld", &mark);
   ok = link_host_finish(&job, ok, why) && ok;
+  ms_build_time_step(report, "  finish", &mark);
   job_free(&job);
   return ok;
 }

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import (\n\traw_mode, terminal_capabilities from \"@std/cli/terminal.ms\",\n\texpect_equal, expect_false, fail from \"@std/test/test.ms\",\n)\n\ntest \"redirected streams report no terminal and refuse raw mode\" {\n\tcapabilities := terminal_capabilities()\n\tif capabilities.raw_mode { return }\n\n\texpect_false(capabilities.colors != 0 and not capabilities.output_is_terminal)?\n\texpect_false(capabilities.resize_events)?\n\n\tmatch raw_mode(alternate_screen: false) {\n\t\tok(active) => {\n\t\t\tvar raw = active\n\t\t\traw.close()?\n\t\t\treturn fail(\"raw mode on redirected input\")\n\t\t}\n\t\terror(cause) => {\n\t\t\texpect_equal(cause, Error(\"terminal: not a terminal\", kind: \"ENOTTY\"))?\n\t\t}\n\t}\n}\n"
-  }
-}

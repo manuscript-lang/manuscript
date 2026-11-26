@@ -187,6 +187,10 @@ void emit_store_value(EmitCx *cx, MirValue value, const char *base);
 bool emit_wide_zero(EmitCx *cx, MirValue value);
 bool emit_wide_fill(EmitCx *cx, MirValue value, const char *from, const uint32_t *at);
 void emit_load_value(EmitCx *cx, MirValue value, const char *base);
+/* Tells LLVM the integer `value` of slot `slot` (a parameter, then a capture) lies in the interval the entry-ranges step recorded. */
+void emit_entry_assume(EmitCx *cx, MirValue value, uint32_t slot);
+void emit_assume_range(EmitCx *cx, MirValue value, int64_t lo, int64_t hi);
+void emit_block_facts(EmitCx *cx, uint32_t block); /* the same for the integer parameters of a block the range pass bounded */
 void emit_alt_payload_run(EmitCx *cx, const MirInst *inst, uint32_t *first, uint32_t *end, uint32_t *operand,
                           uint32_t *source);
 /* After the cells are pooled: a held value that only becomes the payload of the `alt.new` after it is built where the

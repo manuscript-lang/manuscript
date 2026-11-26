@@ -42,7 +42,7 @@ fn at_scope_end(label: String) Void:
 | Component | Change | Test |
 | --- | --- | --- |
 | `crates/ms-mir/src/unwind.rs` | window search across branches; per-block insertion | `covers_a_shielded_close_whose_window_spans_blocks` (fails without the change); a conditional window, a taking callee and two closes in one window |
-| `tests/conformance/fixtures/e2e/accept` | `faulting-close-in-list-releases-buffer`: scope end, pending fault, closure capture | leak sweep (`CONFORM_LEAKS=1`) |
+| `tests/lang` | `faulting-close-in-list-releases-buffer`: scope end, pending fault, closure capture | leak sweep (`CONFORM_LEAKS=1`) |
 | `design/wiki/compiler/unwind-leaves-slot-values-to-an-active-scope-close.md` | note the cross-block window | none |
 
 ## Alternatives

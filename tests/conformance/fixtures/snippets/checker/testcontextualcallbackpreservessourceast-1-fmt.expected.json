@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type Callback {\n\tvalue fn(Int) Int\n}\n\nfn example() Void {\n\t_callback := Callback(value => value + 1)\n}\n"
-  }
-}

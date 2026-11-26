@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn f(x Int?) Void! {\n\tmatch x {\n\t\tn => {\n\t\t\tg(n)?\n\t\t\treturn ok()\n\t\t}\n\t\tnull => return ok()\n\t}\n}\n"
-  }
-}

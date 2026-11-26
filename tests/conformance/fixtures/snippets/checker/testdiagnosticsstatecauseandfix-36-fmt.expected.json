@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn pick[T](items List[T], keep fn(T) Bool) T? {\n\treturn null\n}\n\nfn f() Int {\n\tnums := [1, 2]\n\thit := pick(nums, fn(value Int) Bool => value > 1)\n\treturn hit or 0\n}\n"
-  }
-}

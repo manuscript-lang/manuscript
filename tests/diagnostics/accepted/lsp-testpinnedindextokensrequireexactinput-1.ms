@@ -1,0 +1,7 @@
+// conform: tags=diagnostics,formatter,tier-core
+// conform: phase=check,parse
+// conform: origin=pkg/tooling/lsp/index_tokens_test.go:41 TestPinnedIndexTokensRequireExactInput
+export fn changed() Int {
+	return 7
+}
+// expect-exit: 0

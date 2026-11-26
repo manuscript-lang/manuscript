@@ -1,0 +1,20 @@
+// conform: tags=formatter,scope-cleanup,testing,tier-core
+// conform: phase=test,parse
+// conform: origin=tests/e2e/unit_property_locations_test.go:13 TestDurationUnitPropertySourceFrames
+test "positive unit overflow" {
+	_impossible := (153722868).minutes()
+}
+
+test "negative unit overflow" {
+	_impossible := (-153722868).minutes()
+}
+
+test "receiver fault comes first" {
+	_impossible := (1 / "".length()).minutes()
+}
+
+test "continues with valid units" {
+	_valid := (1).seconds()
+}
+// expect-exit: 1
+// expect-tests: passed=0 failed=1 not_run=3

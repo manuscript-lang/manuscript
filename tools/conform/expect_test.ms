@@ -2,7 +2,7 @@ import (
 	JsonValue, parse from "@std/data/json.ms",
 	expect_equal from "@std/test/test.ms",
 
-	inline_lines, render, with_lines from "./expect.ms",
+	inline_lines, render, render_phase, with_lines from "./expect.ms",
 )
 
 fn observed(text String) JsonValue {
@@ -39,4 +39,30 @@ test "lines written after a program are read back and replaced" {
 	twice := with_lines(once, ["expect-error: MS1 1:1 x"])
 	expect_equal(inline_lines(twice), ["expect-error: MS1 1:1 x"])?
 	expect_equal(twice.starts_with(program), true)?
+}
+
+test "run lines carry exit, output and a partial marker" {
+	report := observed("{\"exit_code\":3,\"stdout\":\"a\\n\\nb\",\"stderr\":\"\"}")
+	expect_equal(
+		render_phase("run", report),
+		[
+			"expect-exit: 3", "expect-stdout: a", "expect-stdout:", "expect-stdout: b",
+			"expect-stdout-partial"
+		],
+	)?
+}
+
+test "test lines carry the summary counts" {
+	report := observed(
+		"{\"exit_code\":1,\"stderr\":\"\",\"report\":{\"summary\":{\"passed\":4,\"failed\":1}}}"
+	)
+	expect_equal(
+		render_phase("test", report),
+		["expect-exit: 1", "expect-tests: passed=4 failed=1"],
+	)?
+}
+
+test "parse lines say whether fmt leaves the program alone" {
+	report := observed("{\"diagnostics\":[],\"unchanged\":true}")
+	expect_equal(render_phase("parse", report), ["expect-format: unchanged"])?
 }

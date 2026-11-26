@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn identity(value Int) Int {\n\treturn value\n}\n\nexact fn(Int) Int := identity\n// Rejected: amount differs from value.\nrelabeled fn(Int) Int := identity\n"
-  }
-}

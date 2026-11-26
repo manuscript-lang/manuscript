@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import (\n\tparse from \"@std/data/json.ms\",\n\tstdout from \"@std/io/io.ms\",\n\targuments from \"@std/os/env.ms\",\n)\n\nfn run() Result[Void, Error] {\n\ttext := parse[String](arguments().get_or(0, \"\\\"hello\\\"\"))?\n\tstdout().write(f\"{text}\\n\")?\n\treturn stdout().flush()\n}\n\nfn main() Void! {\n\trun()?\n}\n"
-  }
-}

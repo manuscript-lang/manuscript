@@ -1,0 +1,7 @@
+// conform: tags=diagnostics,formatter,maps,tier-core
+// conform: phase=check,parse
+// conform: origin=tests/e2e/testdata/projects/map_remove/generic.ms
+export fn remove_generic[K Hashable, V](var values Map[K, V], key K) Void {
+	values.remove(key)
+}
+// expect-exit: 0

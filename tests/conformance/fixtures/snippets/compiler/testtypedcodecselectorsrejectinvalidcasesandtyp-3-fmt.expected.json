@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import HashAlgorithm from \"@std/crypto/crypto.ms\"\n\nfn wrong() Void {\n\talgorithm := HashAlgorithm.Sha257\n}\n"
-  }
-}

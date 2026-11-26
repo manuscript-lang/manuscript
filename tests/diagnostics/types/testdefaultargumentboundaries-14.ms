@@ -1,0 +1,19 @@
+// conform: tags=control-flow,diagnostics,formatter,interfaces,records,tier-core
+// conform: phase=check,parse
+// conform: origin=pkg/checker/defaults_test.go:27 TestDefaultArgumentBoundaries
+interface Add {
+	fn add(value Int) Int
+}
+
+type Offset {
+	value Int
+}
+
+fn Offset.add(value Int = self.value) Int {
+	return value
+}
+
+fn call(value Add) Int {
+	return value.add()
+}
+// expect-error: MS3003 17:18 missing argument value: Int in call to value.add; add 'value: <Int>'

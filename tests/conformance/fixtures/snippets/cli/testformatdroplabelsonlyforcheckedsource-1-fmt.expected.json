@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn add(left, right Int) Int => left + right\n\nfn total(left, right Int) Int {\n\treturn add(left: left, right: right)\n}\n"
-  }
-}

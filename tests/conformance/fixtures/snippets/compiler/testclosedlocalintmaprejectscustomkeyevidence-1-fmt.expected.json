@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type Key {\n\tvalue Int\n}\n\nfn Key.equals(other Key) Bool => true\n\nfn Key.hash() Int => 0\n\nfn probe() Int {\n\tvar values = Map[Key, Int]()\n\tvalues.add(Key(1), 10)\n\tvalues.add(Key(2), 20)\n\treturn values.length()\n}\n"
-  }
-}

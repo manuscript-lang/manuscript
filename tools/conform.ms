@@ -7,14 +7,18 @@
 // `fuzz-gen`, `fuzz` and `harvest`. The replay and recording of expectations is tools/conform-run.ms.
 // Usage: ms run tools/conform.ms -- <command> [options]; `--help` lists them. MS names
 // the ms under test (default .artifacts/build/ci/src/cli/ms); `--corpus DIR` names the
-// fixtures directory (default tests/conformance/fixtures).
+// fixtures directory (default tests; only lang, diagnostics and format hold fixtures).
 import (
 	JsonValue, parse from "@std/data/json.ms",
 	arguments, working_directory from "@std/os/env.ms",
 	GlobOptions, glob, write_file from "@std/os/fs.ms",
 
 	Args, has, one, parse_args from "./conform/args.ms",
-	candidate_ids, parse_meta, read_text, render_meta from "./conform/corpus.ms",
+	candidate_ids,
+	parse_meta,
+	read_text,
+	render_meta,
+	within from "./conform/corpus.ms",
 	run_diff from "./conform/diff.ms",
 	fuzz, fuzz_gen from "./conform/fuzz_commands.ms",
 	harvest from "./conform/harvest.ms",
@@ -51,7 +55,7 @@ selection (list, stats, diff):
 """
 
 fn corpus_of(root String, args Args) String {
-	return one(args, "corpus", f"{root}/tests/conformance/fixtures")
+	return one(args, "corpus", f"{root}/tests")
 }
 
 fn list_command(corpus String, filter Filter) Int {
@@ -121,9 +125,9 @@ fn lint_command(corpus String) Int {
 	for fx in everything {
 		known_ids.append(fx.id.clone())
 		if seen.get(
-			fx.id
+			f"{fx.id}|{fx.phase}"
 		) != null { problems.append(f"{fx.id}: duplicate id") }
-		seen.add(fx.id.clone(), true)
+		seen.add(f"{fx.id}|{fx.phase}", true)
 		if fx.tags.is_empty() {
 			problems.append(f"{fx.id}: no tags")
 		}
@@ -135,7 +139,7 @@ fn lint_command(corpus String) Int {
 		if fx.phase == "parse" and fx.is_dir {
 			problems.append(f"{fx.id}: parse fixtures must be single files")
 		}
-		if not fx.inline.is_empty() { continue }
+		if fx.secondary or not fx.inline.is_empty() { continue }
 
 		if not fx.is_dir { sidecars.append(fx.sidecar.clone()) }
 
@@ -168,7 +172,7 @@ fn lint_command(corpus String) Int {
 		}
 	}
 
-	project_dirs := glob(corpus, GlobOptions(patterns: ["**/conform.meta"])).get_or(
+	project_dirs := glob(corpus, GlobOptions(patterns: within("conform.meta"))).get_or(
 		[]
 	).map(
 		entry => entry.path.slice(
@@ -177,7 +181,7 @@ fn lint_command(corpus String) Int {
 		).clone()
 	)
 
-	for entry in glob(corpus, GlobOptions(patterns: ["**/*.expected.json"])).get_or(
+	for entry in glob(corpus, GlobOptions(patterns: within("*.expected.json"))).get_or(
 		[]
 	) {
 		var inside = false

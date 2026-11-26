@@ -1,0 +1,12 @@
+// conform: tags=projects,testing,tier-stdlib
+// conform: phase=run
+// conform: entry=main.ms
+// expect-exit: 0
+// expect-stdout: {"x":1,"label":"a \\"quoted\\" label"}
+// expect-stdout: {"x":2,"label":"é😀"}
+// expect-stdout: id;name
+// expect-stdout: 1;"needs;quote"
+// expect-stdout: 2;"multi
+// expect-stdout: line"
+// expect-stdout: 1=one
+// expect-stdout: 2=two

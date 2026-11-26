@@ -176,6 +176,8 @@ bool mir_optimize(MirModule *m, bool compact, bool verify, MsStrBuild *error) {
   m->inline_base = compact ? OPT_INLINE_COMPACT_THRESHOLD : OPT_INLINE_BASE_THRESHOLD;
   run_steps(m, early_steps, sizeof early_steps / sizeof early_steps[0]);
   /* These passes read the module but rewrite only their own function. */
+  /* Every call site is final here, and `range` below is the only reader of what the step records. */
+  (void)opt_entry_ranges(m);
   function_passes(m);
   run_steps(m, late_steps, sizeof late_steps / sizeof late_steps[0]);
   if (!verify) {

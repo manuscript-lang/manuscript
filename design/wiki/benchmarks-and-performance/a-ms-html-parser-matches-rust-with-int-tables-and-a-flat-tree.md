@@ -8,4 +8,4 @@ The HTML tokenizer and tree builder moved from Rust to `src/stdlib/data/html.ms`
 - Moving a value out of a field needs `.clone()` under the one-owner model; plan for it in token buffers.
 - Only entity decoding stays native (`src/runtime/std/html_entity.c`, the entity table).
 
-The oracle is the recorded Go output in `tests/conformance/fixtures/e2e/projects/html-oracle/assets/oracle.tsv`.
+The oracle is the recorded Go output in `tests/lang/projects/html-oracle/assets/oracle.tsv`.

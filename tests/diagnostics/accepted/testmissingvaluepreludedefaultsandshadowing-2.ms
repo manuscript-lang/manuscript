@@ -1,0 +1,17 @@
+// conform: tags=alternatives,diagnostics,formatter,match,records,tier-core
+// conform: phase=check,parse
+// conform: origin=pkg/compiler/collection_prelude_imports_test.go:187 TestMissingValuePreludeDefaultsAndShadowing
+enum Other {
+	Missing(value Int)
+}
+
+fn other() Other => Other.Missing(1)
+
+fn standard() Error => Error("location", kind: "ENOENT")
+
+fn read(value Other) Int {
+	match value {
+		Missing(found) => return found
+	}
+}
+// expect-exit: 0

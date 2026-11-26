@@ -8,5 +8,5 @@ Decision (2026-11-02): `embed` is an `ms.toml` `[embed]` table, not a built-in. 
 Verified (2026-11-18): `HostTree` once followed a symbolic link out of its root (`..` was rejected only lexically), so a link under the root read any file. `read` and `children` now canonicalize the path and the root and return `EINVAL` outside the root; links that stay inside still work. The check is not atomic with the read, so a hostile writer racing the check can still win.
 
 Apply when: adding stream wrappers, test file systems, or Go `io`/`bufio`/`io/fs` equivalents.
-Evidence: [streams.ms](../../../src/stdlib/io/streams.ms), [tree.ms](../../../src/stdlib/os/tree.ms), [tests](../../../tests/conformance/fixtures/e2e/stdlib/tree.ms).
-Verify: `ms test tests/conformance/fixtures/e2e/stdlib/{streams,tree}.ms`.
+Evidence: [streams.ms](../../../src/stdlib/io/streams.ms), [tree.ms](../../../src/stdlib/os/tree.ms), [tests](../../../tests/lang/stdlib/tree.ms).
+Verify: `ms test tests/lang/stdlib/{streams,tree}.ms`.

@@ -2,7 +2,10 @@
 // (bench/perf/datastructures). Samples are
 // `<version> <operation> <count> <nanoseconds>`. The runner appends `<version> # end`
 // only after a successful producer. Producers do not emit checksums.
-import invalid, left, right from "./lib.ms"
+import (
+	invalid, left, right from "./lib.ms",
+	read_trials from "./trials.ms",
+)
 
 export type Operation {
 	name String
@@ -59,75 +62,21 @@ fn cell(value Float?) String {
 }
 
 export fn summarize(lines List[String], repeats Int) String! {
-	if repeats < 1 { return invalid("repeats must be positive") }
-
+	rows := read_trials(lines, versions(), required, repeats)?
 	var best = Map[String, Float]()
-	var trials = Map[String, Int]()
-	for v in versions() {
-		trials.add(v.clone(), 0)
-	}
 
-	var active = ""
-	var pending = Set[String]()
-
-	for line in lines {
-		parts := line.trim().split(" ").collect().filter(p => p != "")
-		if parts.length() < 2 or not versions().contains(parts[0]) {
-			return invalid(f"invalid sample: {line.trim()}")
+	for row in rows {
+		if row.first != count_of(row.name) or row.second < 0 {
+			return invalid(
+				f"invalid count or timing: {row.version} {row.name} {row.first} {row.second}"
+			)
 		}
 
-		version := parts[0].clone()
-		name := parts[1].clone()
-		if active != "" and version != active {
-			return invalid(f"unterminated {active} trial")
-		}
-
-		active = version.clone()
-
-		if parts.length() == 3 and parts[1] == "#" and parts[2] == "end" {
-			need := required(version)
-			if (
-				pending.length() != need.length()
-				or not need.all(n => pending.contains(n))
-			) {
-				return invalid(f"incomplete {version} trial")
-			}
-
-			trials.add(version.clone(), trials.get_or(version, 0) + 1)
-			active = ""
-			pending = Set[String]()
-			continue
-		}
-
-		if (
-			parts.length() != 4
-			or not required(version).contains(name)
-			or pending.contains(name)
-		) {
-			return invalid(f"invalid operation: {line.trim()}")
-		}
-
-		ops := parts[2].parse_int()
-		ns := parts[3].parse_int()
-		if (ops == null or (ns == null) or (ops) != count_of(name) or (ns) < 0) {
-			return invalid(f"invalid count or timing: {line.trim()}")
-		}
-
-		key := f"{name} {version}"
-		now := (ns).to_float()
+		key := f"{row.name} {row.version}"
+		now := row.second.to_float()
 		prior := best.get(key)
-
-		if prior != null {
-			best.add(key.clone(), if now < prior { now } else { prior })
-		} else {
-			best.add(key.clone(), now)
-		}
-
-		pending.add(name.clone())
-	}
-
-	if active != "" or versions().any(v => trials.get_or(v, 0) != repeats) {
-		return invalid(f"expected {repeats} complete trials of every version")
+		best.add(key.clone(), now)
+		if prior != null and prior < now { best.add(key.clone(), prior) }
 	}
 
 	var rows = [

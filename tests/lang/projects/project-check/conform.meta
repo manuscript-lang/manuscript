@@ -1,0 +1,4 @@
+// conform: tags=diagnostics,projects,strings,tier-core,try-result
+// conform: phase=check
+// conform: origin=tests/e2e/testdata/projects/project_check
+// expect-error: MS2002 4:9 path does not exist: src/main.ms; this path comes from ms.toml, so create it or correct the value there

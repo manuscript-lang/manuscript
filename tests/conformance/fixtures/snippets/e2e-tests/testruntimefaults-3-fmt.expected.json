@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn sum(value Int) Int {\n\treturn value + 1\n}\n\ntest \"fault\" {\n\t_impossible := sum(value: 9223372036854775807)\n}\n"
-  }
-}

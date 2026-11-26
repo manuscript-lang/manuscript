@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type Counter {\n\tvalue Int\n}\n\nfn Counter.double() Int {\n\treturn self.value * 2\n}\n"
-  }
-}

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn count[T](values List[T]) Int {\n\treturn 0\n}\n\nknown := count[Int]([])\n// Rejected: the empty list does not determine T.\nunknown := count([])\n"
-  }
-}

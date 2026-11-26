@@ -1,0 +1,33 @@
+// conform: tags=control-flow,diagnostics,formatter,modules,stdlib-http,stdlib-io,stdlib-net,stdlib-process,tier-io,try-result
+// conform: phase=check,parse
+// conform: origin=documentation/learn/common-tasks.md:240
+import (
+	stdout from "@std/io/io.ms",
+	HttpMethod, headers from "@std/net/http.ms",
+	RequestOptions, request from "@std/net/net.ms",
+	arguments from "@std/os/env.ms",
+)
+
+fn run() Result[Void, Error] {
+	url := ok_or(arguments().first(), Error("HTTP: invalid input", kind: "EINVAL"))?
+	response := request(
+		HttpMethod.Get,
+		url,
+		options: RequestOptions(headers: headers(), max_bytes: 1048576),
+	)?
+	if response.metadata().status != 200 {
+		return error(Error("HTTP: invalid data", kind: "EBADMSG"))
+	}
+
+	text := ok_or(
+		response.body.decode_utf8(),
+		Error("HTTP: invalid data", kind: "EBADMSG"),
+	)?
+	stdout().write(text)?
+	return stdout().flush()
+}
+
+fn main() Void! {
+	run()?
+}
+// expect-exit: 0

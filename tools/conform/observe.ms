@@ -17,6 +17,7 @@ import (
 	read_text,
 	string_member,
 	text_of from "./corpus.ms",
+	inline_lines, program_text from "./expect.ms",
 )
 
 // What one run of ms left: its exit status and streams, as text.
@@ -258,6 +259,23 @@ fn without_header(source String) String {
 	return source.slice(skip, source.length())
 }
 
+// `{"clean": true}` when a program parses and `fmt` leaves it as it is: the observation
+// of a fixture that names `parse` as a later phase.
+fn clean_parse(fields Map[String, JsonValue], before String) JsonValue {
+	diagnostics := (fields.get("diagnostics") or JsonValue.Null).as_list() or []
+	after := (fields.get("fmt") or JsonValue.Null).as_string()
+	clean := diagnostics.is_empty() and after != null and after == before
+	var out = Map[String, JsonValue]()
+	out.add("clean", JsonValue.BoolValue(clean))
+	return JsonValue.ObjectValue(out)
+}
+
+// `text` without its trailing expectation lines, when it has any.
+fn stripped(text String) String {
+	if inline_lines(text).is_empty() { return text.clone() }
+	return program_text(text)
+}
+
 fn parse_phase(ms String, fx Fixture, work String) JsonValue {
 	// `fmt --check` parses without loading the standard library, which `check` does for
 	// every file that parses; the parse diagnostics are the same.
@@ -285,15 +303,19 @@ fn parse_phase(ms String, fx Fixture, work String) JsonValue {
 		fields.add("raw", report)
 	}
 
+	before := without_header(stripped(read_text(f"{work}/{fx.entry}")))
 	formatted := invoke(ms, fx, ["fmt", fx.entry.clone()], work, "".to_bytes())
 
 	if formatted.code == 0 {
-		after := read_text(f"{work}/{fx.entry}")
-		fields.add("fmt", text_value(without_header(after)))
+		after := without_header(stripped(read_text(f"{work}/{fx.entry}")))
+		fields.add("fmt", text_value(after))
+		fields.add("unchanged", JsonValue.BoolValue(after == before))
 	} else {
 		fields.add("fmt", JsonValue.Null)
 		fields.add("fmt_exit_code", number(formatted.code))
 	}
+
+	if fx.secondary { return clean_parse(fields, before) }
 
 	return JsonValue.ObjectValue(fields)
 }

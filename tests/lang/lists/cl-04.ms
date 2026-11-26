@@ -1,0 +1,22 @@
+// conform: tags=formatter,lists,modules,records,stdlib-testing,strings,testing,tier-core,try-result
+// conform: phase=test,parse
+// conform: origin=tests/e2e/testdata/accept/cl-04.ms
+import expect_equal from "@std/test/test.ms"
+
+fn difference(values List[Int]) Int {
+	[first, second] := values
+	return first - second
+}
+
+test "list binding" {
+	expect_equal(difference([9, 4]), 5)?
+
+	{value: label} := Label("ready")
+	expect_equal(label, "ready")?
+}
+
+type Label {
+	value String
+}
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

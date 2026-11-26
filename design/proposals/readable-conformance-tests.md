@@ -2,7 +2,7 @@
 
 * Status: **Proposed** (2026-11-25, checked against `a3691f89`)
 * Authors: [chinmaymk](https://github.com/chinmaymk)
-* Implementation: stages 1 and 2a landed (every `check` fixture, 2,816, states its expectation in its file); parse, run and test fixtures follow
+* Implementation: stages 1 and 2a landed (every `check` fixture, 2,816, states its expectation in its file); 2b: `phase=test,parse` replaces 1,183 `-fmt` twins; 3: golden renamed; 4a: every fixture moved to `tests/{lang,diagnostics,format}` (4,539 programs) and `tests/conformance/` is gone; the 270 recorded runs and `tests/checks` grouping follow
 * Direction: Chinmay, 2026-11-25: "one suite we test to assert correctness, one suite for perf, one suite for agent-bench"; tests are "littered with .json files so reading code and figuring what it does is crazy hard".
 
 ## Summary
@@ -24,7 +24,7 @@ Measured with a script over `tests/conformance/fixtures` (5,737 expectation file
 | Duplicate sources (header stripped) | 378 of 3,722 programs |
 | Expectations over 2 KB | 592 |
 
-A check fixture's JSON holds the diagnostics, then the same diagnostics again as terminal text with the source line quoted (the `text` field). A parse fixture is a program plus a second `-fmt.ms` file plus two JSON files. `tests/conformance/README.md` says a recorded fixture "records what the binary does, bugs included". `tests/` also holds `checks/` (59 files run by gates), `lsp/` (32 dirs) and `docs/` (JS tests), which a reader cannot tell from the corpus.
+A check fixture's JSON holds the diagnostics, then the same diagnostics again as terminal text with the source line quoted (the `text` field). A parse fixture is a program plus a second `-fmt.ms` file plus two JSON files. `tests/README.md` says a recorded fixture "records what the binary does, bugs included". `tests/` also holds `checks/` (59 files run by gates), `lsp/` (32 dirs) and `docs/` (JS tests), which a reader cannot tell from the corpus.
 
 ## Proposed solution
 
@@ -47,9 +47,9 @@ A run test states its output the same way (`// expect-stdout:` lines, or, better
 - **Header lines**: `expect-error: <code> <line>:<col> <message>` (one per diagnostic, message complete), `expect-exit: <n>`, `expect-stdout:` / `expect-stderr:` (one comment line per output line, with escapes only for trailing spaces and `\r`). `oracle` and `format` fields are dropped; the file header already carries `// conform:` metadata.
 - **Offsets**: `position.offset` is derived from line and column; the header shifts offsets when edited, which is the README's "re-record after editing tags" hazard, so it disappears.
 - **Parse fixtures**: stored already formatted; `ms fmt --check` over the corpus replaces the twin. A fixture that exists to test formatting keeps an explicit input and `.out` pair under `tests/format/` (count taken in stage 2).
-- **Fuzz**: `tools/conform fuzz-gen` runs in the gate with the committed seeds and checks the same properties; generated programs are not stored.
-- **Names**: harvested `golden-NNNN` cases are grouped by diagnostic code into one file per code, one case per `// ---` separated block, each with a title line. Duplicates (378 sources) are dropped when the expectations match.
-- **Layout**: `tests/lang/` (accept, stdlib, projects, run and test phases), `tests/diagnostics/` (reject and golden, by code), `tests/format/`, `tests/lsp/`, `tests/docs/`. The gate programs in `tests/checks/` move next to their `make` target's tool under `tools/checks/`, so `tests/` holds only the suites.
+- **Fuzz** (open): the 1,206 stored `fuzz/` programs are generator output plus what `ms` printed for each; generating them in the gate would drop that recorded oracle, so they stay until an owner decision on what property replaces it.
+- **Names**: harvested `golden-NNNN` cases are renamed `<code>-<first words of the message>` (or `accept-<first code line>`) and exact duplicates are dropped (done in 3a: 1,098 files, 18 duplicates). They stay one program per file, not grouped by code: a group file would lose per-case isolation and make every position depend on its block.
+- **Layout**: `tests/lang/` (accept, stdlib, projects, run and test phases), `tests/diagnostics/` (reject and golden, by code), `tests/format/`, `tests/lsp/`, `tests/docs/`. The gate programs in `tests/checks/` stay under `tests/`: they are real tests (Chinmay, 2026-11-25), and move into the feature directories as the suite is regrouped.
 - **`tests/lang/` is one kind of test**: a `.ms` file of `test` blocks run by `ms test`, grouped by feature (`ownership/`, `lists/`, `modules/`, `faults/`, one directory per stdlib module), not by origin. Measured: of 1,445 run and test fixtures, 400 are stored fuzz output (dropped, generated instead), 775 are already `test` blocks, and 270 are recorded `run` programs (350 of all run outputs are under 200 bytes and exit 0; 121 end in a fault, exit 134). The 270 keep `// expect-stdout:` and `// expect-exit:` headers and become `test` blocks when touched; faults keep `expect-exit`. The `accept`/`stdlib`/`snippets/*` split (names of deleted Rust packages: `checker`, `compiler`, `lower`, `lexer`, `build`) goes away; each case moves to its feature directory by its `tags=`. Only multi-file programs (121 project directories today) keep a directory with `ms.toml`.
 - **Runner**: `tools/conform-run.ms` reads headers instead of sidecars; phase logic is unchanged. `make conform` stays the one command; `ms test tests/` runs the `test`-phase files directly.
 - **Frozen contracts** ([wiki](../wiki/testing-and-conformance/conformance-expectations-are-frozen-contracts.md)) hold: the conversion is mechanical and lossless apart from the derived text and the dropped duplicates, checked by running both formats on the same binary and diffing results.
@@ -61,7 +61,7 @@ A run test states its output the same way (`// expect-stdout:` lines, or, better
 | `tools/conform/corpus.ms`, `conform-run.ms` | read and write header expectations | unit test of the header round trip; full corpus replay |
 | `tests/conformance/fixtures/**` | converted, renamed, regrouped | conform 0 problems, same counts per phase minus dropped duplicates |
 | `tools/conform/fuzz_commands.ms` | generate in the gate | gate fails on a seeded bug |
-| `tests/checks/**` | moved under `tools/checks/` | the `make` targets that run them |
+| `tests/checks/**` | stay under `tests/`; grouped by feature later (a move to `tools/checks` was reverted) | the `make` targets that run them |
 | wiki, README, AGENTS | one page for the layout | `repo-check` |
 
 ## Alternatives
@@ -76,7 +76,7 @@ A run test states its output the same way (`// expect-stdout:` lines, or, better
 1. Header format in the runner and recorder; convert `e2e/reject` and `snippets/authored` (a few hundred); corpus green.
 2. Convert every check fixture (done, with the recorder re-observing until lines that sit after the program stop moving an end-of-file diagnostic). Then parse fixtures and the `-fmt` twins: a twin is its original's source with `phase=parse`, so a fixture should name several phases (`phase=test,parse`) instead of being copied; 1,230 of 1,342 twins state only that `ms fmt` leaves the source unchanged, 112 differ and are mostly fuzz seeds.
 3. Regroup `golden` by code and dedupe; generate fuzz in the gate.
-4. Move `e2e/*` and `snippets/*` run and test cases into feature directories by tag; convert the 270 recorded runs; move `tests/checks`; one README and wiki page.
+4. Move `e2e/*` and `snippets/*` run and test cases into feature directories by tag; convert the 270 recorded runs; group `tests/checks` by feature; one README and wiki page.
 
 Each stage lands green and keeps `make conform` as the gate (its time must not grow).
 

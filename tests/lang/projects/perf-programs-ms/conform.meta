@@ -1,0 +1,7 @@
+// conform: tags=aliasing,alternatives,control-flow,diagnostics,faults,generics,interfaces,interpolation,lists,maps,match,modules,mutation,optional,projects,records,stdlib-errors,stdlib-io,stdlib-string,stdlib-time,strings,tier-io,try-result
+// conform: phase=check
+// conform: origin=bench/perf/programs/ms
+// expect-error: MS2002 3:17-3:26 module does not export read_line; @std/io/io.ms exports: DescriptorSink, DescriptorSource, Pipe, ReadStream, Sink, Source, StdStream, Transform, WriteStream, pipe, redirect_to_null, stderr, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/io/io.ms"'
+// expect-error: MS3000 26:19 ReadStream requires 1 type arguments, found 0; write ReadStream[T1]
+// expect-error: MS2001 27:16 unknown binding read_line; declare it with 'read_line := ...' before use, define 'fn read_line(...) T { ... }', or import it from a module
+// expect-error: MS3001 97:21 expected ReadStream, found ReadStream[Bytes] (in argument 'input' of got_line)

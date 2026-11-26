@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type Box[T] {\n\tvalue T\n}\n\nfn hash(box Box[Box[Int]]) Int => return box.hash()\n"
-  }
-}

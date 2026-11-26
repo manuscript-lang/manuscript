@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import (\n\tBytes from \"@std/bytes.ms\",\n\thex_decode from \"@std/data/encoding.ms\",\n)\n\nfn decode(text String) Result[Bytes, Error] {\n\tbytes := hex_decode(text)?\n\treturn ok(bytes)\n}\n"
-  }
-}

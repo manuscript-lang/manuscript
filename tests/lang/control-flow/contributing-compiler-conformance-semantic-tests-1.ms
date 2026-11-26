@@ -1,0 +1,13 @@
+// conform: tags=control-flow,faults,formatter,modules,stdlib-faults,testing,tier-stdlib
+// conform: phase=test,parse
+// conform: origin=documentation/contributing/compiler/conformance/semantic-tests.md:14
+import panic from "@std/core.ms"
+
+test "checked decrement" {
+	value := 3
+	if not (value - 1 > 0) {
+		return panic(message: "check failed")
+	}
+}
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

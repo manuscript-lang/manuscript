@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import expect_equal from \"@std/test/test.ms\"\n\ninterface Compare[T] {\n\tfn compare(other T) Int\n}\n\nfn compare[T Compare[T]](first, second T) Int => first.compare(second)\n\ntype Key {\n\tvalue Int\n}\n\nfn Key.compare(other Key) Int => self.value - other.value\n\ntest \"interface bounds may reference their parameter\" {\n\texpect_equal(compare(Key(7), Key(4)), 3)?\n}\n"
-  }
-}

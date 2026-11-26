@@ -1,0 +1,43 @@
+{
+  "results": [
+    {
+      "target": "main.ms",
+      "exit_code": 1,
+      "document": {
+        "format": 1,
+        "diagnostics": [
+          {
+            "code": "MS3001",
+            "subcode": "MS3001.1",
+            "phase": "type",
+            "message": "expected Int, found String (in the initializer of 'x')",
+            "position": {
+              "file": "main.ms",
+              "line": 2,
+              "column": 14,
+              "offset": 27
+            }
+          }
+        ],
+        "text": {
+          "stdout": "",
+          "stderr": "<DIR>/main.ms:2:14: type: expected Int, found String (in the initializer of 'x')\n   |\n 2 |     x Int := \"no\"\n   |              ^\n1 error; fix them and re-run\n"
+        }
+      },
+      "stderr": ""
+    },
+    {
+      "target": "other.ms",
+      "exit_code": 0,
+      "document": {
+        "format": 1,
+        "diagnostics": [],
+        "text": {
+          "stdout": "Checked other.ms\n",
+          "stderr": ""
+        }
+      },
+      "stderr": ""
+    }
+  ]
+}

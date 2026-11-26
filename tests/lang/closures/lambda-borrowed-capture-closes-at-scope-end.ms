@@ -1,0 +1,24 @@
+// conform: tags=closures,scope-cleanup
+// conform: phase=run
+type Door {
+	name String
+}
+
+fn move Door.close() Void! {
+	print("closed " + self.name)
+}
+
+fn size(door Door) Int {
+	return door.name.length()
+}
+
+fn main() Void {
+	door := Door(name: "front".clone())
+	f := () => size(door)
+	print(f())
+	print("end")
+}
+// expect-exit: 0
+// expect-stdout: 5
+// expect-stdout: end
+// expect-stdout: closed front

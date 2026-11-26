@@ -1,0 +1,28 @@
+// conform: tags=control-flow,formatter,lists,modules,mutation,stdlib-testing,testing,tier-core,try-result
+// conform: phase=test,parse
+// conform: origin=tests/e2e/testdata/accept/cl-08.ms
+import expect_equal from "@std/test/test.ms"
+
+fn selected_sum(values List[Int]) Int {
+	var total = 0
+
+	for value in values {
+		if value == 0 {
+			continue
+		}
+		if value < 0 {
+			break
+		}
+
+		total += value
+	}
+
+	return total
+}
+
+test "iteration control" {
+	expect_equal(selected_sum([2, 0, 3, -1, 9]), 5)?
+	expect_equal(selected_sum([]), 0)?
+}
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

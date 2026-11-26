@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn entries(values List[Int]) List[ListEntry[Int]] => values.entries()\n\nfn pairs(values Map[String, Int]) List[MapEntry[String, Int]] => values.entries()\n\nfn cut(hold values List[Int]) &List[Int]! => values.slice(0, 1)\n"
-  }
-}

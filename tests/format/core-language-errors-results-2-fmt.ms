@@ -1,0 +1,16 @@
+// conform: tags=control-flow,decimal,formatter,interpolation,parser,strings,tier-core
+// conform: phase=parse
+// conform: origin=documentation/core-language/errors/results.md:40
+fn discount_message(price Decimal, percent Decimal) String {
+	if value := discount(price, percent) {
+		return f"Discounted price: {value}"
+	}
+	return "Discount could not be calculated."
+}
+// expect-format: rewritten
+// expect-formatted: fn discount_message(price, percent Decimal) String {
+// expect-formatted: \tif value := discount(price, percent) {
+// expect-formatted: \t\treturn f"Discounted price: {value}"
+// expect-formatted: \t}
+// expect-formatted: \treturn "Discount could not be calculated."
+// expect-formatted: }

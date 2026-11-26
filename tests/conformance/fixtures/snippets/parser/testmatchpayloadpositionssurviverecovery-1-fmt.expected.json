@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "// café 🦀\nfn use(value Envelope) Int {\n\tmatch value {\n\t\tPair(_, NotFound) => return 1\n\t}\n}\n"
-  }
-}

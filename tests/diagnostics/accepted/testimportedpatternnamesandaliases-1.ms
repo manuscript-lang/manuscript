@@ -1,0 +1,14 @@
+// conform: tags=alternatives,control-flow,diagnostics,formatter,interfaces,records,strings,tier-core,try-result
+// conform: phase=check,parse
+// conform: origin=pkg/tooling/pattern_lint_test.go:114 TestImportedPatternNamesAndAliases
+export enum Failure {
+	NotFound
+	Denied(reason String)
+}
+
+export type Item {
+	value Int
+}
+
+export fn fail() Int!Failure => error(Failure.Denied("denied"))
+// expect-exit: 0

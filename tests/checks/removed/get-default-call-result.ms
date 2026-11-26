@@ -1,6 +1,6 @@
 // removed: get(default) on the result of a call
-// use: get_or
-// fix: .get_or(
+// use: x or d
+// fix: or 
 fn pick() Int? {
 	return 1
 }
