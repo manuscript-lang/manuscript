@@ -403,8 +403,10 @@ static bool borrows_result(Lower *cx, const LowerTarget *target, const LowerSubs
   if (ret_data->kind == MK_LIST && written != NULL && !written->is_ref) {
     return false; /* a list of looks owns its buffer: only its items look at another value */
   }
+  /* A result with nothing to drop still borrows when it is a resource with a `close`: its owner closes it, not the caller. */
+  const MsTy result = ms_ty_subst(&cx->program->types, ms_ty_result(&cx->program->types, target->ty), subst->vars, subst->args, subst->count);
   if (target->entry || body_closes(cx, target, subst) || !ms_own_result_is_borrowed(cx->program, target->module, target->node) ||
-      !mir_needs_drop(cx->module, ret)) {
+      !(mir_needs_drop(cx->module, ret) || (result != MS_TY_NONE && ms_check_holds_resource(cx->program, result)))) {
     return false;
   }
   for (uint32_t index = 0; index < count; index++) {
@@ -692,7 +694,7 @@ static bool lower_body(Lower *cx, uint32_t index) {
   }
   MsPos moved_at = {0};
   MsName moved_name = 0;
-  if (instance.nargs > 0 && ms_own_moves_instance(cx->program, target->module, target->func, vars, instance.args,
+  if (instance.nargs > 0 && ms_own_moves_instance(cx->program, target->module, target->node, target->func, vars, instance.args,
                                                  instance.nargs, &moved_at, &moved_name)) {
     const MsSpan name = ms_names_span(cx->program->names, moved_name);
     const MsSpan file = cx->module->files.ptr[lower_file(cx, target->module)];

@@ -392,7 +392,7 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
   /* Returning a plain parameter whole answers a view of it: the lowering gives the caller that borrowed result. */
   const bool whole_param = pass->instance && stmt->kind == MS_S_RETURN && stmt->u.expr != NULL &&
                            stmt->u.expr->kind == MS_E_NAME && ms_bind_of(pass->facts, stmt->u.expr->id, &returned) &&
-                           ms_binding_list_contains(&pass->plainparams, returned);
+                           (pass->ref_result || ms_binding_list_contains(&pass->plainparams, returned));
   if (stmt->kind == MS_S_RETURN && stmt->u.expr != NULL && !whole_param) {
     check_handed_on(pass, stmt->u.expr, false);
     check_or_left(pass, stmt->u.expr);
@@ -813,12 +813,12 @@ static void check_decl(Moves *pass, MsArena *arena, const MsDecl *decl) {
   }
 }
 
-bool ms_own_moves_instance(MsCheckProgram *program, uint32_t module, const MsFunc *func, const MsTy *vars,
+bool ms_own_moves_instance(MsCheckProgram *program, uint32_t module, MsNode node, const MsFunc *func, const MsTy *vars,
                            const MsTy *args, uint32_t count, MsPos *at, MsName *who) {
   MsArena arena = ms_arena_new();
   MsClassifier classes = ms_class_new(program);
   Moves pass = {.program = program, .module = module, .facts = &program->modules.ptr[module].facts, .classes = &classes,
-                .arena = &arena, .instance = true, .subst_vars = vars, .subst_args = args, .nsubst = count};
+                .arena = &arena, .instance = true, .ref_result = ms_own_result_is_borrowed(program, module, node), .subst_vars = vars, .subst_args = args, .nsubst = count};
   for (uint32_t index = 0; index < func->params.len; index++) {
     if (!func->params.ptr[index]->moving && !func->params.ptr[index]->is_mutable) {
       ms_binding_list_push(&pass.borrowed, func->params.ptr[index]->id);

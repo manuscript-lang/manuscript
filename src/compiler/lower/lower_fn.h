@@ -182,6 +182,7 @@ typedef struct LowerFn {
   uint32_t update_thunk; /* the `Map.update` thunk of the call being built (MIR_NONE: none) */
   MirTy update_map; /* the map type that call updates */
   bool temps; /* a statement scope is open for the temporaries its calls borrow */
+  bool temps_keep; /* the statement binds or returns a value that may hold a resource: a result borrowed from a temporary may outlive it */
   const MsStmt *sink_stmt; /* a bench body's last statement: when it is a call, its value goes to the bench sink */
   uint32_t bind_scope; /* with `temps` on a bind: the scope the name it binds belongs to, plus one; zero when none */
   uint32_t nloops;
@@ -335,6 +336,7 @@ MirValue fn_pending_take(LowerFn *fn, MirValue slot, MirTy ty);
 /* lower_temp.c: argument `index` of call `expr`, written as `written`, read as `value`: closed with its statement
  * when it is a borrowed temporary. */
 MirValue fn_closing_temporary(LowerFn *fn, const MsExpr *expr, uint32_t index, const MsExpr *written, MirValue value);
+bool fn_stmt_keeps_resource(LowerFn *fn, const MsStmt *stmt);
 bool fn_stmt_has_temporary(LowerFn *fn, const MsStmt *stmt);
 /* Whether the expression holds a call whose borrowed resource argument closes where the expression ends. */
 bool fn_expr_has_temporary(LowerFn *fn, const MsExpr *expr);

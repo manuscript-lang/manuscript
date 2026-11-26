@@ -12,6 +12,7 @@ typedef struct Consumed {
   uint32_t param;
   bool found;
   bool moving; /* the parameter is `move`: a body that moves it owns it; a borrowed one is cloned where it is moved */
+  bool ref_result; /* the result is a `&` view: returning the parameter lends it, the caller still owns it */
 } Consumed;
 
 static void note_consumed(void *ctx, const MsExpr *expr) {
@@ -29,7 +30,8 @@ static void note_handed_on(void *ctx, const MsStmt *stmt) {
     note_consumed(ctx, value);
     Consumed *state = ctx;
     const MsRef *ref = value->kind == MS_E_NAME ? ms_facts_ref(state->facts, value->id) : NULL;
-    state->found |= ref != NULL && ref->kind == MS_REF_PARAM && ref->local == state->param;
+    state->found |= ref != NULL && ref->kind == MS_REF_PARAM && ref->local == state->param &&
+                    !(state->ref_result && !state->moving && stmt->kind == MS_S_RETURN);
   }
 }
 
@@ -41,7 +43,8 @@ static bool callee_consumes(LowerFn *fn, const MsCall *call, uint32_t index) {
     return false;
   }
   Consumed state = {&fn->cx->program->modules.ptr[target.module].facts, index, false,
-                    index < target.func->params.len && target.func->params.ptr[index]->moving};
+                    index < target.func->params.len && target.func->params.ptr[index]->moving, false};
+  state.ref_result = ms_own_result_is_borrowed(fn->cx->program, target.module, target.node);
   const MsVisitor visitor = {.ctx = &state, .expr = note_consumed, .stmt = note_handed_on};
   ms_walk_block(&visitor, target.func->body);
   return state.found;
@@ -101,7 +104,7 @@ static bool temp_type(LowerFn *fn, const MsExpr *expr, uint32_t index, const MsE
   }
   const MsTy result = ms_ty_subst(types, ms_facts_type(fn->facts, expr->id), fn->subst.vars, fn->subst.args, fn->subst.count);
   /* A result that holds a resource may be a part of the argument; one that borrows from another argument is not. */
-  if (result == MS_TY_NONE || (ms_check_holds_resource(fn->cx->program, result) &&
+  if (result == MS_TY_NONE || (ms_check_holds_resource(fn->cx->program, result) && fn->temps_keep &&
                                ms_own_call_borrows(fn->cx->program, call, index))) {
     return false;
   }
@@ -359,6 +362,20 @@ bool fn_expr_has_temporary(LowerFn *fn, const MsExpr *expr) {
   return scan.found || scan.receiver;
 }
 
+/* Whether the statement binds (not to `_`) or returns a value that may hold a resource: it outlives the statement.
+ * An assignment is not listed: the checker rejects a view of a temporary stored in a place. */
+bool fn_stmt_keeps_resource(LowerFn *fn, const MsStmt *stmt) {
+  const bool binds = stmt->kind == MS_S_BIND && !(stmt->u.bind.pattern->kind == MS_P_NAME &&
+                     ms_span_is_text(ms_names_span(fn->cx->program->names, stmt->u.bind.pattern->u.name), "_"));
+  if (!binds && stmt->kind != MS_S_RETURN) {
+    return false;
+  }
+  const MsNode node = binds ? stmt->u.bind.pattern->id : stmt->u.expr != NULL ? stmt->u.expr->id : 0;
+  const MsTy kept = node == 0 ? MS_TY_NONE : ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, node), fn->subst.vars,
+                                                         fn->subst.args, fn->subst.count);
+  return kept != MS_TY_NONE && ms_check_holds_resource(fn->cx->program, kept);
+}
+
 bool fn_stmt_has_temporary(LowerFn *fn, const MsStmt *stmt) {
   const MsExpr *value = stmt->kind == MS_S_CALL || stmt->kind == MS_S_RETURN ? stmt->u.expr
                         : stmt->kind == MS_S_BIND                                ? stmt->u.bind.value
@@ -368,7 +385,9 @@ bool fn_stmt_has_temporary(LowerFn *fn, const MsStmt *stmt) {
   }
   TempScan scan = {.fn = fn};
   const MsVisitor visitor = {.ctx = &scan, .expr = scan_enter, .leave_expr = scan_leave};
+  fn->temps_keep = fn_stmt_keeps_resource(fn, stmt);
   ms_walk_expr(&visitor, value);
+  fn->temps_keep = false;
   const MsPattern *target = stmt->kind == MS_S_BIND ? stmt->u.bind.pattern : NULL;
   const bool discarded = target != NULL && target->kind == MS_P_NAME && ms_span_is_text(ms_names_span(fn->cx->program->names, target->u.name), "_");
   if ((stmt->kind == MS_S_BIND && !discarded) || stmt->kind == MS_S_RETURN) {
