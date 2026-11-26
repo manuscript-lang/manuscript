@@ -61,4 +61,4 @@ fn main() Void! {
 
 - `port` is `null` when the URL names none, so `get_or` supplies the scheme's default.
 - `resolve(base, reference)` turns a relative link into an absolute one, and `format` writes a `Url` back to text.
-- For the module API, run `ms search_symbol url`.
+- For the module API, run `ms search url`.

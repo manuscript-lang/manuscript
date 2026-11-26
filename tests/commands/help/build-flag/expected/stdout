@@ -1,6 +1,8 @@
-Usage: ms help [command]
+Usage: ms help [command | code...] [--json]
 
 Show the command list, or detailed usage for one command.
+Given diagnostic codes from ms check --json (MS and MSL), print each code's rule family and usual repair;
+apply the diagnostic's own fix field first when it has one. --json emits versioned JSON for codes.
 
 Options:
   -h, --help  Show this help without executing the command
@@ -8,3 +10,5 @@ Options:
 Examples:
   ms help
   ms help run
+  ms help MS3060
+  ms help MS2001 MSL110 --json

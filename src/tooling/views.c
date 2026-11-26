@@ -85,7 +85,7 @@ const MsFact *ms_find_entity(MsArena *arena, const MsFactModel *model, MsSpan na
   }
   if (total == 0) {
     *error = ms_message_format(arena,
-        "no entity named %S; use a declaration name, file::name, or full entity ID file#kind#name (ms review lists the public surface)",
+        "no entity named %S; use a declaration name, file::name, or full entity ID file#kind#name (ms map --view review lists the public surface)",
         name);
     return NULL;
   }
@@ -424,7 +424,7 @@ static void prune_tasks(MsArena *arena, const MsViewNodes *nodes, MsViewNodes *o
 static bool flow_view(MsArena *arena, const MsFactModel *model, MsSpan view, MsSpan entity, int64_t depth,
                       MsViewNode **out, MsSpan *error) {
   if (entity.len == 0) {
-    *error = ms_message_format(arena, "%S needs --entity; name a function or method (ms review lists the public surface)", view);
+    *error = ms_message_format(arena, "%S needs --entity; name a function or method (ms map --view review lists the public surface)", view);
     return false;
   }
   const MsFact *f = ms_find_entity(arena, model, entity, error);

@@ -46,7 +46,7 @@ Each arm handles one case and gives its payload a local name. A newly added case
 
 Nested `match` is an anti-pattern. Bind the outer payload with an early exit, propagate with `?`, use Optional methods, or call a small helper (the contract handler below shows a helper).
 
-- `ms lint` reports **MSL107** at each inner match, including inside inline callbacks. Helpers and sequential matches are fine. The checker still accepts nesting; this is style only.
+- `ms check --only lint` reports **MSL107** at each inner match, including inside inline callbacks. Helpers and sequential matches are fine. The checker still accepts nesting; this is style only.
 - An `Optional` has no `some` pattern: the present arm is a bare lowercase name beside `null =>` (`v =>` binds the payload). A two-arm payload/`null` match is **MSL108**. Use [`if v := x`](conditionals.md#unwrapping-an-optional-or-result), `get_or(default)`, or `map`.
 
 Matching a `Result` with only `ok` and `error` arms is flagged the same way as advisory **MSL109**. Use `?`, `if value := result { ... }` with `} else {`, or a Result method such as `get_or(default)`, `is_error`, or `err`.
@@ -127,7 +127,7 @@ fn horizontal(position Position) Int {
 - An unqualified case resolves within the scrutinee's type; a qualified case must belong to that exact type (`Other.Point(...)` never matches `Position`). Constructors resolve per [alternative construction](../types/alternatives.md).
 - Payload names always bind fresh. `error(NotFound)` matches every error and does not test for `NotFound`; bind `error(cause)` and pass `cause` to a helper that matches the cases.
 
-`ms lint` reports **MSL106** (a lint error; `ms check` accepts it) when a capitalized payload name coincides with a known case or type name. Use a name like `cause` or `_cause`.
+`ms check --only lint` reports **MSL106** (a lint error; `ms check` accepts it) when a capitalized payload name coincides with a known case or type name. Use a name like `cause` or `_cause`.
 
 ## Exhaustiveness
 

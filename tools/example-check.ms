@@ -284,10 +284,16 @@ fn real_errors(text String) List[String] {
 	return found
 }
 
-// Runs `ms <command> <file>` and returns the exit code and what it printed.
+// Runs `ms <command> <file>` (`check` means `check --only types`) and returns the exit
+// code and what it printed.
 fn ms_run(ms, command, path String) Outcome {
+	args := if command == "check" {
+		["check".clone(), "--only".clone(), "types".clone(), path.clone()]
+	} else {
+		[command.clone(), path.clone()]
+	}
 	opts := RunOptions(timeout: seconds(120), env: Map[String, String]())
-	if out := run(ms.clone(), [command.clone(), path.clone()], opts).wait() {
+	if out := run(ms.clone(), args, opts).wait() {
 		return Outcome(
 			code: out.exit_code,
 			text: (out.stdout.decode_utf8() or "") + (

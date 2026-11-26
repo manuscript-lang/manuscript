@@ -31,7 +31,7 @@ export type BuildLog {
 	builds Int
 	first_build_ok Bool
 	// The first build passed, or would have after the language's machine fixes
-	// (`ms check --fix`).
+	// (`ms check --only types --fix`).
 	first_build_fixed_ok Bool
 	checks Int
 	examples_pass Bool

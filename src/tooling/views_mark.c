@@ -1,4 +1,4 @@
-/* Owns the marking of a view tree by a diff: `--diff` of `ms diagram`. */
+/* Owns the marking of a view tree by a diff: `--diff` of `ms map`. */
 #include "tooling/views.h"
 
 static bool touched_line(const MsTouchedList *touched, MsSpan file, size_t line) {

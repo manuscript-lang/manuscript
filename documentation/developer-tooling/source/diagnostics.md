@@ -37,13 +37,13 @@ cannot assign immutable binding count; declare it with 'var count = ...' instead
 Here the intended repair is mechanical, so you can apply it and run again:
 
 ```sh
-ms check count.ms --fix
+ms check --only types count.ms --fix
 ms run count.ms
 ```
 
 The checker reports `ms: applied 1 fix in 1 file` and `Checked count.ms`; the program prints `3` again. Review applied edits before keeping them. When a repair needs a choice about the program's meaning, follow the explanation and edit the source yourself.
 
-Each diagnostic also has a stable rule code and source position for editor and agent integrations. The same error is `MS3060` in `ms check count.ms --json`; the JSON includes the exact replacement range and `"replacement": "var"`.
+Each diagnostic also has a stable rule code and source position for editor and agent integrations. The same error is `MS3060` in `ms check --only types count.ms --json`; the JSON includes the exact replacement range and `"replacement": "var"`.
 
 ## Message shape
 
@@ -57,7 +57,7 @@ A diagnostic names the violated rule and the declaration or call site involved. 
 
 ## JSON diagnostics
 
-`ms check file.ms --json` emits `{"format": 1, "diagnostics": [...]}`. Each diagnostic has `code`, `phase`, `message`, and `position` with `file`, one-based `line`/UTF-8 byte `column`, and original-byte `offset`. Empty results use `[]`. CRLF normalization preserves original offsets. `--with-text` adds `text` with the `stdout` and `stderr` the command prints without `--json`, so one run yields both. With several inputs, `--each` reports each as its own result, `{"results": [{"target", "exit_code", "document"}]}`, from one standard-library load.
+`ms check --only types file.ms --json` emits `{"format": 1, "diagnostics": [...]}`. Each diagnostic has `code`, `phase`, `message`, and `position` with `file`, one-based `line`/UTF-8 byte `column`, and original-byte `offset`. Empty results use `[]`. CRLF normalization preserves original offsets. `--with-text` adds `text` with the `stdout` and `stderr` the command prints without `--json`, so one run yields both. With several inputs, `--each` reports each as its own result, `{"results": [{"target", "exit_code", "document"}]}`, from one standard-library load.
 
 Several inputs share one document; see [analysis selection](../implementation.md#selecting-independent-analysis-inputs).
 Each diagnostic's `position`, `end`, and `fix` boundaries use the same source-path spelling, including paths relative to the invocation directory for collection inputs.
@@ -69,9 +69,9 @@ Each diagnostic's `position`, `end`, and `fix` boundaries use the same source-pa
   - `Some`/`Ok`/`Err`/`True`/`null`/`this` habits, and `Case()` on a nullary case
   - assignment to a `:=` binding (`:=` becomes `var`)
   - an `Int` used as `Float` (`.to_float()`, or `3.0` for a literal), and an `Int`, `Float` or `Bool` used as `String` (`f"{value}"`)
-  - `ms lint` unused imports (MSL102: the name with its separator, or the whole statement)
+  - `ms check --only lint` unused imports (MSL102: the name with its separator, or the whole statement)
 
-  String-match rewrites, ambiguous imports and ownership errors get prose only: a machine-applied `.clone()` would hide the design choice and cost time and memory. `ms check --fix` and `ms lint --fix` apply these edits in place (skipping overlaps), then report what remains.
+  String-match rewrites, ambiguous imports and ownership errors get prose only: a machine-applied `.clone()` would hide the design choice and cost time and memory. `ms check --only types --fix` and `ms check --only lint --fix` apply these edits in place (skipping overlaps), then report what remains.
 - Optional `subcode` (`MS3000.1`) names the cause within the family `code`; it is absent for messages without a known cause. Sub-codes are never renumbered or reused.
 - Consumers must tolerate absent optional fields.
 
@@ -87,6 +87,6 @@ Each diagnostic's `position`, `end`, and `fix` boundaries use the same source-pa
 | MS3070, MS3080 | Numeric literals, generic inference |
 | MS4000 | Lowering |
 
-`ms explain <code>` prints a code's or sub-code's family and usual repair (`--json` for structured output), for example `ms explain MS3000.1`.
+`ms help <code>` prints a code's or sub-code's family and usual repair (`--json` for structured output), for example `ms help MS3000.1`.
 
 For the language rules behind a diagnostic, start with [variables](../../core-language/basics/bindings.md) and [values and references](../../core-language/types/references.md).

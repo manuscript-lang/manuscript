@@ -1,0 +1,4 @@
+  src/main.ms:2:5: `log_line` reaches std.console.write: log_line -> print; permit it with `// ms: allow_effect std.console.write`, move the call to the caller, or take a capability parameter
+  src/main.ms:6:5: `middle` reaches std.console.write: middle -> log_line -> print; permit it with `// ms: allow_effect std.console.write`, move the call to the caller, or take a capability parameter
+  src/main.ms:10:5: `pure_top` reaches std.console.write: pure_top -> middle -> log_line -> print; permit it with `// ms: allow_effect std.console.write`, move the call to the caller, or take a capability parameter
+lint failed; run ms check --only lint ms.toml for details (or ms check ms.toml --json for every step)

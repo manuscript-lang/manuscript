@@ -89,7 +89,7 @@ size_t body_scope_mark(const Body *body);
 void body_scope_reset(Body *body, size_t mark);
 void body_push_local(Body *body, MsLocal local); /* a local into scope, found by name without a scan */
 /* Declares a local or parameter in the current scope. */
-/* Declares a local; `pos` is where it is written, kept in the program's binding table for `ms inspect`. */
+/* Declares a local; `pos` is where it is written, kept in the program's binding table for `ms map --view inspect`. */
 MsLocal *body_declare(Body *body, MsName name, MsTy ty, MsRefKind kind, bool is_var, MsNode site, MsPos pos);
 
 /* The reference a use of `local` records. */

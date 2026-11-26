@@ -304,7 +304,7 @@ fn field(entry JsonValue, key String) String {
 // Every `Type.operation` of the standard type whose declaration mentions a type
 // parameter.
 fn declared_operations(ms, name String) List[String]! {
-	ran := run(ms, ["search_symbol", f"prelude.{name}", "--json", "--limit", "300"]).wait()?
+	ran := run(ms, ["search", f"prelude.{name}", "--json", "--limit", "300"]).wait()?
 	page := parse(ran.stdout.decode_utf8() or "")?
 	var found = List[String]()
 	names := type_parameters(name.clone())
@@ -441,7 +441,7 @@ fn main() Int {
 				file := f"{scratch.path()}/{name}.ms"
 				void write_file(file, program(o, call_form, arg_form)).wait().get()
 
-				verdict := run(ms.clone(), ["check", file.clone()]).wait()
+				verdict := run(ms.clone(), ["check", "--only", "types", file.clone()]).wait()
 
 				if verdict.is_error() or verdict.get().exit_code != 0 {
 					rejected += 1

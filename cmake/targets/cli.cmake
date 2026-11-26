@@ -1,7 +1,7 @@
 ms_executable(ms cli
   SOURCES
-    install_layout.c pipeline.c backend.c emit_command.c diagram_command.c review_command.c search_symbol_command.c doc_command.c search_project.c
-    fault_record.c inspect_command.c main.c phases.c check_command.c verify_command.c fmt_command.c
+    install_layout.c pipeline.c backend.c command_routes.c emit_command.c diagram_command.c review_command.c search_symbol_command.c doc_command.c search_project.c
+    fault_record.c inspect_command.c main.c phases.c check_command.c check_all_command.c fmt_command.c
     check_fix.c check_selection.c display.c files.c fmt_targets.c fmt_labels.c init_command.c
     invocation.c invocation_rules.c build_type.c build_command.c run_command.c test_command.c test_document.c
     bench_command.c profile_command.c profile_folded.c test_options.c test_records.c test_run.c watch.c package_cache.c
@@ -54,24 +54,24 @@ set(MS_LEAK_FIXTURES lang/records/bind-collection-resource-read-in-place lang/in
 add_test(NAME leak_check COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DFIXTURES=${CMAKE_SOURCE_DIR}/tests
   "-DNAMES=${MS_LEAK_FIXTURES}" -DWORK=${CMAKE_BINARY_DIR}/src/cli/leak -P ${CMAKE_SOURCE_DIR}/cmake/LeakCheck.cmake)
 
-# Every bundled standard-library body checks: `ms check` and `ms lint` check only the bodies a program reaches.
+# Every bundled standard-library body checks: `ms check --only types` and `--only lint` check only the bodies a program reaches.
 file(WRITE ${CMAKE_BINARY_DIR}/src/cli/std-full/main.ms "fn main() Void {\n    return\n}\n")
-add_test(NAME std_full COMMAND ms check ${CMAKE_BINARY_DIR}/src/cli/std-full/main.ms --std)
+add_test(NAME std_full COMMAND ms check --only types ${CMAKE_BINARY_DIR}/src/cli/std-full/main.ms --std)
 
 # A standard-library file opened from a checkout is the bundled module, not a second copy of it: no type is declared
 # twice, and the file follows the library's rules (reserved natives, prelude methods) rather than a program's.
 file(GLOB_RECURSE MS_STD_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/src/stdlib/*.ms)
-add_test(NAME std_checkout COMMAND ms check ${MS_STD_FILES})
+add_test(NAME std_checkout COMMAND ms check --only types ${MS_STD_FILES})
 
 # `ms add`, `ms install` and `ms remove` against a local git repository.
 add_test(NAME package_run COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWORK=${CMAKE_BINARY_DIR}/src/cli/package
   -P ${CMAKE_SOURCE_DIR}/cmake/PackageRun.cmake)
 
-# The folded-stack conversion of `ms profile`, without the compiler.
+# The folded-stack conversion of `ms run --profile`, without the compiler.
 ms_executable(profile_folded_unit cli SOURCES profile_folded_unit.c profile_folded.c LINK ms_base)
 add_test(NAME driver_profile_folded COMMAND profile_folded_unit)
 
-# `ms profile` end to end: a program that burns CPU is built, run under the sampler and turned into a bundle.
+# `ms run --profile` end to end: a program that burns CPU is built, run under the sampler and turned into a bundle.
 add_test(NAME profile_run COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWORK=${CMAKE_BINARY_DIR}/src/cli/profile
   -DTOOL_DIR=${MS_COMPILER_BIN} -P ${CMAKE_SOURCE_DIR}/cmake/ProfileRun.cmake)
 
@@ -79,10 +79,10 @@ add_test(NAME profile_run COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWO
 add_test(NAME bench_run COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWORK=${CMAKE_BINARY_DIR}/src/cli/bench
   -DTOOL_DIR=${MS_COMPILER_BIN} -P ${CMAKE_SOURCE_DIR}/cmake/BenchRun.cmake)
 
-# `ms build` does not verify the module, `ms emit` does after every pass: the map calls that lower to inline probes verify.
-add_test(NAME mir_verify COMMAND ms emit --opt ${CMAKE_SOURCE_DIR}/tests/checks/mir-verify/map-calls.ms -o ${CMAKE_BINARY_DIR}/src/cli/map-calls.mir)
+# `ms build` does not verify the module, `ms build --emit` does after every pass: the map calls that lower to inline probes verify.
+add_test(NAME mir_verify COMMAND ms build --emit mir --opt ${CMAKE_SOURCE_DIR}/tests/checks/mir-verify/map-calls.ms -o ${CMAKE_BINARY_DIR}/src/cli/map-calls.mir)
 
-# `ms search_symbol` over many files searches every one.
+# `ms search` over many files searches every one.
 add_test(NAME search_many COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWORK=${CMAKE_BINARY_DIR}/src/cli/search-many
   -P ${CMAKE_SOURCE_DIR}/cmake/SearchMany.cmake)
 
@@ -99,7 +99,7 @@ set_tests_properties(stdout_closed PROPERTIES ENVIRONMENT "MS=$<TARGET_FILE:ms>"
 add_test(NAME lsp_sweep COMMAND ms run ${CMAKE_SOURCE_DIR}/tools/lsp-sweep.ms WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 set_tests_properties(lsp_sweep PROPERTIES ENVIRONMENT "MS=$<TARGET_FILE:ms>")
 
-# The editor shows what `ms check` prints: a sample of the conformance fixtures gets the same diagnostics from `ms lsp`.
+# The editor shows what `ms check --only types` prints: a sample of the conformance fixtures gets the same diagnostics from `ms lsp`.
 add_test(NAME lsp_parity COMMAND ms run ${CMAKE_SOURCE_DIR}/tools/lsp-parity.ms WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 set_tests_properties(lsp_parity PROPERTIES ENVIRONMENT "MS=$<TARGET_FILE:ms>")
 

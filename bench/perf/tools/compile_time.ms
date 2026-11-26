@@ -48,8 +48,13 @@ fn run(out String, p, f, k Int) Result[Void, Error] {
 	go := env("GO", "go")
 	void must("go clean", run_in(f"{out}/go", go, ["clean", "-cache"]))?
 	timed("go cold:  ", f"{out}/go", go, ["build", "-o", "../gobin", "."])?
-	timed("ms check: ", f"{out}/ms", ms, ["check", "ms.toml"])?
-	timed("ms emit:  ", f"{out}/ms", ms, ["emit", "ms.toml"])?
+	timed("ms check: ", f"{out}/ms", ms, ["check", "--only", "types", "ms.toml"])?
+	timed(
+		"ms build --emit mir:  ",
+		f"{out}/ms",
+		ms,
+		["build", "--emit", "mir", "ms.toml"],
+	)?
 	drop_cache(f"{out}/ms")
 	timed(
 		"ms debug: ",

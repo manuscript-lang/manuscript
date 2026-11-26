@@ -1,6 +1,6 @@
 /* tooling/facts.h: the review fact model: what the checker established about each callable and type, never text.
  * It is built once from an inspection and the checked program,
- * read by the diagram views and by `ms review`, and lives in the arena it was built in.
+ * read by the diagram views and by `ms map --view review`, and lives in the arena it was built in.
  *
  * Ownership: all text and arrays are arena allocated; the program and the inspection need not outlive the model. */
 #ifndef MS_TOOLING_FACTS_H

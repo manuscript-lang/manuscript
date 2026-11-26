@@ -1,4 +1,4 @@
-/* Owns `ms profile` (profile_command.h): builds the program into a new bundle directory, runs it with the runtime's
+/* Owns `ms run --profile` (profile_command.h): builds the program into a new bundle directory, runs it with the runtime's
  * sampling profiler switched on (MS_PROFILE names the file the runtime writes its folded stacks to), converts what the
  * runtime wrote and reports it as text or as the versioned JSON document. `--allocs` also has the runtime sample allocations (MS_PROFILE_ALLOCS) and
  * reports which functions allocate. */
@@ -49,7 +49,7 @@ typedef struct Profile {
   size_t top;
   Artifact artifacts[12];
   size_t artifact_count;
-  MsSpan message;     /* a failure of ms profile itself, or empty */
+  MsSpan message;     /* a failure of ms run --profile itself, or empty */
   const char *phase;  /* the phase of that failure */
   MsSpan reason;      /* how the run ended: `program_exit`, or `<phase>_error` */
   int status;
@@ -212,7 +212,7 @@ static void print_document(const Profile *profile) {
 
 /* ---- running ---- */
 
-/* A failure of `ms profile`: the message on stderr (a failed build was already reported), and with --json the document. */
+/* A failure of `ms run --profile`: the message on stderr (a failed build was already reported), and with --json the document. */
 static int fail(Profile *profile, const char *phase, MsSpan message, int status) {
   profile->status = status;
   profile->phase = phase;
@@ -257,7 +257,7 @@ static bool make_bundle_directory(Profile *profile, MsSpan *why) {
   return false;
 }
 
-/* Runs the program with the profiler on; its status is the result of `ms profile` unless the profile fails. */
+/* Runs the program with the profiler on; its status is the result of `ms run --profile` unless the profile fails. */
 static bool run_program(Profile *profile, int *status, MsSpan scratch) {
   const MsInvocation *const invocation = profile->invocation;
   MsSpanList argv = {0};

@@ -1,0 +1,1 @@
+--effect needs --diff; it keeps the findings that reach or permit one effect, e.g. ms map ms.toml --view review --diff change.patch --effect std.net.*

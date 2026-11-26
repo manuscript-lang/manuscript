@@ -1,4 +1,4 @@
-/* Unit test of the folded-stack conversion of `ms profile` (profile_folded.c): reading, ranking, the text report and the
+/* Unit test of the folded-stack conversion of `ms run --profile` (profile_folded.c): reading, ranking, the text report and the
  * pprof encoding. The samples are the ones the Rust implementation's tests used. */
 #include <stdio.h>
 

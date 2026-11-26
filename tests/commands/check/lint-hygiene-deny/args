@@ -1,0 +1,5 @@
+check
+--only
+lint
+main.ms
+--deny-warnings

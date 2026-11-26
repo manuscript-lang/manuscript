@@ -1,4 +1,4 @@
-/* cli/profile_command.h: `ms profile <input> [--out-dir dir] [--top n] [--allocs] [-- program arguments]`. */
+/* cli/profile_command.h: `ms run --profile <input> [--out-dir dir] [--top n] [--allocs] [-- program arguments]`. */
 #ifndef MS_CLI_PROFILE_COMMAND_H
 #define MS_CLI_PROFILE_COMMAND_H
 

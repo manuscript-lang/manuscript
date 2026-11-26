@@ -1,4 +1,4 @@
-/* tooling/lint.h: the advisory findings of `ms lint` over a checked program
+/* tooling/lint.h: the advisory findings of `ms check --only lint` over a checked program
  * Lint never changes behavior and finds nothing in a program that has diagnostics.
  *
  * Ownership: every text of a finding is allocated from the arena the caller gives. */
@@ -16,14 +16,14 @@ typedef struct MsLintFinding {
   MsSpan file;
   MsPos pos;
   MsSpan message;
-  bool has_fix; /* an edit `ms lint --fix` applies: replace [fix_pos, fix_end) with `replacement` */
+  bool has_fix; /* an edit `ms check --only lint --fix` applies: replace [fix_pos, fix_end) with `replacement` */
   MsPos fix_pos, fix_end;
   MsSpan replacement;
 } MsLintFinding;
 
 MS_LIST_DEFINE(MsLintFindingList, ms_lint_finding_list, MsLintFinding)
 
-/* Everything `ms lint` reports for a checked program, outside `@std/`: lexical findings per module, then
+/* Everything `ms check --only lint` reports for a checked program, outside `@std/`: lexical findings per module, then
  * semantic ones, ordered by file, line and column. */
 void ms_lint_modules(MsArena *arena, const MsCheckProgram *program, MsLintFindingList *findings);
 

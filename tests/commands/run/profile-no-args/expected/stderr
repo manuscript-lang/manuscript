@@ -1,0 +1,32 @@
+ms run --profile: missing the file argument; pass a .ms file or a project ms.toml, e.g. ms run --profile ms.toml
+
+Usage: ms run <file.ms|ms.toml> [--json] [options] [--profile [--out-dir directory] [--top n] [--allocs]] [-- program arguments]
+
+Build a temporary executable and run its exported main() Int.
+Arguments after -- are passed unchanged to the application; its exit status is returned.
+Builds link with the linker bundled in ms on every platform; no C compiler or SDK is needed.
+
+Options:
+  --json                Capture output and emit one versioned result; a runtime fault is reported as data (no --watch)
+  --watch               Rebuild and restart after each saved source change
+  --build-type <level>  Debug, Release, or MinSizeRel (case-insensitive)
+  --link <file>         Link an object or static library that defines `extern fn` symbols (repeatable)
+  --static              Linux: link a static musl executable instead of the system glibc
+  --profile             Run with the sampling profiler enabled and write a profile bundle (see below)
+  Default build type: Debug (light LLVM optimization, builds faster); use --build-type Release for full optimization
+  -h, --help  Show this help without executing the command
+
+With --profile the runtime samples the program (MS_PROFILE is set to the folded-stack output path) and ms converts what it wrote:
+folded stacks, a pprof protobuf, and a text report of the busiest functions. The bundle contains program, profile.folded,
+profile.pb, top.txt, and manifest.json. The directory must be new. Native builds keep frame pointers, DWARF line tables and a
+perf map, so perf record works on any ms build output. Profiling adds overhead; measure normal execution separately.
+  --out-dir <directory>  Bundle directory (default: ./profile)
+  --top <n>              Rows in the text report (default 20)
+  --allocs               Also sample allocations: which functions allocate, in count and bytes
+  A profiled run builds with Release unless --build-type says otherwise, and does not take --watch, --link or --static.
+
+Examples:
+  ms run ms.toml -- first second
+  ms run main.ms --watch
+  ms run ms.toml --profile
+  ms run main.ms --profile --out-dir capture --top 10 -- first second
