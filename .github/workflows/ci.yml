@@ -55,15 +55,20 @@ jobs:
       # The pinned shared LLVM library: ms compiles programs through it in this process. The step exports MS_LLVM to the steps after it.
       - run: cmake --build --preset ci --target llvm-lib
       - run: ctest --preset ci
-      - name: Probe kernel run time by backend
+      - name: Probe collatz code and cpu
         shell: bash
         run: |
           ms=$(find .artifacts/build/ci -maxdepth 3 \( -name ms.exe -o -name ms \) -type f | head -1); ms=$PWD/$ms
           mkdir -p .artifacts/probe
-          echo "== cranelift (debug)"; "$ms" build --build-type debug -o .artifacts/probe/kd bench/perf/kernels/ms/src/main.ms; for i in 1 2 3; do ./.artifacts/probe/kd | tr '\n' ' '; echo; done
-          echo "== llvm debug"; MS_CRANELIFT=off "$ms" build --build-type debug -o .artifacts/probe/kl bench/perf/kernels/ms/src/main.ms; for i in 1 2 3; do ./.artifacts/probe/kl | tr '\n' ' '; echo; done
-          echo "== llvm release"; "$ms" build --build-type release -o .artifacts/probe/kr bench/perf/kernels/ms/src/main.ms; for i in 1 2 3; do ./.artifacts/probe/kr | tr '\n' ' '; echo; done
-          echo "== lld startup"; lld --version || true; which lld ld64.lld ld.lld lld-link || true
+          echo "== cpu"; if [ "$(uname)" = Darwin ]; then sysctl -n machdep.cpu.brand_string machdep.cpu.features machdep.cpu.leaf7_features 2>&1 | tr '\n' ' '; else lscpu | grep -E "Model name|Flags" | cut -c1-600; fi
+          "$ms" build --build-type debug -o .artifacts/probe/kd bench/perf/kernels/ms/src/main.ms
+          echo "== symbols"; nm .artifacts/probe/kd | grep -i collatz | head
+          sym=$(nm .artifacts/probe/kd | grep -i " [tT] .*collatz" | head -1 | awk '{print $3}')
+          echo "== disasm $sym"
+          if [ "$(uname)" = Darwin ]; then otool -tvV .artifacts/probe/kd | awk -v s="$sym" '$0 ~ s":"{p=1} p{print} p&&/^$/{exit}' | head -120
+          else objdump -d --no-show-raw-insn .artifacts/probe/kd | awk -v s="$sym" '$0 ~ "<"s">:"{p=1} p{print} p&&/^$/{exit}' | head -120; fi
+          echo "== times"; for i in 1 2 3; do ./.artifacts/probe/kd | grep -o "collatz_1M [0-9]*"; done
+          echo "== lld startup"; lld --version || true; which lld ld64.lld ld.lld || true
       # Each check below reports on its own: a failing test run does not hide the lint, package and repository results.
       - if: ${{ !cancelled() }}
         run: cmake --build --preset ci --target lint
