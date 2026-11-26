@@ -62,6 +62,9 @@ static bool lu_leaks(const LuRun *run) {
       const MirInst *i = &x->f->blocks.ptr[bi].insts.ptr[ii];
       switch ((MirOp)i->op) {
       case MOP_Store: case MOP_Put:
+        if (w != run->v && lu_store_view(x, i, w)) {
+          break; /* followed: the slot joined the family */
+        }
         if (i->nargs > 1 && i->args[1] == w && (w != run->v || i->op == MOP_Store)) {
           return true;
         }

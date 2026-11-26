@@ -83,7 +83,7 @@ typedef struct { uint32_t offset, kind, target; int64_t addend; } cl_reloc;
 /* Every function of the library: X(result, name, (parameters)). */
 #define CL_API(X) \
   /* Creates a module for `triple` (null: the host). `keys[i]`/`vals[i]` are Cranelift settings that override the \
-     defaults (for example `opt_level` = `speed`, `regalloc_algorithm` = `single_pass`). Returns null and sets the \
+     defaults (the library's own: `opt_level` = `none`; for example `opt_level` = `speed`, `regalloc_algorithm` = `single_pass`). Returns null and sets the \
      error (read with `cl_error(null)`) when the target or a setting is unknown. */ \
   X(cl *, cl_new, (const char *triple, uint32_t n, const char *const *keys, const char *const *vals)) \
   /* The last error of `c`, or of `cl_new` when `c` is null. Valid until the next call on `c`. */ \

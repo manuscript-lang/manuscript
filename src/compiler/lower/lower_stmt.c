@@ -590,6 +590,29 @@ static bool update_map_entry(LowerFn *fn, const MsExpr *place, MirValue value, b
   return !fn->failed;
 }
 
+/* Whether `expr` reads the local `local` by name. */
+typedef struct NameRead {
+  const MsFacts *facts;
+  uint32_t local;
+  bool found;
+} NameRead;
+
+static void name_read_expr(void *ctx, const MsExpr *expr) {
+  NameRead *scan = ctx;
+  if (expr->kind != MS_E_NAME || scan->found) {
+    return;
+  }
+  const MsRef *ref = ms_facts_ref(scan->facts, expr->id);
+  scan->found = ref != NULL && ref->kind == MS_REF_LOCAL && ref->local == scan->local;
+}
+
+static bool expr_reads_local(const MsFacts *facts, const MsExpr *expr, uint32_t local) {
+  NameRead scan = {.facts = facts, .local = local};
+  const MsVisitor visitor = {.ctx = &scan, .expr = name_read_expr};
+  ms_walk_expr(&visitor, expr);
+  return scan.found;
+}
+
 static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
   if (stmt->u.assign.member_target) {
     fn_presolve_keys(fn, stmt->u.assign.target); /* the target's indices run before the value, once */
@@ -621,7 +644,11 @@ static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
     }
     const uint32_t target_id = stmt->u.assign.target != NULL ? stmt->u.assign.target->id : stmt->id;
     const MsTy target_ty = ms_facts_type(fn->facts, target_id);
-    const bool gave_up = fn_cell_gives_up(fn, ref, assigned, target_ty);
+    /* The record leaves its cell for the statement only when the new value is built from it (`x = f(x)`). Any other
+     * assignment goes through the cell's scope entry, which knows whether an earlier move already emptied the cell. */
+    const bool gave_up = ref != NULL && ref->kind == MS_REF_LOCAL && stmt->u.assign.value != NULL &&
+                         expr_reads_local(fn->facts, stmt->u.assign.value, ref->local) &&
+                         fn_cell_gives_up(fn, ref, assigned, target_ty);
     fn->nmoved_names = 0;
     const MirValue value = take_value(fn, stmt->u.assign.value);
     if (gave_up) {

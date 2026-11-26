@@ -243,7 +243,7 @@ static bool lu_plain(const MirModule *m, MirTy t, uint32_t *seen, uint32_t gen) 
   case MK_LIST: case MK_OPT:
     return lu_plain(m, d->elem, seen, gen);
   case MK_OBJ: {
-    if (d->obj_class != MIR_OBJ_COLLECTION) {
+    if (d->obj_class == MIR_OBJ_HANDLE) { /* a handle may close something */
       return false;
     }
     for (uint32_t i = 0; i < d->nargs; i++) {
@@ -319,6 +319,11 @@ static void lu_add(LuCtx *x, LuFamily *fam, MirValue r) {
   fam->work[fam->nwork++] = r;
 }
 
+/* Whether `i` stores the view `w` into a local slot (a stack temporary that a call reads through its address). */
+bool lu_store_view(const LuCtx *x, const MirInst *i, MirValue w) {
+  return i->op == MOP_Store && i->nargs > 1 && i->args[1] == w && x->slots[i->args[0]];
+}
+
 /* A call extends the family by the arguments it may keep and by a result that views into them. */
 static void lu_family_call(LuCtx *x, LuFamily *fam, const MirInst *i) {
   const MirModule *m = x->m;
@@ -374,6 +379,10 @@ void lu_family(LuCtx *x, MsArena *ca, LuFamily *fam, MirValue v, uint32_t param_
       }
       if (mir_op_is_call(i->op)) {
         lu_family_call(x, fam, i);
+        continue;
+      }
+      if (lu_store_view(x, i, w)) { /* the slot now holds a view into the family and is followed like any member */
+        lu_add(x, fam, i->args[0]);
         continue;
       }
       if (i->res != MIR_NONE && !lu_is_scalar(m, f->values.ptr[i->res])) {

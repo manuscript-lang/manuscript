@@ -157,8 +157,8 @@ static const Step late_steps[] = {
     {"fieldload", opt_fieldload},
     {"strfuse", strfuse_step}, /* the simplified bodies hold `take`/`drop` of a variable's slot, which the early run does not see */
     {"fuse", opt_fuse_step},
+    {"lastuse", opt_lastuse}, /* before exit_drops: a drop it has not moved yet would be gated, and lastuse leaves a conditional drop alone */
     {"exit_drops", opt_exit_drops},
-    {"lastuse", opt_lastuse},
     {"unwind pairs", opt_unwind_pairs},
     {"thread", opt_thread},
     {"bytetake", opt_bytetake},

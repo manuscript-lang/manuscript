@@ -42,18 +42,26 @@ b2():
   br_if %17, b3(), b4() !0:9:5
 b3():
   %18: void = call.rt @msrt_unwinding_pause () !0:9:5
-  drop %15
-  drop %13
-  drop %6
-  %19: void = call.rt @msrt_unwinding_resume () !0:9:5
-  %20: int = undef !0:9:5
-  ret %20 !0:9:5
+  br b8() !0:9:5
 b4():
-  %21: int = iconst 0 !0:10:5
+  %19: int = iconst 0 !0:10:5
   drop %15
   drop %13
   drop %6
-  ret %21 !0:10:5
+  ret %19 !0:10:5
+b5():
+  %20: void = call.rt @msrt_unwinding_resume () !0:9:5
+  %21: int = undef !0:9:5
+  ret %21 !0:9:5
+b6():
+  drop %6 !0:9:5
+  br b5() !0:9:5
+b7():
+  drop %13 !0:9:5
+  br b6() !0:9:5
+b8():
+  drop %15 !0:9:5
+  br b7() !0:9:5
   scope "print" 1 0 9
 }
 
