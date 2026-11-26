@@ -72,7 +72,10 @@ jobs:
               for c in .artifacts/cores/core.*; do
                 [ -e "$c" ] || continue
                 echo "--- core $c"
-                gdb -batch -ex "bt 30" -ex "info registers pc sp" -ex "x/8i $pc-16" -ex "info threads" .artifacts/rc -c "$c" 2>&1 | head -120
+                printf 'p $_siginfo._sifields._sigfault.si_addr\ninfo registers\nx/16i $pc-32\ninfo proc mappings\n' > .artifacts/gdb.cmd
+                gdb -batch -x .artifacts/gdb.cmd .artifacts/rc -c "$c" 2>&1 | grep -v "\.so\|io_uring" | head -120
+                gdb -batch -ex "disassemble parameters" .artifacts/rc 2>&1 | head -400 > .artifacts/parameters.s; grep -c "" .artifacts/parameters.s
+                sed -n '/<+3[6-9][0-9]>\|<+4[0-9][0-9]>/p' .artifacts/parameters.s | head -60
                 rm -f "$c"
               done
               [ $fails -ge 1 ] && break
