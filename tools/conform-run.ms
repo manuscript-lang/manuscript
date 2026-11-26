@@ -83,7 +83,26 @@ fn wanted(fx Fixture) String {
 
 fn seen(fx Fixture, observed JsonValue) String {
 	if fx.inline.is_empty() { return clipped(observed) }
-	return render_phase(fx.phase, observed).join("\n          ")
+
+	var lines = render_phase(fx.phase, observed)
+	lines.extend(failures(observed))
+	return lines.join("\n          ")
+}
+
+// The failure text of each failed test of an observed `ms test`, so a report names the
+// cause.
+fn failures(observed JsonValue) List[String] {
+	report := observed.get("report") or JsonValue.Null
+	var lines = List[String]()
+
+	for one in (report.get("tests") or JsonValue.Null).as_list() or [] {
+		text := (one.get("failure") or JsonValue.Null).as_string() or ""
+		if text.is_empty() { continue }
+
+		lines.append(f"failure: {text}")
+	}
+
+	return lines
 }
 
 // An observation as a sidecar records it: `unchanged` is only for inline expectations.
