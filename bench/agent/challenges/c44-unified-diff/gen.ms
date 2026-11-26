@@ -82,8 +82,8 @@ fn solve(s String) String {
 	c := head[2].parse_int() or 0
 	n := head[3].parse_int() or 0
 	m := head[4].parse_int() or 0
-	a := lines.slice(1, 1 + n).get_or([])
-	b := lines.slice(1 + n, 1 + n + m).get_or([])
+	a := lines.slice(1, 1 + n).clone().get_or([])
+	b := lines.slice(1 + n, 1 + n + m).clone().get_or([])
 	ops := script(a, b)
 	var changed = List[Int]()
 	for k in 0..ops.length() {
@@ -96,7 +96,7 @@ fn solve(s String) String {
 	var groups = List[List[Int]]()
 	var cur = [changed[0]]
 
-	for k in changed.slice(1, changed.length()).get_or([]) {
+	for k in changed.slice(1, changed.length()).clone().get_or([]) {
 		if k - cur[cur.length() - 1] - 1 <= 2 * c {
 			cur.append(k)
 		} else {
@@ -112,10 +112,10 @@ fn solve(s String) String {
 	for g in groups {
 		lo := if g[0] - c > 0 { g[0] - c } else { 0 }
 		hi := if g[g.length() - 1] + 1 + c < ops.length() { g[g.length() - 1] + 1 + c } else { ops.length() }
-		before := ops.slice(0, lo).get_or([])
+		before := ops.slice(0, lo).clone().get_or([])
 		sa := before.count(o => o.mark != "+")
 		sb := before.count(o => o.mark != "-")
-		body := ops.slice(lo, hi).get_or([])
+		body := ops.slice(lo, hi).clone().get_or([])
 		la := body.count(o => o.mark != "+")
 		lb := body.count(o => o.mark != "-")
 		out.append(f"@@ -{rng(sa, la)} +{rng(sb, lb)} @@")
@@ -215,7 +215,9 @@ export fn gen_c44() Void {
 				"start-and-end",
 				nums,
 				["new first"].concat(
-					nums.slice(0, nums.length() - 1).get_or([])
+					nums.slice(0, nums.length() - 1).clone().get_or(
+						[]
+					)
 				).concat(["new last"]),
 				3,
 			),
@@ -258,10 +260,10 @@ export fn gen_c44() Void {
 			case3(
 				"pure-insert-delete",
 				base20,
-				base20.slice(0, 5).get_or([]).concat(
+				base20.slice(0, 5).clone().get_or([]).concat(
 					["i1", "i2"]
-				).concat(base20.slice(5, 12).get_or([])).concat(
-					base20.slice(14, 20).get_or([])
+				).concat(base20.slice(5, 12).clone().get_or([])).concat(
+					base20.slice(14, 20).clone().get_or([])
 				),
 				2,
 			),

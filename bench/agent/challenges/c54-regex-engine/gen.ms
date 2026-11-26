@@ -16,7 +16,7 @@ fn line(cmd, pat String, subj String = "", repl String? = null) String {
 	var fields = [cmd.clone(), pat.clone(), subj.clone()]
 	r := repl
 	if r != null {
-		fields.append(r)
+		fields.append(r.clone())
 	}
 	return fields.join("\t") + "\n"
 }

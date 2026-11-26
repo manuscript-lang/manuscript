@@ -24,7 +24,7 @@ fn strip_nl(text String) String {
 	while end > start and chars[end - 1] == "\n" {
 		end -= 1
 	}
-	return chars.slice(start, end).get_or([]).join("") + "\n"
+	return chars.slice(start, end).clone().get_or([]).join("") + "\n"
 }
 
 fn seeded(extra String) String {

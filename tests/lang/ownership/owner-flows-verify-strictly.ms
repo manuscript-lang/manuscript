@@ -47,7 +47,7 @@ fn parsed(lines List[String]) List[String] {
 	for line in lines {
 		held String! := ok(line.clone())
 		r := identity(held)
-		event := r.to_optional()
+		event := r.clone().to_optional()
 		if event != null { out.append(event.clone()) }
 	}
 

@@ -20,7 +20,7 @@ fn strip_nl(text String) String {
 	while end > start and chars[end - 1] == "\n" {
 		end -= 1
 	}
-	return chars.slice(start, end).get_or([]).join("")
+	return chars.slice(start, end).clone().get_or([]).join("")
 }
 
 fn add(var cs Cases, name, prog String, inp String? = null) Void {

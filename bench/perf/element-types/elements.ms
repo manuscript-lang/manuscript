@@ -343,7 +343,7 @@ type Stack[T] {
 	items List[T] = []
 }
 
-fn var Stack[T].push(v T) Void {
+fn var Stack[T].push(move v T) Void {
 	self.items.append(v)
 }
 

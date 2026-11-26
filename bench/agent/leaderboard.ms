@@ -159,7 +159,7 @@ fn read_trial(dir String) Trial? {
 	task := r.get("task_name")
 	if task == null { return null }
 
-	name := ((task).as_string() or "").split("/").last() or ""
+	name := (((task).as_string() or "").split("/").last() or "").clone()
 	cut := name.last_index_of("-") or 0
 	cid := name.slice(0, cut)
 	lang := name.slice(cut + 1, name.length())
@@ -263,7 +263,7 @@ fn collect(dirs List[String]) Int {
 		for entry in glob(jobs, GlobOptions(patterns: ["**/*__*"])).get_or([]) {
 			path := entry.path.clone()
 			dir := f"{jobs}/{path}"
-			leaf := path.split("/").last() or ""
+			leaf := (path.split("/").last() or "").clone()
 			info := stat(dir).to_optional()
 			is_dir := info != null and info.is_directory()
 
@@ -509,7 +509,7 @@ fn render(src_arg String?) Int {
 fn main() Int {
 	args := arguments()
 	if args.length() >= 2 and args[0] == "collect" {
-		return collect(args.slice(1, args.length()).get_or([]))
+		return collect(args.slice(1, args.length()).clone().get_or([]))
 	}
 	if args.length() == 1 and args[0] == "render" { return render(null) }
 	if args.length() == 2 and args[0] == "render" { return render(args[1].clone()) }

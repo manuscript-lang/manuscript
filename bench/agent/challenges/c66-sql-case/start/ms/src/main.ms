@@ -1364,7 +1364,7 @@ fn exec_select(db Map[String, Table], var st Stmt) String! {
 
 	for tr in st.trefs {
 		t := get_table(db, tr.name)?
-		for a in st.trefs.slice(0, ti).get_or([]) {
+		for a in st.trefs.slice(0, ti).clone().get_or([]) {
 			if a.alias == tr.alias { return error(err(f"duplicate alias: {tr.alias}")) }
 		}
 

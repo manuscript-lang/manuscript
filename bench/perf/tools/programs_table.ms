@@ -66,7 +66,7 @@ export fn summarize(lines List[String], repeats Int) String! {
 
 		if name == "#" {
 			var sink = List[Int]()
-			for p in parts.slice(3, parts.length()).get_or([]) {
+			for p in parts.slice(3, parts.length()).clone().get_or([]) {
 				sink.append(p.parse_int() or (-1))
 			}
 			if parts.length() < 3 or parts[2] != "sink" or sink != SINK {

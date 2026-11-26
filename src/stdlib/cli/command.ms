@@ -205,7 +205,7 @@ fn Command.execute(argv List[String]) Int {
 		return 2
 	}
 
-	match parsed.get() {
+	match parsed.get().clone() {
 		Help(text) => {
 			void stdout().write(text).get()
 			return 0

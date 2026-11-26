@@ -58,6 +58,24 @@ static MirValue lower_or_view(LowerFn *fn, const MsExpr *expr, MirValue left, Mi
   return mir_b_emit(&fn->b, MOP_OptGet, &chosen, 1, (MirImm){0}, result_ty);
 }
 
+/* `x or d` over a nullable `x` whose default is nullable too, read in place with `d` a name: both answers are views already,
+ * so the result is `x` when it holds a payload and `d` otherwise, and nothing is copied. */
+static MirValue lower_or_nullable_view(LowerFn *fn, const MsExpr *expr, MirValue left, MirTy opt_ty, MirBlock null_block, MirBlock join) {
+  const MirVar either = mir_b_declare_var(&fn->b, opt_ty, MM_BORROW);
+  mir_b_def_var(&fn->b, either, left);
+  mir_b_br(&fn->b, join, NULL, 0);
+  mir_b_switch_to(&fn->b, null_block);
+  const MirValue other = fn_expr(fn, expr->u.bin.right, LW_BORROW);
+  if (other == MIR_NONE) {
+    return MIR_NONE;
+  }
+  mir_b_def_var(&fn->b, either, other);
+  mir_b_br(&fn->b, join, NULL, 0);
+  mir_b_seal_block(&fn->b, join);
+  mir_b_switch_to(&fn->b, join);
+  return mir_b_use_var(&fn->b, either);
+}
+
 MirValue fn_lower_or_null(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   const MirTy result_ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
   /* A name this expression moves, or reads for the last time, gives its payload up as `if v := name { ... }` does. */
@@ -73,8 +91,7 @@ MirValue fn_lower_or_null(LowerFn *fn, const MsExpr *expr, LowerWant want) {
                           ms_own_native_get(fn->cx->program, fn->facts, named) == MS_NATIVE_GET_MAP;
   /* an Optional value (`Map[K, V?]`) is stored boxed: the entry is no view of the answer */
   const MsTy answered = entry_read ? ms_facts_type(fn->facts, named->id) : MS_TY_NONE;
-  const bool plain_entry = entry_read && ms_ty_arg_count(&fn->cx->program->types, answered) == 1 &&
-                           !ms_ty_is(&fn->cx->program->types, ms_ty_args(&fn->cx->program->types, answered)[0], MS_BUILTIN_Optional);
+  const bool plain_entry = entry_read && ms_ty_arg_count(&fn->cx->program->types, answered) == 1;
   const MirValue entry = plain_entry ? fn_map_entry_view(fn, named) : MIR_NONE;
   const MirValue left = entry != MIR_NONE ? entry : fn_expr(fn, named, moving ? LW_MOVE : LW_BORROW);
   if (left == MIR_NONE || result_ty == MIR_VOID) {
@@ -104,6 +121,10 @@ MirValue fn_lower_or_null(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   if (!owns && !view_only && want == LW_BORROW && !never_rhs && mir_ty_data(fn->cx->module, opt_ty)->elem == result_ty &&
       mir_needs_drop(fn->cx->module, result_ty) && !ms_check_holds_resource(fn->cx->program, ms_facts_type(fn->facts, expr->id))) {
     return lower_or_view(fn, expr, left, present, opt_ty, result_ty, some_block, null_block, join);
+  }
+  if (!owns && !view_only && want == LW_BORROW && !never_rhs && result_ty == opt_ty && mir_needs_drop(fn->cx->module, opt_ty) &&
+      expr->u.bin.right->kind == MS_E_NAME) {
+    return lower_or_nullable_view(fn, expr, left, opt_ty, null_block, join);
   }
   MirTy payload_ty = MIR_VOID;
   MirValue payload;

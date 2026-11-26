@@ -36,7 +36,7 @@ fn strip_nl(text String) String {
 	while end > start and chars[end - 1] == "\n" {
 		end -= 1
 	}
-	return chars.slice(start, end).get_or([]).join("") + "\n"
+	return chars.slice(start, end).clone().get_or([]).join("") + "\n"
 }
 
 fn add(var cs Cases, name, makefile String, files, reqs List[String]) Void {
