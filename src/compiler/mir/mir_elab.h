@@ -38,11 +38,26 @@ typedef struct ElPart {
 
 /* The owners in scope in definition order, persistent so a copy shares everything with the original (a
  * function of N blocks and N owners must not copy N owners per block). */
+/* One owner of the plain-drop list a state keeps (`ElState.tip`): the list is a stack, newest first, shared by the
+ * states that grew from the same one. */
+typedef struct ElNode {
+  MirValue v;
+  int64_t scope;          /* the scope that owns it */
+  const struct ElNode *next;
+  bool uniform;           /* it and every older node belong to one scope */
+  bool bad;               /* this owner or an older one cannot be dropped by a shared chain */
+  MirBlock block;         /* the block of the shared chain that drops it and everything older, once made */
+} ElNode;
+
 typedef struct ElState {
   PosMap seq;   /* definition position -> value << 32 | ElSt */
   PosMap at;    /* value -> definition position */
   OwnerSet odd; /* the owners in a state a join produces */
   uint32_t next;
+  /* While `tainted` is false, `tip` lists every owner of the state, all live and plain drops, newest first. An exit that
+   * ends the scope of the whole list drops it through the shared chain without looking at the state. */
+  ElNode *tip;
+  bool tainted;
 } ElState;
 
 /* One owner of a state, in definition order. */
@@ -185,6 +200,9 @@ bool el_exit_tail(const ElEm *em, const MirBlockData *old, size_t at, ElTail *ta
 /* Ends block `at` with a branch into the shared chain that drops `owners` (latest first) and then runs `em->tail`.
  * False, and nothing emitted, when the chain was made for another tail. */
 bool el_share_drops(ElEm *em, uint32_t at, const MirValue *owners, uint32_t count);
+
+/* The same for the whole list of a state, newest first, without visiting the owners a chain already holds. */
+bool el_share_list(ElEm *em, uint32_t at, ElNode *tip);
 
 /* Edge, flag and slot-refill code (mir_elab_edge.c, mir_elab_flags.c). */
 bool em_edges(ElEm *em, uint32_t cur, const ElState *state, MirTerm *term, const ElFparams *fparams);

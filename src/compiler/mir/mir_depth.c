@@ -324,28 +324,31 @@ bool mir_depth_lower(MirModule *m) {
 
 /* ---- marking recursive functions ---- */
 
+/* Where a walk over a function's direct calls stopped: the next instruction to look at. */
+typedef struct DpCursor {
+  uint32_t block, inst;
+} DpCursor;
+
 typedef struct DpGraph {
   const MirModule *m;
-  uint32_t *index, *low, *stack, *frame_func, *frame_next;
+  uint32_t *index, *low, *stack, *frame_func;
+  DpCursor *frame_next;
   bool *on_stack, *recursive;
   uint32_t counter;
 } DpGraph;
 
-/* The next function `func` calls directly after the instruction at `*cursor` (a flat walk over its
- * blocks), or UINT32_MAX when there is none. */
-static uint32_t dp_next_callee(const MirFunc *func, uint32_t *cursor) {
-  uint32_t at = 0;
-  for (uint32_t b = 0; b < func->blocks.len; b++) {
-    const MirInstList *insts = &func->blocks.ptr[b].insts;
-    for (uint32_t i = 0; i < insts->len; i++, at++) {
-      const MirInst *inst = &insts->ptr[i];
-      if (at >= *cursor && inst->op == MOP_Call && inst->imm.tag == MI_FUNC) {
-        *cursor = at + 1;
+/* The next function `func` calls directly from `*cursor` on, or UINT32_MAX when there is none. Each call resumes
+ * where the last one stopped, so a function of n calls is read once. */
+static uint32_t dp_next_callee(const MirFunc *func, DpCursor *cursor) {
+  for (; cursor->block < func->blocks.len; cursor->block++, cursor->inst = 0) {
+    const MirInstList *insts = &func->blocks.ptr[cursor->block].insts;
+    while (cursor->inst < insts->len) {
+      const MirInst *inst = &insts->ptr[cursor->inst++];
+      if (inst->op == MOP_Call && inst->imm.tag == MI_FUNC) {
         return inst->imm.a;
       }
     }
   }
-  *cursor = at;
   return UINT32_MAX;
 }
 
@@ -368,7 +371,7 @@ static bool dp_calls_indirectly(const MirFunc *func) {
 static void dp_scc(DpGraph *g, uint32_t root) {
   uint32_t depth = 0, top = 0;
   g->frame_func[0] = root;
-  g->frame_next[0] = 0;
+  g->frame_next[0] = (DpCursor){0};
   g->index[root] = g->low[root] = ++g->counter;
   g->stack[top++] = root;
   g->on_stack[root] = true;
@@ -385,7 +388,7 @@ static void dp_scc(DpGraph *g, uint32_t root) {
         g->stack[top++] = callee;
         g->on_stack[callee] = true;
         g->frame_func[depth] = callee;
-        g->frame_next[depth] = 0;
+        g->frame_next[depth] = (DpCursor){0};
         depth++;
       } else if (g->on_stack[callee] && g->index[callee] < g->low[f]) {
         g->low[f] = g->index[callee];
@@ -426,7 +429,7 @@ bool mir_depth_mark(MirModule *m) {
                .low = MS_ARENA_NEW_ARRAY(arena, uint32_t, count),
                .stack = MS_ARENA_NEW_ARRAY(arena, uint32_t, count),
                .frame_func = MS_ARENA_NEW_ARRAY(arena, uint32_t, count),
-               .frame_next = MS_ARENA_NEW_ARRAY(arena, uint32_t, count),
+               .frame_next = MS_ARENA_NEW_ARRAY(arena, DpCursor, count),
                .on_stack = MS_ARENA_NEW_ARRAY(arena, bool, count),
                .recursive = MS_ARENA_NEW_ARRAY(arena, bool, count)};
   for (uint32_t f = 0; f < count; f++) {

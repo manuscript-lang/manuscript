@@ -203,6 +203,7 @@ void rg_fa_init(RgFa *fa, const MirModule *m, const MirFunc *f) {
   MirPreds preds = mir_preds(&fa->arena, f);
   fa->nrpo = mir_rpo(&fa->arena, f, &fa->rpo);
   fa->idom = mir_dominators(&fa->arena, f, fa->rpo, fa->nrpo, &preds);
+  fa->dom = mir_dom_tree(&fa->arena, f, fa->rpo, fa->nrpo, fa->idom);
   fa->rpo_pos = RG_ZNEW(&fa->arena, uint32_t, (size_t)fa->nb + 1);
   for (uint32_t r = 0; r < fa->nrpo; r++) {
     fa->rpo_pos[fa->rpo[r]] = r;

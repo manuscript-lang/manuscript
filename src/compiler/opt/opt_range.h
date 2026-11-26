@@ -118,6 +118,7 @@ typedef struct RgFa {
   const MirFunc *f;
   uint32_t nv, nb, nrpo;
   MirBlock *rpo, *idom;
+  MirDomTree dom; /* the dominator tree as intervals: a dominance query is two compares */
   uint32_t *rpo_pos;
   /* The instruction that defines each value (MIR_NONE for a parameter) and, for a parameter of
    * a block other than the entry, the block and position. */

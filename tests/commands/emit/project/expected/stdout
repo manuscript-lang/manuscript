@@ -42,18 +42,26 @@ b2():
   br_if %17, b3(), b4() !0:9:5
 b3():
   %18: void = call.rt @msrt_unwinding_pause () !0:9:5
-  drop %15
-  drop %13
-  drop %6
-  %19: void = call.rt @msrt_unwinding_resume () !0:9:5
-  %20: int = undef !0:9:5
-  ret %20 !0:9:5
+  br b8() !0:9:5
 b4():
-  %21: int = iconst 0 !0:10:5
+  %19: int = iconst 0 !0:10:5
   drop %15
   drop %13
   drop %6
-  ret %21 !0:10:5
+  ret %19 !0:10:5
+b5():
+  %20: void = call.rt @msrt_unwinding_resume () !0:9:5
+  %21: int = undef !0:9:5
+  ret %21 !0:9:5
+b6():
+  drop %6 !0:9:5
+  br b5() !0:9:5
+b7():
+  drop %13 !0:9:5
+  br b6() !0:9:5
+b8():
+  drop %15 !0:9:5
+  br b7() !0:9:5
   scope "print" 1 0 9
 }
 
@@ -154,21 +162,23 @@ b0:
   br_if %3, b1(), b2() !1:208:36
 b1():
   %4: void = call.rt @msrt_unwinding_pause () !1:208:36
-  drop %2
-  %5: void = call.rt @msrt_unwinding_resume () !1:208:36
-  ret !1:208:36
+  br b6() !1:208:36
 b2():
-  %6: void = call.rt @msrt_io_write_stdout_end (%2, %1) !1:208:5
-  %7: bool = call.rt @msrt_unwinding () !1:208:5
-  br_if %7, b3(), b4() !1:208:5
+  %5: void = call.rt @msrt_io_write_stdout_end (%2, %1) !1:208:5
+  %6: bool = call.rt @msrt_unwinding () !1:208:5
+  br_if %6, b3(), b4() !1:208:5
 b3():
-  %8: void = call.rt @msrt_unwinding_pause () !1:208:5
-  drop %2
-  %9: void = call.rt @msrt_unwinding_resume () !1:208:5
-  ret !1:208:5
+  %7: void = call.rt @msrt_unwinding_pause () !1:208:5
+  br b6() !1:208:5
 b4():
   drop %2
   ret !1:208:5
+b5():
+  %8: void = call.rt @msrt_unwinding_resume () !1:208:36
+  ret !1:208:36
+b6():
+  drop %2 !1:208:36
+  br b5() !1:208:36
   name %0 "value" param 0
   name %1 "end" param 0
 }
@@ -210,14 +220,18 @@ b8():
   br_if %17, b9(), b10() !2:17:35
 b9():
   %18: void = call.rt @msrt_unwinding_pause () !2:17:35
-  drop %16
-  %19: void = call.rt @msrt_unwinding_resume () !2:17:35
-  %20: Result[Int, Failure] = undef !2:17:35
-  ret %20 !2:17:35
+  br b12() !2:17:35
 b10():
-  %21: Failure = alt.new Failure.Bad %16 !2:17:26
-  %22: Result[Int, Failure] = alt.new Result[Int, Failure].error %21 !2:17:12
-  ret %22 !2:17:12
+  %19: Failure = alt.new Failure.Bad %16 !2:17:26
+  %20: Result[Int, Failure] = alt.new Result[Int, Failure].error %19 !2:17:12
+  ret %20 !2:17:12
+b11():
+  %21: void = call.rt @msrt_unwinding_resume () !2:17:35
+  %22: Result[Int, Failure] = undef !2:17:35
+  ret %22 !2:17:35
+b12():
+  drop %16 !2:17:35
+  br b11() !2:17:35
   name %0 "text" param 0
 }
 

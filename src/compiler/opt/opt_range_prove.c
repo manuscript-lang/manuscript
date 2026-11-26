@@ -181,11 +181,7 @@ static void rg_carry_goal_facts(const RgFa *fa, RgGoal goal, uint32_t bi, const 
     if (def == MIR_NONE) {
       continue;
     }
-    uint32_t b = bi;
-    while (b != def && b != 0) {
-      b = fa->idom[b];
-    }
-    if (b == def) {
+    if (mir_tree_dominates(&fa->dom, def, bi)) {
       rg_env_narrow(edge, v, env->ent[i].itv.lo, env->ent[i].itv.hi);
     }
   }
@@ -403,11 +399,7 @@ static bool rg_access_before(const RgFa *fa, MirValue idx, MirValue l, uint32_t 
       }
       continue;
     }
-    uint32_t b = bi;
-    while (b != access->block && b != 0) {
-      b = fa->idom[b];
-    }
-    if (b == access->block) {
+    if (mir_tree_dominates(&fa->dom, access->block, bi)) {
       return true;
     }
   }
@@ -438,11 +430,7 @@ static bool rg_square_fits(const RgFa *fa, MirValue y, uint32_t bi, uint32_t ii)
       }
       continue;
     }
-    uint32_t b = bi;
-    while (b != sb && b != 0) {
-      b = fa->idom[b];
-    }
-    if (b == sb) {
+    if (mir_tree_dominates(&fa->dom, sb, bi)) {
       return true;
     }
   }
