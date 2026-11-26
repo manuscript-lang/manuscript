@@ -14,7 +14,7 @@ fn has(k Int) Bool {
 }
 
 fn label(k Int) String {
-	return {1: "one", 2: "two"}.get_or(k, "none")
+	return {1: "one", 2: "two"}.get_or(k, "none").clone()
 }
 
 fn found(k Int) Bool {

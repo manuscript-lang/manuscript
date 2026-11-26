@@ -19,7 +19,7 @@ type Box[T] {
 	child Val
 }
 
-fn replace[T](var box Box[T], value T) Void {
+fn replace[T](var box Box[T], move value T) Void {
 	box.value = value
 }
 

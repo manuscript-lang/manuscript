@@ -792,6 +792,14 @@ bool fn_names_borrowed_param(LowerFn *fn, const MsExpr *expr) {
          fn->b.func.params[param_at].mode != MM_MOVE && !(expr->kind == MS_E_NAME && fn_owned_local(fn, expr, &param_var));
 }
 
+/* Whether `expr` is a parameter taken by borrow, or a field of one: as much the caller's as the parameter. */
+bool fn_names_borrowed_place(LowerFn *fn, const MsExpr *expr) {
+  while (expr->kind == MS_E_MEMBER) {
+    expr = expr->u.member.left;
+  }
+  return fn_names_borrowed_param(fn, expr);
+}
+
 /* A name or field read where the consumer takes ownership: the value stays with its binding unless the use moves
  * it, so the consumer gets a copy. */
 static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, LowerWant want) {

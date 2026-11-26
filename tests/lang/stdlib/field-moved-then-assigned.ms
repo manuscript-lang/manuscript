@@ -7,7 +7,7 @@ type Box {
 	label String
 }
 
-fn var Box.replace_items(next List[String]) List[String] {
+fn var Box.replace_items(move next List[String]) List[String] {
 	old := self.items
 	self.items = next
 	return old

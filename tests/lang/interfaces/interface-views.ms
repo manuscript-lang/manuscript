@@ -32,7 +32,7 @@ fn first_failure(cause Cause) Int!Reportable {
 
 fn fresh(hold cause Cause, make Bool) Reportable {
 	if make { return Cause(9, "fresh and also heap allocated text") }
-	return cause
+	return cause.clone()
 }
 
 fn relay(hold e Reportable) &Reportable {
@@ -53,7 +53,7 @@ fn cond(hold cause Cause, hold other Cause, c Bool) Reportable {
 	e := first_error(cause)
 	if c { return e }
 
-	return other
+	return other.clone()
 }
 
 fn looped(hold cause Cause) Reportable {

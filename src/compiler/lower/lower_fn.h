@@ -637,6 +637,7 @@ MirValue fn_take_from_temporary(LowerFn *fn, const MsExpr *call, MirValue value)
 /* Whether a read of `expr` leaves the binding: the checker's move, or an owner's last read. */
 bool fn_leaves_binding(const LowerFn *fn, const MsExpr *expr);
 bool fn_names_borrowed_param(LowerFn *fn, const MsExpr *expr);
+bool fn_names_borrowed_place(LowerFn *fn, const MsExpr *expr);
 bool fn_probe_parts(const LowerFn *fn, const MsStmt *stmt, MsExpr **left, MsExpr **index);
 bool fn_probe_begin(LowerFn *fn, const MsStmt *stmt, MirValue *cond, MirValue *address, MirTy *ty);
 bool fn_lend_writeback(LowerFn *fn, struct VarSlot *lent);

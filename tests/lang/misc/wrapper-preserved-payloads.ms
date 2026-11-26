@@ -147,7 +147,7 @@ fn specialized_optional[T](create fn() Int, move value T?) T!Int {
 	return error(create())
 }
 
-fn specialized_error[T](value Int!T) String!T {
+fn specialized_error[T](move value Int!T) String!T {
 	return value.map[String](item => f"{item}")
 }
 

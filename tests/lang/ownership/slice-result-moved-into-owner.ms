@@ -14,7 +14,7 @@ fn churn() Int {
 }
 
 fn rest_of(versions List[String]) List[String] {
-	tail := versions.slice(1, versions.length()).get_or([])
+	tail := versions.slice(1, versions.length()).clone().get_or([])
 	return tail.clone()
 }
 
@@ -30,7 +30,7 @@ test "a list taken out of a slice result can be grown" {
 test "a loop over a slice result keeps the source elements" {
 	parts := ["a", "b", "1", "2", "3"]
 	var total = 0
-	for p in parts.slice(2, parts.length()).get_or([]) {
+	for p in parts.slice(2, parts.length()).clone().get_or([]) {
 		total += p.parse_int() or 0
 	}
 	expect_equal(total, 6)?

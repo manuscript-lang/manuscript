@@ -60,7 +60,7 @@ fn route(request HttpRequest) HttpResponse {
 		)
 	}
 
-	label := request.headers.get_all("Content-Type").first() or ""
+	label := request.headers.get_all("Content-Type").first().clone() or ""
 	return HttpResponse(
 		status: 200,
 		headers: headers(),

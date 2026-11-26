@@ -28,7 +28,7 @@ test "concat keeps a left side that is still used" {
 
 test "concat onto a view and an empty buffer copies first" {
 	source := Bytes([7, 8, 9])
-	var grown = source.view(0, 2)
+	var grown = source.view(0, 2).clone()
 	grown = grown.concat(Bytes([1]))
 	expect_equal(source.values(), [7, 8, 9])?
 	expect_equal(grown.values(), [7, 8, 1])?

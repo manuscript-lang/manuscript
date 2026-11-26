@@ -30,7 +30,7 @@ fn present(log String) Int {
 
 fn absent(log String) Int {
 	held Door? := null
-	door := held or Door(3, log.clone())
+	door := held.clone() or Door(3, log.clone())
 	return door.id
 }
 

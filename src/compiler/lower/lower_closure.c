@@ -584,7 +584,9 @@ static MirValue fn_closure_owns(LowerFn *fn, const MsExpr *written, MirValue rec
   }
   /* A call's result of plain memory is no scope's owner, but it is still a fresh value the closure must close. */
   const bool plain_call = written->kind == MS_E_CALL && !mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, receiver));
-  if (!plain_call && !fn_fresh_owner(fn, receiver)) {
+  if (!plain_call && fn_is_text_literal(written)) {
+    receiver = fn_emit(fn, MOP_Clone, &receiver, 1, (MirImm){0}, mir_b_ty(&fn->b, receiver)); /* a literal is static: the closure owns a copy */
+  } else if (!plain_call && !fn_fresh_owner(fn, receiver)) {
     return fn_implicit_clone(fn, receiver, true);
   }
   if (!plain_call) {
