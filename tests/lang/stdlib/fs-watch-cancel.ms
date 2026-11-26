@@ -10,14 +10,10 @@ import (
 // The burst raises more events than the default queue holds on a host that reports
 // every level of a new directory (Windows), so the queue is sized for it. Tells the
 // test the watch is registered, reads events until `last` shows up, tells the test
-// again (a change of the root also counts, since a full queue reports the root
+// again (a `rescan` event also counts, since a full queue reports the root
 // instead of the events it dropped), then waits for more inside the native watcher.
 fn follow(root, last String, move seen WriteStream[Int]) Void! {
-	var events = watch(
-		root,
-		recursive: true,
-		options: WatchOptions(max_events: 4096, overflow: "rescan"),
-	)?
+	var events = watch(root, recursive: true, options: WatchOptions(max_events: 4096))?
 	var out = seen
 	out.write(0)?
 
@@ -26,7 +22,7 @@ fn follow(root, last String, move seen WriteStream[Int]) Void! {
 		found := event
 
 		if found != null {
-			if (found.path == last) or (found.path == root) {
+			if (found.path == last) or (found.kind == "rescan") {
 				out.write(1)?
 			}
 		} else {

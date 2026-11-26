@@ -9,7 +9,7 @@ React when files change: rebuild, reload a configuration, or process files dropp
 
 ## Wait for a change
 
-Save as `watch_test.ms` and run `ms test watch_test.ms`. `watch` returns a stream of `FileEvent` values, each with the `path` that changed and a `kind` of `"change"` or `"rename"` (which covers a file appearing or disappearing). Reading with `next(timeout: ...)` fails instead of waiting forever when nothing happens.
+Save as `watch_test.ms` and run `ms test watch_test.ms`. `watch` returns a stream of `FileEvent` values, each with the `path` that changed and a `kind` of `"change"`, `"rename"` (which covers a file appearing or disappearing) or `"rescan"` (the event queue overflowed and events were lost, so look at the tree again). Reading with `next(timeout: ...)` fails instead of waiting forever when nothing happens.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
