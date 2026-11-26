@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "base/alloc.h"
+#include "compiler/syntax/lex.h"
 #include "base/utf8.h"
 #include "lsp/lsp_internal.h"
 #include "tooling/decl_header.h"
@@ -106,60 +107,51 @@ static bool starts(MsSpan source, size_t at, const char *text) {
   return ms_span_starts_with_text(ms_span_of(source.ptr + at, source.len - at), text);
 }
 
-static size_t find(MsSpan source, size_t from, const char *needle) {
-  size_t at;
-  if (!ms_span_find(ms_span_of(source.ptr + from, source.len - from), ms_span_of_text(needle), &at)) return source.len;
-  return from + at;
+/* One comment token per line, so clients that do not take multi-line tokens still color it. */
+static void push_comment(LspTokenList *tokens, MsSpan source, size_t start, size_t end) {
+  size_t line = start;
+  while (line < end) {
+    size_t stop = line;
+    while (stop < end && source.ptr[stop] != '\n') stop++;
+    if (stop > line) lsp_token_list_push(tokens, (LspEditorToken){LSP_TOKEN_COMMENT, line, stop});
+    line = stop + 1;
+  }
 }
 
-/* The tokens of `source`, forgiving of anything that does not lex. */
-void lsp_scan_tokens(MsSpan source, LspTokenList *tokens) {
-  size_t at = 0;
-  while (at < source.len) {
+/* Names and other characters in `source[at, end)`, which holds no comment or text. */
+static void push_plain(LspTokenList *tokens, MsSpan source, size_t at, size_t end) {
+  while (at < end) {
     const size_t start = at;
     const uint8_t b = source.ptr[at];
     if (b == ' ' || b == '\r' || b == '\t') {
       at++;
-    } else if (starts(source, at, "//")) {
-      while (at < source.len && source.ptr[at] != '\n') at++;
-      lsp_token_list_push(tokens, (LspEditorToken){LSP_TOKEN_COMMENT, start, at});
-    } else if (starts(source, at, "/*")) {
-      /* One token per line, so clients that do not take multi-line tokens still color it. */
-      const size_t found = find(source, at + 2, "*/");
-      const size_t close = found == source.len ? source.len : found + 2;
-      size_t line = at;
-      while (line < close) {
-        size_t end = line;
-        while (end < close && source.ptr[end] != '\n') end++;
-        if (end > line) lsp_token_list_push(tokens, (LspEditorToken){LSP_TOKEN_COMMENT, line, end});
-        line = end + 1;
-      }
-      at = close;
-    } else if (starts(source, at, "\"\"\"") || starts(source, at, "r\"\"\"") || starts(source, at, "f\"\"\"")) {
-      at += source.ptr[at] == '"' ? 3 : 4;
-      const size_t found = find(source, at, "\"\"\"");
-      at = found == source.len ? source.len : found + 3;
-      lsp_token_list_push(tokens, (LspEditorToken){LSP_TOKEN_STRING, start, at});
-    } else if (b == '"' || starts(source, at, "f\"")) {
-      at += b == '"' ? 1 : 2;
-      while (at < source.len) {
-        if (source.ptr[at] == '\\') {
-          at += at + 1 < source.len ? 2 : 1;
-        } else if (source.ptr[at++] == '"') {
-          break;
-        }
-      }
-      lsp_token_list_push(tokens, (LspEditorToken){LSP_TOKEN_STRING, start, at});
     } else if (is_identifier(b)) {
-      while (at < source.len && is_identifier(source.ptr[at])) at++;
+      while (at < end && is_identifier(source.ptr[at])) at++;
       lsp_token_list_push(tokens, (LspEditorToken){LSP_TOKEN_NAME, start, at});
     } else {
       size_t width, size;
-      rune_width(source.ptr + at, source.len - at, &width, &size);
+      rune_width(source.ptr + at, end - at, &width, &size);
       at += size;
       lsp_token_list_push(tokens, (LspEditorToken){LSP_TOKEN_CHAR, start, at});
     }
   }
+}
+
+/* The tokens of `source`, forgiving of anything that does not lex. The lexer decides where comments and text
+ * literals end, so this cannot disagree with the compiler about them. */
+void lsp_scan_tokens(MsSpan source, LspTokenList *tokens) {
+  MsArena arena = ms_arena_new();
+  MsSkimSpan *spans = NULL;
+  const size_t count = ms_lex_skim(&arena, source, &spans);
+  size_t at = 0;
+  for (size_t i = 0; i < count; i++) {
+    push_plain(tokens, source, at, spans[i].start);
+    if (spans[i].kind == MS_SKIM_COMMENT) push_comment(tokens, source, spans[i].start, spans[i].end);
+    else lsp_token_list_push(tokens, (LspEditorToken){LSP_TOKEN_STRING, spans[i].start, spans[i].end});
+    at = spans[i].end;
+  }
+  push_plain(tokens, source, at, source.len);
+  ms_arena_free(&arena);
 }
 
 bool lsp_literal_closed(MsSpan source, const LspEditorToken *token) {
