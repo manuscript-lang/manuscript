@@ -87,7 +87,9 @@ static void take_payload(LowerFn *fn, const Match *match, const MsArm *arm, uint
     const MirTy elem = mir_ty_data(module, match->ty)->elem;
     const MirValue item = mir_b_emit(&fn->b, MOP_OptUnbox, &match->scrutinee, 1, (MirImm){0}, elem);
     const MsTy payload = payload_type(fn, match, 1, 0);
-    if (closes_binding(fn, arm, 0, payload)) {
+    const bool names_resource = closes_rest && payload != MS_TY_NONE && fn_temp_closes(fn, payload) &&
+                                lower_part_close(fn->cx, payload) != MIR_NONE;
+    if (names_resource || closes_binding(fn, arm, 0, payload)) {
       (void)fn_bind_closing(fn, ref->local, payload, item, false); /* the arm closes it where it ends */
       return;
     }
@@ -394,6 +396,12 @@ MirValue fn_match(LowerFn *fn, const MsExpr *expr, LowerWant want) {
       fn->facts->last != NULL && fn->facts->last[subject->id] != 0 && match.checked != MS_TY_NONE &&
       ms_check_holds_resource(fn->cx->program, match.checked) && lower_part_close(fn->cx, match.checked) != MIR_NONE) {
     match.last_ref = ms_facts_ref(fn->facts, subject->id);
+  }
+  if (!match.consumed && subject->kind == MS_E_CALL && (match.kind == MK_ALT || match.kind == MK_OPT) && fn->temps &&
+      match.checked != MS_TY_NONE && fn_temp_closes(fn, match.checked) && fn_type(fn, match.checked) == match.ty &&
+      fn_owns_result(fn, match.scrutinee)) {
+    /* A resource a call made and the arms only view: it closes with the statement, whichever arm runs. */
+    match.scrutinee = fn_own_temporary(fn, match.checked, match.scrutinee);
   }
   MirValue taken = MIR_NONE;
   if (subject->kind == MS_E_NAME && (match.kind == MK_ALT || match.kind == MK_OPT) &&
