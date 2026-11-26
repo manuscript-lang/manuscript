@@ -25,12 +25,8 @@ typedef struct SemanticToken {
 MS_LIST_DEFINE(SemanticList, semantic_list, SemanticToken)
 
 static bool is_keyword_text(MsSpan text) {
-  for (int kind = 0; kind < MS_T_COUNT; kind++) {
-    const char *name = ms_tok_str((MsTok)kind);
-    if (name[0] < 'a' || name[0] > 'z') continue;
-    if (ms_span_is_text(text, name)) return true;
-  }
-  return false;
+  const MsTok kind = ms_tok_from_word(text);
+  return kind != MS_T_Name && kind != MS_T_Underscore; /* `_` is a name to the editor */
 }
 
 static MsSpan lexeme(MsSpan source, const SemanticToken *token) {

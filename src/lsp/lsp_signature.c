@@ -4,6 +4,7 @@
 
 #include <stdlib.h>
 
+#include "compiler/syntax/token.h"
 #include "compiler/syntax/walk.h"
 #include "tooling/decl_header.h"
 #include "tooling/doc_comment.h"
@@ -26,23 +27,25 @@ static bool token_is(MsSpan source, const LspEditorToken *token, const char *tex
   return token->kind == LSP_TOKEN_NAME && ms_span_is_text(ms_span_of(source.ptr + token->start, token->end - token->start), text);
 }
 
-/* Words that may precede `(` without it being a call. */
+/* Words that may precede `(` without it being a call: the language's keywords, from the lexer's table. */
 static bool is_keyword(MsSpan source, const LspEditorToken *token) {
-  static const char *const WORDS[] = {"if", "while", "for", "match", "return", "fn", "and", "or", "not", "in", "is", "as", "else", "try", "await", "move", "var"};
-  for (size_t i = 0; i < sizeof WORDS / sizeof WORDS[0]; i++) {
-    if (token_is(source, token, WORDS[i])) return true;
-  }
-  return false;
+  return token->kind == LSP_TOKEN_NAME && ms_tok_from_word(ms_span_of(source.ptr + token->start, token->end - token->start)) != MS_T_Name;
 }
 
 /* A word that begins a declaration at the start of a line ends any call before it. */
 static bool starts_declaration(MsSpan source, const LspEditorToken *token) {
-  static const char *const WORDS[] = {"fn", "export", "type", "enum", "test", "import"};
   if (token->kind != LSP_TOKEN_NAME || (token->start > 0 && source.ptr[token->start - 1] != '\n')) return false;
-  for (size_t i = 0; i < sizeof WORDS / sizeof WORDS[0]; i++) {
-    if (token_is(source, token, WORDS[i])) return true;
+  switch (ms_tok_from_word(ms_span_of(source.ptr + token->start, token->end - token->start))) {
+    case MS_T_Fn:
+    case MS_T_Export:
+    case MS_T_Type:
+    case MS_T_Enum:
+    case MS_T_Interface:
+    case MS_T_Extern:
+    case MS_T_Test:
+    case MS_T_Import: return true;
+    default: return false;
   }
-  return false;
 }
 
 /* The token index of the bracket matching the closer at `close`, or `close` when it has none. */
