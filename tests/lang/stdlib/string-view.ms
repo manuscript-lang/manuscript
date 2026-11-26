@@ -133,10 +133,7 @@ test "string operations read no byte past the end of a string" {
 		expect_equal(edge.trim(), same.trim())?
 		expect_equal(edge.upper(), same.upper())?
 		expect_equal(edge.replace("a", "b"), same.replace("a", "b"))?
-		expect_equal(
-			edge.split("é").collect().length(),
-			same.split("é").collect().length(),
-		)?
+		expect_equal(edge.split("é").length(), same.split("é").length())?
 		expect_equal(f"{edge}{edge}", f"{same}{same}")?
 		expect_equal(edge.slice(1, -1), same.slice(1, -1))?
 
