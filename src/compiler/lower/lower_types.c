@@ -13,13 +13,13 @@ static MsTy apply_subst(Lower *cx, const LowerSubst *subst, MsTy ty) {
 }
 
 void lower_type_text(Lower *cx, const LowerSubst *subst, MsTy ty, MsStrBuild *out) {
-  ms_ty_show(out, cx->program->names, &cx->program->types, apply_subst(cx, subst, ty));
+  ms_ty_show_canonical(out, cx->program->names, &cx->program->types, apply_subst(cx, subst, ty));
 }
 
 /* The name MIR gives a nominal type: its display text with the type arguments (`Box[Int]`). */
 static MsName mir_type_name(Lower *cx, MsTy ty) {
   MsStrBuild text = ms_strbuild_new();
-  ms_ty_show(&text, cx->program->names, &cx->program->types, ty);
+  ms_ty_show_canonical(&text, cx->program->names, &cx->program->types, ty);
   const MsName name = mir_name(cx->module, ms_strbuild_span(&text));
   ms_strbuild_free(&text);
   return name;
@@ -272,7 +272,7 @@ static MirTy lower_by_kind(Lower *cx, MsTy ty) {
     break;
   }
   MsStrBuild shown = ms_strbuild_new();
-  ms_ty_show(&shown, cx->program->names, &cx->program->types, ty);
+  ms_ty_show_canonical(&shown, cx->program->names, &cx->program->types, ty);
   const MsSpan text = ms_strbuild_span(&shown);
   (void)lower_fail(cx, "a type with no MIR form reached lowering: %.*s (kind %s)", (int)text.len,
                    (const char *)text.ptr, ms_ty_kind_name(ms_ty_kind(&cx->program->types, ty)));

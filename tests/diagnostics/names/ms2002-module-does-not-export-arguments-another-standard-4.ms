@@ -44,4 +44,4 @@ test "unselected" {
 // expect-error: MS2001 13:13 unknown binding arguments; add: import arguments from "@std/os/env.ms"
 // expect-fix: 1:1-1:1 "import arguments from \"@std/os/env.ms\"\n"
 // expect-error: MS3000 28:48 cause.message is not a function (it has type String); only functions and methods can be called, so remove the (...) or call a function instead
-// expect-error: MS3000 39:5 this statement discards Result[Void, Error], so a failure would be lost; write a trailing '?' to propagate it, 'if value := x' or 'match' to handle it, or 'void ...' to drop it on purpose
+// expect-error: MS3000 39:5 this statement discards Void!, so a failure would be lost; write a trailing '?' to propagate it, 'if value := x' or 'match' to handle it, or 'void ...' to drop it on purpose

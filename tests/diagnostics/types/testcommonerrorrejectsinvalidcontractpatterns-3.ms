@@ -4,4 +4,4 @@
 fn wrong() String! {
 	return Result[Int, Error].ok(value: 1)
 }
-// expect-error: MS3001 5:31 expected Result[String, Error], found Result[Int, Error] (in the return value)
+// expect-error: MS3001 5:31 expected String!, found Int! (in the return value)

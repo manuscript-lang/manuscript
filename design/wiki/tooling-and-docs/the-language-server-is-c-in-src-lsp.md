@@ -24,3 +24,5 @@ Chinmay chose (2026-11-23) to write `ms lsp` in C beside the other commands, not
 - A function with an unclosed delimiter is kept for navigation: the lexer's mismatched-closer diagnostic names the opener line like the unterminated one, so recovery blanks the statement that opened it. The checker and lint findings inside a recovered declaration are not published (they follow from the blanked text); only its syntax error is.
 
 - Editor recovery blanks the offending statement; when that was the body's only statement, `...` stands in at its indent so the declaration (and its exports) survives. Without it an importer lost the name and filled with cascade errors while the exporter was half-typed.
+
+- `ms_ty_show` (hover, diagnostics, completion detail) writes `Result[T, Error]` as `T!`, as source and the formatter spell it; a Result with another error type keeps its name. Lowering keys runtime type names on `ms_ty_show_canonical`, which never uses sugar, so program output does not change.
