@@ -4,8 +4,8 @@
 // ms: allow_effect std.fs.write
 // ms: allow_effect std.process.run
 
-// Standard-library API reference (`make docs`): reads the snapshot `ms doc` prints and
-// writes
+// Standard-library API reference (`make docs`): reads the snapshot `ms dev doc` prints
+// and writes
 //   - the book's reference pages under `<artifacts>/documentation/standard-library/reference/`,
 //   - the downloads `<static>/stdlib.md` and `<static>/stdlib.json`,
 //   - with `--coverage <file>`, the description inventory as JSON.
@@ -571,7 +571,7 @@ fn text_of(path String) String! {
 }
 
 fn generate(ms String, o Options) Void! {
-	ran := run(ms.clone(), ["doc"]).wait()?
+	ran := run(ms.clone(), ["dev", "doc"]).wait()?
 	if ran.exit_code != 0 { return error(Error(f"{ms} doc failed")) }
 
 	snapshot_text := (ran.stdout.decode_utf8() or "").clone()

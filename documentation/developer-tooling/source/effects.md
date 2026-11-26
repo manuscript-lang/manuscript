@@ -5,7 +5,7 @@ weight = 3
 
 # Understanding effects
 
-This page covers the call-graph view of how code reads and writes data. For permissions that `ms lint` enforces, see [effects and permissions](../../core-language/functions/effects.md).
+This page covers the call-graph view of how code reads and writes data. For permissions that `ms check --only lint` enforces, see [effects and permissions](../../core-language/functions/effects.md).
 
 Use the effects view when you review how code reads or changes data and reaches external operations. It follows calls, so you can see how a small helper reaches behavior outside the program.
 
@@ -21,7 +21,7 @@ fn main() Void {
 `ms run hello.ms` prints `Hello, Manuscript!`. To inspect its calls without running it:
 
 ```sh
-ms diagram hello.ms --view effects --entity main
+ms map hello.ms --view effects --entity main
 ```
 
 ```text
@@ -30,7 +30,7 @@ EFFECTS VIEW
    `- @std/core.ms::print
 ```
 
-The summary lists the declared effects reachable through `print`, not just statements written directly in `main`. These are the same names `ms lint` checks against `allow_effect`. A function that reaches none is pure. Use the call path to find the implementation you need to review. For a larger program, open an [interactive code map](../implementation.md#interactive-code-map) or use the [review report](../implementation.md#review-report) to find newly introduced effects.
+The summary lists the declared effects reachable through `print`, not just statements written directly in `main`. These are the same names `ms check --only lint` checks against `allow_effect`. A function that reaches none is pure. Use the call path to find the implementation you need to review. For a larger program, open an [interactive code map](../implementation.md#interactive-code-map) or use the [review report](../implementation.md#review-report) to find newly introduced effects.
 
 ## Transitive analysis
 

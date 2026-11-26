@@ -584,6 +584,26 @@ static void report_uninferred(Body *body, const MsExpr *call, const Target *targ
   }
 }
 
+/* A callback that fixes nothing leaves a variable bound to itself: the callee's own, not the enclosing function's. */
+static void report_own_variables(Body *body, const MsExpr *call, const Target *target, const MsInstance *instance,
+                                 size_t before) {
+  MsTyList bound = {0};
+  bool missing = false;
+  for (size_t at = 0; at < target->vars.len && at < instance->args.len; at++) {
+    const MsTy arg = instance->args.ptr[at];
+    const bool own = arg == target->vars.ptr[at] && body_has_foreign_variable(body, arg);
+    ms_ty_list_push(&bound, own ? MS_TY_NONE : arg);
+    missing = missing || own;
+  }
+  if (missing && body_reports(body) && !body->quiet && body->program->diagnostics.len == before) { /* an argument's own error is the cause */
+    MsInstance failed = {0};
+    ms_check_missing_message(body->program, target->name, target->vars.ptr, bound.len, bound.ptr, &failed);
+    report_uninferred(body, call, target, &failed);
+    ms_instance_free(&failed);
+  }
+  ms_ty_list_free(&bound);
+}
+
 /* Arguments that imply different types for one variable: the one written later is the one that disagrees. */
 static void report_conflict(Body *body, const MsExpr *call, const Target *target, const MsInstance *instance,
                             const MsTy *arg_tys, const Matched *matched, size_t before) {
@@ -699,6 +719,7 @@ static MsTy finish_call(Body *body, const MsExpr *call, Target *target, const Ms
         }
         instance.ty = ms_ty_subst(&body->program->types, target->sig, target->vars.ptr, instance.args.ptr, instance.args.len);
       }
+      report_own_variables(body, call, target, &instance, diagnostics_before);
       sig = instance.ty;
       settle_typed(body, target, &instance.args);
       wrap_to_expected(body, call, sig, arg_tys, matched);

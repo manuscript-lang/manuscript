@@ -1,4 +1,4 @@
-/* Driver: `ms check <targets> [--json [--with-text [--each]]]` and `ms lint <targets> [--json] [--fix]
+/* Driver: `ms check <targets> [--json [--with-text [--each]]]` and `ms check --only lint <targets> [--json] [--fix]
  * [--deny-warnings]`; lint is check followed by the lint rules over each input that checks. Loads the module graph of each input, checks it
  * and reports the diagnostics as terminal text or as the versioned JSON document. Several targets, a
  * directory without ms.toml and --each check each input on its own; --fix applies fixes and --watch reruns after each
@@ -33,7 +33,7 @@ MS_LIST_DEFINE(TargetList, target_list, MsSpan)
 typedef struct CheckOptions {
   bool json, with_text, each, fix, watch;
   bool std; /* `ms check --std`: check every bundled standard body */
-  bool lint, deny_warnings, syntax; /* `ms lint` */
+  bool lint, deny_warnings, syntax; /* `ms check --only lint` */
   const char *name;         /* "check" or "lint" */
   TargetList targets;
 } CheckOptions;
@@ -78,22 +78,22 @@ static int parse_arguments(int argc, char **argv, CheckOptions *options) {
       options->watch = true;
     } else if (is_option(argument, "--std")) {
       if (options->lint) {
-        return refuse("--std requires check, not lint", STATUS_USAGE);
+        return refuse("--std needs --only types; use ms check <file> --only types --std", STATUS_USAGE);
       }
       options->std = true;
     } else if (is_option(argument, "--syntax")) {
       if (!options->lint) {
-        return refuse("--syntax requires lint, not check; use ms lint <file> --syntax", STATUS_USAGE);
+        return refuse("--syntax needs --only lint; use ms check <file> --only lint --syntax", STATUS_USAGE);
       }
       options->syntax = true;
     } else if (is_option(argument, "--deny-warnings")) {
       if (!options->lint) {
-        return refuse("--deny-warnings requires lint, not check; use ms lint <file> --deny-warnings", STATUS_USAGE);
+        return refuse("--deny-warnings needs --only lint, or no --only; use ms check <file> --deny-warnings", STATUS_USAGE);
       }
       options->deny_warnings = true;
     } else if (argument[0] == '-') {
-      (void)fprintf(stderr, "unknown option %s for ms %s; run 'ms help %s' for its options (put -- before a file name that starts with '-')\n",
-                    argument, options->name, options->name);
+      (void)fprintf(stderr, "unknown option %s for ms %s; run 'ms help check' for its options (put -- before a file name that starts with '-')\n",
+                    argument, options->name);
       return STATUS_USAGE;
     } else if (argument[0] == '\0') {
       (void)fprintf(stderr, "ms %s: an input argument is empty; pass a .ms file, directory, or ms.toml\n", options->name);
@@ -110,17 +110,17 @@ static int parse_arguments(int argc, char **argv, CheckOptions *options) {
     return STATUS_USAGE;
   }
   if (options->syntax && (options->fix || options->watch || options->each)) {
-    return refuse("--syntax cannot be combined with --fix or --watch; use ms lint <file> --syntax", STATUS_USAGE);
+    return refuse("--syntax cannot be combined with --fix or --watch; use ms check <file> --only lint --syntax", STATUS_USAGE);
   }
   if (options->with_text && options->lint) {
-    return refuse("--with-text requires check --json, not lint; use ms check <file> --json --with-text", STATUS_USAGE);
+    return refuse("--with-text needs --only types; use ms check <file> --only types --json --with-text", STATUS_USAGE);
   }
   if (options->with_text && !options->json) {
     return refuse("ms check: --with-text requires --json", STATUS_USAGE);
   }
   if (options->each && (options->lint || !(options->json && options->with_text) || options->fix || options->watch)) {
-    return refuse("--each requires check --json --with-text without --watch or --fix; use ms check a.ms b.ms "
-                  "--json --with-text --each",
+    return refuse("--each requires --only types --json --with-text without --watch or --fix; use ms check a.ms b.ms "
+                  "--only types --json --with-text --each",
                   STATUS_USAGE);
   }
   return 0;
@@ -530,10 +530,10 @@ static int run_command(const char *name, bool lint, int argc, char **argv) {
   return result;
 }
 
-int ms_check_command(int argc, char **argv) {
-  return run_command("check", false, argc, argv);
+int ms_check_types_command(int argc, char **argv) {
+  return run_command("check --only types", false, argc, argv);
 }
 
 int ms_lint_command(int argc, char **argv) {
-  return run_command("lint", true, argc, argv);
+  return run_command("check --only lint", true, argc, argv);
 }

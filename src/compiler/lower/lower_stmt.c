@@ -906,8 +906,8 @@ static bool lower_call_stmt(LowerFn *fn, const MsStmt *stmt) {
     fn_bench_sink(fn, value);
   }
   const MsTy checked = discarded_type(fn, expr);
-  const bool owned = fn_fresh_owner(fn, value) ||
-                     (!mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value)) && !fn_is_borrowed_view(fn, value));
+  const bool owned = (!mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value)) && !fn_is_borrowed_view(fn, value)) ||
+                     fn_fresh_owner(fn, value); /* the cheap test first: the owner search can scan the function */
   if (expr->kind == MS_E_CALL && checked != MS_TY_NONE && owned && fn_temp_closes(fn, checked)) {
     fn_own_temporary(fn, checked, value);
   }

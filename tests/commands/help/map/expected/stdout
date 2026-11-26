@@ -1,0 +1,53 @@
+Usage: ms map <file.ms|ms.toml> [--view <view>] [--entity name] [--depth n] [--diff <file|->] [--format name] [-o output] [--json]
+
+Show the structure of a checked program. Every view reads the same checked source; ms never runs git.
+--view picks the question:
+  calls (default), overview, effects, errors, modules, flow, scope, tasks, types, ownership
+                  A static call graph of project declarations (standard calls are boundary leaves), as the tree for one question.
+  review          A fixed-template report of where to look: the public surface, entry points with effects, error types,
+                  resources and imports, or, with --diff, the semantic effect of a change.
+  inspect         Checked symbols, source hashes, call sites, and statement spans as JSON.
+
+Call graph views (the default and every --view except review and inspect):
+overview (modules, their effects and cross-module calls), calls (who is called), effects (where effects enter),
+errors (error types and try sites), modules (imports), flow (one function's ordered steps), scope (its cleanup scopes and exits),
+tasks (its task groups and the work each spawn starts), types (aliases: class; fields and cases that hold other types),
+ownership (alias: mutability; checked copy, borrow, move and var parameters; owned or borrowed results).
+flow, scope and tasks need --entity. --entity roots the tree at one declaration (name, qualified name, file::name, or an exact entity ID,
+which takes precedence; a path for modules) and --depth bounds expansion (default 3, at most 200 nodes).
+  --entity <name>      Root the view at one declaration or module
+  --depth <n>          Expansion depth for a view (default 3)
+  --diff <path|->      Mark what a unified diff changed (in a view, or in the html page; the tree is the after state)
+  --format <name>      ascii (default), mermaid, or html (one interactive page for the whole program)
+  --json               Emit a versioned diagram tree with source IDs and locations (default: calls view)
+
+Review (--view review): without --diff it maps the project. With a unified diff it compares the checked program before and after
+the change and ranks entities by contract, effect, error-flow, and resource changes and their reach. Pipe the diff in; the tree must be
+the diff's after state, and the before state is rebuilt from the diff and verified. Output is deterministic, with no timestamps,
+absolute paths, or generated prose, and ends with a digest.
+  --diff <path|->      Unified diff to review (- reads standard input)
+  --format <name>      ascii (default) or markdown
+  --json               Emit the complete report or explanation as versioned JSON (not with --format)
+  --explain <n|id>     Show one finding in full: score terms, evidence, callers (needs --diff)
+  --effect <pattern>   Keep findings that reach or permit this effect, e.g. std.net.* (needs --diff)
+  --all                Show every row instead of the first five per section
+
+Inspect (--view inspect): -o writes the JSON to a file (default: stdout); --json reports a failure as JSON diagnostics.
+
+Options:
+  -o, --output <path>  Write output to a file (default: stdout)
+  -h, --help  Show this help without executing the command
+
+Examples:
+  ms map main.ms
+  ms map ms.toml --format mermaid -o calls.mmd
+  ms map ms.toml --view effects --entity save
+  ms map ms.toml --view errors
+  ms map ms.toml --format html -o map.html
+  ms map ms.toml --view ownership --entity save
+  ms map ms.toml --view flow --entity save --diff change.patch
+  ms map ms.toml --view flow --entity save --json
+  ms map ms.toml --view review
+  git diff --no-renames main... | ms map ms.toml --view review --diff -
+  ms map ms.toml --view review --diff change.patch --explain 1
+  ms map ms.toml --view inspect -o inspection.json

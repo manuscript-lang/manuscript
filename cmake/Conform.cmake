@@ -64,7 +64,7 @@ if(NOT matches)
   message(FATAL_ERROR "conform: the command fixtures above do not match")
 endif()
 
-# Fixture metadata and expectation files are well formed (tools/conform.ms lint).
+# Fixture metadata and expectation files are well formed (tools/conform.ms check --only lint).
 if(NOT ONLY STREQUAL "commands")
 execute_process(
   COMMAND "${CMAKE_COMMAND}" -E env "MS=${MS}" "${MS}" run tools/conform.ms -- lint

@@ -293,18 +293,18 @@ static bool source_list(LowerFn *fn, const MsExpr *iter, ForSource *src) {
   /* A narrowed local reads as its payload, which the variable itself does not hold. */
   const bool narrowed = fn_read_type(fn, iter) != ms_facts_type(fn->facts, iter->id);
   src->has_var = !moved && !fresh && !narrowed && items == MIR_NONE && fn_owned_local(fn, iter, &src->var);
-  if ((moved || fresh) && mir_needs_drop(module, elem)) {
+  MsTyTable *types = &fn->cx->program->types;
+  const MsTy checked = ms_ty_subst(types, fn_read_type(fn, iter), fn->subst.vars, fn->subst.args, fn->subst.count);
+  /* Elements that are closed (a resource with `close` and nothing else to drop) need the cursor too. */
+  const uint32_t part_close = ms_ty_is(types, checked, MS_BUILTIN_List) && ms_ty_arg_count(types, checked) == 1
+                                  ? lower_part_close(fn->cx, ms_ty_args(types, checked)[0])
+                                  : MIR_NONE;
+  if ((moved || fresh) && (mir_needs_drop(module, elem) || part_close != MIR_NONE)) {
     if (fresh) {
       const MirImm none = {0};
       (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &list, 1, none, MIR_NONE);
     }
     uint32_t close = 0;
-    const MsTy checked = ms_ty_subst(&fn->cx->program->types, fn_read_type(fn, iter), fn->subst.vars, fn->subst.args,
-                                     fn->subst.count);
-    const MsTyTable *types = &fn->cx->program->types;
-    const uint32_t part_close = ms_ty_is(types, checked, MS_BUILTIN_List) && ms_ty_arg_count(types, checked) == 1
-                                    ? lower_part_close(fn->cx, ms_ty_args(types, checked)[0])
-                                    : MIR_NONE;
     if (!cursor_for(fn, list_ty, part_close, &src->cursor_type, &close)) {
       return false;
     }

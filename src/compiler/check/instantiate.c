@@ -127,7 +127,7 @@ static void apply_defaults(MsCheckProgram *program, const MsTy *vars, size_t cou
   }
 }
 
-static void missing_message(MsCheckProgram *program, MsSpan name, const MsTy *vars, size_t count, const MsTy *bound,
+void ms_check_missing_message(MsCheckProgram *program, MsSpan name, const MsTy *vars, size_t count, const MsTy *bound,
                             MsInstance *out) {
   const MsTyTable *types = &program->types;
   MsStrBuild list = ms_strbuild_new();
@@ -270,7 +270,7 @@ static bool infer(MsCheckProgram *program, MsTy callee, const MsTy *variables, s
   apply_defaults(program, variables, nvars, bound);
   for (size_t index = 0; index < nvars; index++) {
     if (bound[index] == MS_TY_NONE) {
-      missing_message(program, name, variables, nvars, bound, out);
+      ms_check_missing_message(program, name, variables, nvars, bound, out);
       return false;
     }
   }

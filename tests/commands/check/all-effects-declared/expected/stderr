@@ -1,0 +1,2 @@
+  src/main.ms:8:5: `caller` reaches db.write: caller -> save; permit it with `// ms: allow_effect db.write`, move the call to the caller, or take a capability parameter
+lint warnings do not fail ms check; pass --deny-warnings to fail on them

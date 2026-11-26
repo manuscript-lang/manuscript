@@ -1,0 +1,10 @@
+Usage: ms lsp
+
+Serve the language server over stdin/stdout until the client disconnects.
+Configure an LSP-capable editor to launch ms lsp. No file argument is needed.
+
+Options:
+  -h, --help  Show this help without executing the command
+
+Examples:
+  ms lsp

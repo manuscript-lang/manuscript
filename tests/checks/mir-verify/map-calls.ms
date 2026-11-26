@@ -1,4 +1,4 @@
-// `ms emit --opt` verifies the module after every pass (the ctest `mir_verify`); `ms build` does not, so a call whose
+// `ms build --emit mir --opt` verifies the module after every pass (the ctest `mir_verify`); `ms build` does not, so a call whose
 // declared parameter types disagree with its arguments only shows here. Map operations
 // that lower to inline probes.
 fn main() Void {

@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 #include "base/cstr.h"
+#include "cli/explain_command.h"
 #include "cli/help_text.h"
 #include "cli/invocation.h"
 
@@ -105,10 +106,18 @@ bool ms_help_requested(int argc, char **argv) {
   return false;
 }
 
+/* A diagnostic or lint code such as MS2001 or MSL110. */
+static bool looks_like_code(const char *text) {
+  return text[0] == 'M' && text[1] == 'S' && ((text[2] >= '0' && text[2] <= '9') || (text[2] >= 'A' && text[2] <= 'Z'));
+}
+
 int ms_help_command(int argc, char **argv) {
   if (argc == 0) {
     ms_help_print_top();
     return 0;
+  }
+  if (looks_like_code(argv[0]) || (ms_cstr_equal(argv[0], "--json") && argc > 1 && looks_like_code(argv[1]))) {
+    return ms_explain_command(argc, argv);
   }
   if (argc == 1) {
     const char *page = ms_help_page(ms_span_of_text(argv[0]));
@@ -119,17 +128,14 @@ int ms_help_command(int argc, char **argv) {
     ms_help_unknown_command(ms_span_of_text(argv[0]));
     return STATUS_USAGE;
   }
-  print_text(stderr, "usage: ms help [command]\nRun 'ms --help' to list commands.\n");
+  print_text(stderr, "usage: ms help [command | code]\nRun 'ms --help' to list commands.\n");
   return STATUS_USAGE;
 }
 
-int ms_version_command(const char *name, int argc, char **argv) {
-  if (ms_cstr_equal(name, "version") && argc == 1 && (ms_cstr_equal(argv[0], "--help") || ms_cstr_equal(argv[0], "-h"))) {
-    print_text(stdout, ms_help_page(ms_span_of_text("version")));
-    return 0;
-  }
+int ms_version_command(int argc, char **argv) {
+  (void)argv;
   if (argc > 0) {
-    (void)fprintf(stderr, "ms %s takes no arguments; use ms version or ms --version\n", name);
+    (void)fprintf(stderr, "ms --version takes no arguments\n");
     return STATUS_USAGE;
   }
   (void)printf("Manuscript %s\n", MS_VERSION);

@@ -1,4 +1,4 @@
-/* cli/doc_command.c: `ms doc`. The standard library's documentation snapshot (tooling/guide.h) as versioned JSON:
+/* cli/doc_command.c: `ms dev doc`. The standard library's documentation snapshot (tooling/guide.h) as versioned JSON:
  * every importable module with its declarations, their source excerpts, descriptions, effects and members. The
  * book, the API downloads and the description coverage are built from it by tools/docgen.ms. */
 #include "cli/doc_command.h"
@@ -68,7 +68,7 @@ static void declaration_json(MsStrBuild *out, const MsApiDecl *d) {
 int ms_doc_command(int argc, char **argv) {
   MsArena arena = ms_arena_new();
   if (argc > 0) {
-    const int status = ms_usage_error(&arena, ms_message_format(&arena, "ms doc takes no arguments, got %S; run 'ms help doc'",
+    const int status = ms_usage_error(&arena, ms_message_format(&arena, "ms dev doc takes no arguments, got %S; run 'ms help dev'",
                                                                 ms_span_of_text(argv[0]), (MsSpan){0}));
     ms_arena_free(&arena);
     return status;

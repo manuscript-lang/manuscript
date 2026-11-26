@@ -1,0 +1,4 @@
+check
+--only
+lint
+main.ms

@@ -1,4 +1,4 @@
-/* cli/inspect_command.c: `ms inspect`. */
+/* cli/inspect_command.c: `ms map --view inspect`. */
 #include "cli/files.h"
 #include "cli/inspect_command.h"
 

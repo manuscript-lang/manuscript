@@ -16,7 +16,7 @@
 /* Runs the scan after ms_check_graph. */
 MsReach ms_check_effects(const MsCheckProgram *program, MsArena *arena);
 
-/* The text of one violation as `ms lint` words it, without file position: "`f` reaches e: f -> g; ...". */
+/* The text of one violation as `ms check --only lint` words it, without file position: "`f` reaches e: f -> g; ...". */
 void ms_effect_message(MsStrBuild *out, MsSpan label, const MsReachViolation *violation);
 
 #endif

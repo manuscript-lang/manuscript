@@ -86,8 +86,13 @@ fn main() Int {
 	if env("RAW", "0") != "1" { set_environment("MS_EMIT_OPT", "1").get() }
 
 	for target in targets {
-		ran := capture(ms_binary(), ["emit", target.clone(), "-o", out.clone()])
-		if not ran.ok or ran.code != 0 { return finish(must(f"ms emit {target}", ran)) }
+		ran := capture(
+			ms_binary(),
+			["build", "--emit", "mir", target.clone(), "-o", out.clone()],
+		)
+		if not ran.ok or ran.code != 0 {
+			return finish(must(f"ms build --emit mir {target}", ran))
+		}
 
 		print(f"== {target}")
 		for row in report(read_text(out)) {

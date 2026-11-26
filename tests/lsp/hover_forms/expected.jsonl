@@ -10,9 +10,9 @@
 {"jsonrpc":"2.0","id":9,"result":[{"uri":"$ROOT_URI/main.ms","range":{"start":{"line":48,"character":10},"end":{"line":48,"character":16}}}]}
 {"jsonrpc":"2.0","id":10,"result":{"contents":{"kind":"markdown","value":"```manuscript\nOrdered Ordered[Int, String]\n```"},"range":{"start":{"line":22,"character":3},"end":{"line":22,"character":10}}}}
 {"jsonrpc":"2.0","id":11,"result":[{"uri":"$ROOT_URI/main.ms","range":{"start":{"line":20,"character":5},"end":{"line":20,"character":12}}}]}
-{"jsonrpc":"2.0","id":12,"result":{"contents":{"kind":"markdown","value":"```manuscript\nid fn(T) T\n```\n\neffects: pure (ambient authority only)"},"range":{"start":{"line":59,"character":10},"end":{"line":59,"character":12}}}}
+{"jsonrpc":"2.0","id":12,"result":{"contents":{"kind":"markdown","value":"```manuscript\nfn id[T](x T) T\n```\n\neffects: pure (ambient authority only)"},"range":{"start":{"line":59,"character":10},"end":{"line":59,"character":12}}}}
 {"jsonrpc":"2.0","id":13,"result":[{"uri":"$ROOT_URI/main.ms","range":{"start":{"line":26,"character":3},"end":{"line":26,"character":5}}}]}
-{"jsonrpc":"2.0","id":14,"result":{"contents":{"kind":"markdown","value":"```manuscript\npick fn(A, B) A\n```\n\neffects: pure (ambient authority only)"},"range":{"start":{"line":60,"character":11},"end":{"line":60,"character":15}}}}
+{"jsonrpc":"2.0","id":14,"result":{"contents":{"kind":"markdown","value":"```manuscript\nfn pick[A, B](a A, b B) A\n```\n\neffects: pure (ambient authority only)"},"range":{"start":{"line":60,"character":11},"end":{"line":60,"character":15}}}}
 {"jsonrpc":"2.0","id":15,"result":[{"uri":"$ROOT_URI/main.ms","range":{"start":{"line":30,"character":3},"end":{"line":30,"character":7}}}]}
 {"jsonrpc":"2.0","id":16,"result":{"contents":{"kind":"markdown","value":"```manuscript\nx Int\n```"},"range":{"start":{"line":57,"character":2},"end":{"line":57,"character":3}}}}
 {"jsonrpc":"2.0","id":17,"result":[{"uri":"$ROOT_URI/main.ms","range":{"start":{"line":3,"character":1},"end":{"line":3,"character":2}}}]}

@@ -96,7 +96,7 @@ fn display_name(create fn() String, move name String?) String {
 }
 ```
 
-For a map lookup, write `m.get_or(key, fallback)` or `m[key]` (which faults when the key is absent) instead of `m.get(key) or fallback`. `ms lint --fix` rewrites the first form.
+For a map lookup, write `m.get_or(key, fallback)` or `m[key]` (which faults when the key is absent) instead of `m.get(key) or fallback`. `ms check --only lint --fix` rewrites the first form.
 
 After `if v != null`, an immutable binding or parameter `v` reads as its payload type inside the block. A `v == null` test that exits (`return`, `break`, `continue`) leaves `v` present for the rest of the block, and `and`/`or` operands and `while` conditions narrow the same way. A `var` binding is not narrowed, because it can change; copy it into an immutable one first.
 
@@ -122,7 +122,7 @@ fn first_number(text String?) Int? {
 
 An Optional read in place from a collection or another value (`xs.first()`, `m.get(key)`) is not the caller's to give away. Bind it with `v := xs.first()` and test `v != null`, or `.clone()` it first.
 
-A [match](../control-flow/pattern-matching.md) on an Optional writes the present arm as a bare lowercase name beside `null =>`; `v =>` binds the payload. `ms lint` reports a two-arm match as MSL108.
+A [match](../control-flow/pattern-matching.md) on an Optional writes the present arm as a bare lowercase name beside `null =>`; `v =>` binds the payload. `ms check --only lint` reports a two-arm match as MSL108.
 
 Use [Result](../errors/results.md) when a failure needs an explanation.
 

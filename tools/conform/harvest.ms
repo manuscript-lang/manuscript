@@ -264,7 +264,7 @@ fn check_candidate(ms, scratch String, index Int, candidate Candidate) Verdict {
 
 	result := run(
 		ms,
-		["check", entry, "--json"],
+		["check", "--only", "types", entry, "--json"],
 		RunOptions(cwd: work.clone(), timeout: seconds(120)),
 	).wait()
 	void remove(work, recursive: true)

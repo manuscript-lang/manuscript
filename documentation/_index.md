@@ -60,7 +60,7 @@ fn save(order String) Void! {
 
 fn audit(total Int) Void! {
     return save(f"audit {total}")
-    // ms lint: `audit` reaches db.write: audit -> save
+    // ms check --only lint: `audit` reaches db.write: audit -> save
 }
 ```
 

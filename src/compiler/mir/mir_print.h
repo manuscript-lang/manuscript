@@ -1,5 +1,5 @@
 /* compiler/mir/mir_print.h: the MIR text form, a dump format only: passes exchange the in-memory module. The
- * text is what `ms emit` writes, so it follows the oracle's canonical form: values are renumbered densely in
+ * text is what `ms build --emit mir` writes, so it follows the oracle's canonical form: values are renumbered densely in
  * definition order and blocks are labelled by index. */
 #ifndef MS_COMPILER_MIR_MIR_PRINT_H
 #define MS_COMPILER_MIR_MIR_PRINT_H

@@ -356,12 +356,86 @@ bool cpe_has_op(const MirFunc *f, MirOp op) {
   return false;
 }
 
+/* A copy of a string literal is the literal: literals are inline or static, never owned, so the copy allocates nothing
+ * and its drop frees nothing (`print`'s default `end` cloned and freed "\n" on every call). The copy's uses read the
+ * literal, and the drops of either go. */
+static bool cpe_literal_copies(MsArena *arena, const MirModule *m, MirFunc *f) {
+  bool *literal = cpe_new_flags(arena, f);
+  MirValue *copy_of = cpe_new_values(arena, f, MIR_NONE);
+  bool found = false;
+  for (uint32_t b = 0; b < f->blocks.len; b++) {
+    const MirInstList *insts = &f->blocks.ptr[b].insts;
+    for (uint32_t i = 0; i < insts->len; i++) {
+      const MirInst *inst = &insts->ptr[i];
+      if (inst->op == MOP_StrLit) {
+        literal[inst->res] = true;
+      } else if (inst->op == MOP_Clone && inst->res != MIR_NONE && literal[inst->args[0]]) {
+        copy_of[inst->res] = inst->args[0];
+        found = true;
+      }
+    }
+  }
+  if (!found) {
+    return false;
+  }
+  /* A copy that is moved on (a call that takes it, a branch argument, a return) must stay owned. */
+  for (uint32_t b = 0; b < f->blocks.len; b++) {
+    const MirBlockData *block = &f->blocks.ptr[b];
+    for (uint32_t i = 0; i < block->insts.len; i++) {
+      const MirInst *inst = &block->insts.ptr[i];
+      if (inst->op == MOP_Drop) {
+        continue;
+      }
+      MirMode modes[16];
+      const bool known = inst->nargs <= 16;
+      if (known) {
+        mir_arg_modes(m, f, inst, modes);
+      }
+      for (uint32_t a = 0; a < inst->nargs; a++) {
+        if (!known || modes[a] != MM_BORROW) {
+          copy_of[inst->args[a]] = MIR_NONE;
+        }
+      }
+    }
+    const MirTerm *term = &block->term;
+    if (term->value != MIR_NONE) {
+      copy_of[term->value] = MIR_NONE;
+    }
+    for (uint32_t k = 0; k < mir_term_ntargets(term); k++) {
+      const MirTarget *edge = mir_term_target_const(term, k);
+      for (uint32_t a = 0; a < edge->nargs; a++) {
+        copy_of[edge->args[a]] = MIR_NONE;
+      }
+    }
+  }
+  for (uint32_t v = 1; v <= f->values.len; v++) {
+    if (copy_of[v] != MIR_NONE) {
+      mir_func_replace_uses(f, v, copy_of[v]);
+    }
+  }
+  for (uint32_t b = 0; b < f->blocks.len; b++) {
+    MirInstList *insts = &f->blocks.ptr[b].insts;
+    size_t out = 0;
+    for (uint32_t i = 0; i < insts->len; i++) {
+      const MirInst *inst = &insts->ptr[i];
+      const bool gone = (inst->op == MOP_Clone && inst->res != MIR_NONE && copy_of[inst->res] != MIR_NONE) ||
+                        (inst->op == MOP_Drop && inst->nargs == 1 && literal[inst->args[0]]);
+      if (!gone) {
+        insts->ptr[out++] = *inst;
+      }
+    }
+    insts->len = out;
+  }
+  return true;
+}
+
 bool opt_copyelim_func(MirModule *m, MirFunc *f) {
   if (!cpe_has_op(f, MOP_Clone)) { /* every rewrite below starts at a clone */
     return false;
   }
   MsArena arena = ms_arena_new();
-  bool changed = cpe_alias_stable(&arena, m, f);
+  bool changed = cpe_literal_copies(&arena, m, f);
+  changed |= cpe_alias_stable(&arena, m, f);
   changed |= cpe_move_dead_sources(&arena, m, f);
   changed |= cpe_move_across(&arena, m, f);
   changed |= cpe_borrow_local_copies(&arena, m, f);

@@ -1,0 +1,59 @@
+{
+  "format": 1,
+  "target": "ms.toml",
+  "ok": true,
+  "steps": [
+    {
+      "name": "types",
+      "status": "passed",
+      "exit_code": 0,
+      "duration_ns": 0,
+      "result": {
+        "format": 1,
+        "diagnostics": []
+      }
+    },
+    {
+      "name": "fmt",
+      "status": "passed",
+      "exit_code": 0,
+      "duration_ns": 0,
+      "result": {
+        "format": 1,
+        "files": [
+          {
+            "path": "src/main.ms",
+            "status": "clean"
+          },
+          {
+            "path": "src/shapes.ms",
+            "status": "clean"
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "name": "lint",
+      "status": "passed",
+      "exit_code": 0,
+      "duration_ns": 0,
+      "result": {
+        "format": 1,
+        "diagnostics": [
+          {
+            "code": "MSL124",
+            "severity": "warning",
+            "message": "Total with `xs.sum()` or `xs.map(...).sum()` instead of a loop that adds",
+            "position": {
+              "file": "src/shapes.ms",
+              "line": 21,
+              "column": 5,
+              "offset": 338
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

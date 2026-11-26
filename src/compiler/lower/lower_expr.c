@@ -826,6 +826,11 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
   const MsRef *member_ref = expr->kind == MS_E_MEMBER ? ms_facts_ref(fn->facts, expr->id) : NULL;
   const bool place = names_storage || (expr->kind == MS_E_MEMBER && (member_ref == NULL || member_ref->kind != MS_REF_CASE));
   if (want != LW_MOVE || !place || value == MIR_NONE || !mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value))) {
+    /* A resource with nothing to drop still leaves its field when a bind takes it: the refill must not close it again. */
+    if (want == LW_MOVE && place && value != MIR_NONE && expr->kind == MS_E_MEMBER && fn->moving_field == expr &&
+        fn->nmoved_fields < 4 && fn_temp_closes(fn, ms_facts_type(fn->facts, expr->id))) {
+      fn->moved_fields[fn->nmoved_fields++] = expr;
+    }
     return value;
   }
   /* A parameter taken by borrow is never the callee's to give away. */

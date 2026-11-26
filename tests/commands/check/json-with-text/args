@@ -1,4 +1,6 @@
 check
+--only
+types
 main.ms
 --json
 --with-text

@@ -1,0 +1,17 @@
+Usage: ms fmt <file.ms|directory|ms.toml>... [--check [--json]] [--drop-labels]
+
+Format selected source files in place, preserving their file permissions.
+Directories are recursive; projects include all source modules and test files.
+Discovery skips hidden, vendor, and node_modules directories.
+
+Options:
+  --check  Leave files unchanged; report every unformatted file and exit 1
+  --json   Emit versioned file statuses and diagnostics; requires --check
+  --drop-labels  Also remove redundant argument labels such as key: key where the call binds the same parameter by position; needs source that checks
+  -h, --help  Show this help without executing the command
+
+Examples:
+  ms fmt main.ms
+  ms fmt ms.toml --check
+  ms fmt src test.ms
+  ms fmt src/*.ms --check

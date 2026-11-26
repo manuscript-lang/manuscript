@@ -4,6 +4,7 @@
 #include "base/alloc.h"
 #include "base/utf8.h"
 #include "lsp/lsp_internal.h"
+#include "tooling/decl_header.h"
 
 static bool is_identifier(uint8_t b) {
   return b == '_' || (b >= '0' && b <= '9') || (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z');
@@ -238,4 +239,12 @@ bool lsp_line_opens_suite(MsSpan line) {
   }
   lsp_token_list_free(&tokens);
   return opens;
+}
+
+bool lsp_function_detail(MsArena *arena, MsStrBuild *detail, MsSpan source, size_t offset, MsSpan name) {
+  size_t at;
+  if (name.len == 0 || !lsp_header(source, offset, name, &at)) return false;
+  const MsSpan signature = ms_declaration_signature(arena, source, at, name, NULL);
+  ms_strbuild_append(detail, signature);
+  return signature.len > 0;
 }

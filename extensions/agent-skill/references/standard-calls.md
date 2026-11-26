@@ -1,6 +1,6 @@
 # Standard calls
 
-Every call of the core prelude types, with its exact name and signature, from the standard library's own declarations. Use these names as written; never translate a name from another language. A name outside the prelude is imported: `ms search_symbol <name>` prints its signature and its `import` line.
+Every call of the core prelude types, with its exact name and signature, from the standard library's own declarations. Use these names as written; never translate a name from another language. A name outside the prelude is imported: `ms search <name>` prints its signature and its `import` line.
 
 Modes are part of each signature. A parameter with no mark borrows its argument; `move` takes it (the caller's name is dead afterwards, or pass `.clone()`); `var` before a method name means it changes the receiver, so the receiver must be a `var`; `hold` before a name marks a receiver or argument the result keeps using, and `&T` marks that result as a borrow of it (use it in place or `.clone()` it). `List[&String]` is a list of borrowed strings.
 

@@ -8,4 +8,4 @@ The rule is narrow on purpose: the source is a name or field path the body leave
 
 Apply when: a `for` over `filter` still allocates, or you widen the lambda rule (then decide which fault comes first).
 Evidence: fixture `e2e/accept/filter-walk-loops`; `bench/perf/results.md#workloads` (2026-11-18).
-Verify: `make conform`; `MS_EMIT_OPT=1 ms emit` shows no `clone`/`list.push` in the loop.
+Verify: `make conform`; `MS_EMIT_OPT=1 ms build --emit mir` shows no `clone`/`list.push` in the loop.

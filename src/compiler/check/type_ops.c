@@ -3,10 +3,9 @@
 
 enum { SHOW_NODE_BUDGET = 64 };
 
-/* The node budget of one rendering, and whether parameters spell their `move`. */
+/* The node budget of one rendering. */
 typedef struct Show {
   int budget;
-  bool moves;
 } Show;
 
 static void show_node(MsStrBuild *out, const MsNames *names, const MsTyTable *table, MsTy ty, Show *show);
@@ -19,7 +18,7 @@ static void show_function(MsStrBuild *out, const MsNames *names, const MsTyTable
     if (index > 0) {
       ms_strbuild_append_text(out, ", ");
     }
-    ms_strbuild_append_text(out, show->moves && (params[index].flags & MS_PARAM_MOVE) != 0 ? "move " : "");
+    ms_strbuild_append_text(out, (params[index].flags & MS_PARAM_MOVE) != 0 ? "move " : "");
     ms_strbuild_append_text(out, (params[index].flags & MS_PARAM_VAR) != 0 ? "var " : "");
     show_node(out, names, table, params[index].ty, show);
   }
@@ -72,12 +71,7 @@ static void show_node(MsStrBuild *out, const MsNames *names, const MsTyTable *ta
 }
 
 void ms_ty_show(MsStrBuild *out, const MsNames *names, const MsTyTable *table, MsTy ty) {
-  Show show = {SHOW_NODE_BUDGET, true};
-  show_node(out, names, table, ty, &show);
-}
-
-void ms_ty_show_plain(MsStrBuild *out, const MsNames *names, const MsTyTable *table, MsTy ty) {
-  Show show = {SHOW_NODE_BUDGET, false};
+  Show show = {SHOW_NODE_BUDGET};
   show_node(out, names, table, ty, &show);
 }
 

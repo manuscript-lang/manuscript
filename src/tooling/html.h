@@ -1,4 +1,4 @@
-/* tooling/html.h: the interactive page of `ms diagram --format html`: one self-contained HTML file that embeds the fact
+/* tooling/html.h: the interactive page of `ms map --format html`: one self-contained HTML file that embeds the fact
  * model. */
 #ifndef MS_TOOLING_HTML_H
 #define MS_TOOLING_HTML_H

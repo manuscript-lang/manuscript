@@ -1,0 +1,178 @@
+module "main"
+file 0 "src/main.ms"
+file 1 "@std/core.ms"
+file 2 "@std/math/math.ms"
+extern @msrt_unwinding() -> bool leaf unwinding
+extern @msrt_unwinding_pause() -> void
+extern @msrt_unwinding_resume() -> void
+extern @msrt_bigint_to_string(obj BigInt) -> str fresh
+extern @msstd_bigint_from_int(int) -> obj BigInt
+extern @msstd_bigint_add(obj BigInt, obj BigInt) -> obj BigInt
+extern @msrt_io_write_stdout_end(str, str) -> void
+entry @main.entry
+
+fn @main.entry() -> int export {
+b0:
+  %0: int = iconst 1 !0:5:5:1
+  %1: obj BigInt = call.rt @msstd_bigint_from_int (%0) !2:962:12:15
+  %2: bool = call.rt @msrt_unwinding () !2:962:12:15
+  br_if %2, b1(), b2() !2:962:12:15
+b1():
+  forget %1 !2:962:12:15
+  %3: obj BigInt = undef !2:962:12:15
+  forget %3 !0:5:10:1
+  br b29() !0:5:10:1
+b2():
+  %4: int = iconst 2 !0:6:5:1
+  %5: obj BigInt = call.rt @msstd_bigint_from_int (%4) !2:962:12:14
+  %6: bool = call.rt @msrt_unwinding () !2:962:12:14
+  br_if %6, b3(), b4() !2:962:12:14
+b3():
+  drop %1 !2:962:12:14
+  forget %5 !2:962:12:14
+  %7: obj BigInt = undef !2:962:12:14
+  forget %7 !0:6:10:1
+  %8: void = call.rt @msrt_unwinding_pause () !0:6:10:1
+  br b28() !0:6:10:1
+b4():
+  %9: obj BigInt = call.rt @msstd_bigint_add (%1, %5) !2:751:12:13
+  %10: bool = call.rt @msrt_unwinding () !2:751:12:13
+  br_if %10, b5(), b6() !2:751:12:13
+b5():
+  forget %9 !2:751:12:13
+  %11: obj BigInt = undef !2:751:12:13
+  forget %11 !0:7:13:1
+  br b30() !0:7:13:1
+b6():
+  %12: str = call.rt @msrt_bigint_to_string (%9) !0:7:20:1
+  drop %9 !0:7:20:1
+  %13: bool = call.rt @msrt_unwinding () !0:7:20:1
+  br_if %13, b7(), b8() !0:7:20:1
+b7():
+  forget %12 !0:7:20:1
+  br b30() !0:7:20:1
+b8():
+  %14: str = str "\n" !0:7:20:2
+  %15: void = call.rt @msrt_io_write_stdout_end (%12, %14) !1:208:5:12
+  drop %12 !1:208:5:12
+  %16: bool = call.rt @msrt_unwinding () !1:208:5:12
+  br_if %16, b9(), b10() !1:208:5:12
+b9():
+  br b30() !0:7:5:1
+b10():
+  %17: obj BigInt = call.rt @msstd_bigint_add (%1, %5) !2:751:12:11
+  %18: bool = call.rt @msrt_unwinding () !2:751:12:11
+  br_if %18, b11(), b12() !2:751:12:11
+b11():
+  forget %17 !2:751:12:11
+  %19: obj BigInt = undef !2:751:12:11
+  forget %19 !0:8:13:1
+  br b30() !0:8:13:1
+b12():
+  %20: str = call.rt @msrt_bigint_to_string (%17) !0:8:20:1
+  drop %17 !0:8:20:1
+  %21: bool = call.rt @msrt_unwinding () !0:8:20:1
+  br_if %21, b13(), b14() !0:8:20:1
+b13():
+  forget %20 !0:8:20:1
+  br b30() !0:8:20:1
+b14():
+  %22: str = str "\n" !0:8:20:3
+  %23: void = call.rt @msrt_io_write_stdout_end (%20, %22) !1:208:5:10
+  drop %20 !1:208:5:10
+  %24: bool = call.rt @msrt_unwinding () !1:208:5:10
+  br_if %24, b15(), b16() !1:208:5:10
+b15():
+  br b30() !0:8:5:1
+b16():
+  %25: obj BigInt = call.rt @msstd_bigint_add (%1, %5) !2:751:12:9
+  %26: bool = call.rt @msrt_unwinding () !2:751:12:9
+  br_if %26, b17(), b18() !2:751:12:9
+b17():
+  forget %25 !2:751:12:9
+  %27: obj BigInt = undef !2:751:12:9
+  forget %27 !0:9:13:1
+  br b30() !0:9:13:1
+b18():
+  %28: str = call.rt @msrt_bigint_to_string (%25) !0:9:20:1
+  drop %25 !0:9:20:1
+  %29: bool = call.rt @msrt_unwinding () !0:9:20:1
+  br_if %29, b19(), b20() !0:9:20:1
+b19():
+  forget %28 !0:9:20:1
+  br b30() !0:9:20:1
+b20():
+  %30: str = str "\n" !0:9:20:4
+  %31: void = call.rt @msrt_io_write_stdout_end (%28, %30) !1:208:5:8
+  drop %28 !1:208:5:8
+  %32: bool = call.rt @msrt_unwinding () !1:208:5:8
+  br_if %32, b21(), b22() !1:208:5:8
+b21():
+  br b30() !0:9:5:1
+b22():
+  %33: obj BigInt = call.rt @msstd_bigint_add (%1, %5) !2:751:12:7
+  %34: bool = call.rt @msrt_unwinding () !2:751:12:7
+  br_if %34, b23(), b24() !2:751:12:7
+b23():
+  forget %33 !2:751:12:7
+  %35: obj BigInt = undef !2:751:12:7
+  forget %35 !0:10:13:1
+  br b30() !0:10:13:1
+b24():
+  %36: str = call.rt @msrt_bigint_to_string (%33) !0:10:20:1
+  drop %33 !0:10:20:1
+  drop %1 !0:10:20:1
+  drop %5 !0:10:20:1
+  %37: bool = call.rt @msrt_unwinding () !0:10:20:1
+  br_if %37, b25(), b26() !0:10:20:1
+b25():
+  forget %36 !0:10:20:1
+  br b31() !0:10:20:1
+b26():
+  %38: str = str "\n" !0:10:20:5
+  %39: void = call.rt @msrt_io_write_stdout_end (%36, %38) !1:208:5:6
+  drop %36 !1:208:5:6
+  %40: bool = call.rt @msrt_unwinding () !1:208:5:6
+  br_if %40, b27(), b29() !1:208:5:6
+b27():
+  br b31() !0:10:5:1
+b28():
+  %41: void = call.rt @msrt_unwinding_resume () !0:6:10:1
+  br b29() !0:6:10:1
+b29():
+  %42: int = iconst 0
+  ret %42
+b30():
+  drop %1 !2:751:12:13
+  drop %5 !2:751:12:13
+  %43: void = call.rt @msrt_unwinding_pause () !0:7:13:1
+  br b28() !0:7:13:1
+b31():
+  %44: void = call.rt @msrt_unwinding_pause () !0:10:20:1
+  br b28() !0:10:20:1
+  scope "main" 0 0 0
+  scope "print" 1 1 7
+  scope "print" 1 1 8
+  scope "print" 1 1 9
+  scope "print" 1 1 10
+  scope "print" 1 1 10
+  scope "BigInt.add" 2 1 10
+  scope "print" 1 1 9
+  scope "BigInt.add" 2 1 9
+  scope "print" 1 1 8
+  scope "BigInt.add" 2 1 8
+  scope "print" 1 1 7
+  scope "BigInt.add" 2 1 7
+  scope "big_int_of_int" 2 1 6
+  scope "big_int_of_int" 2 1 5
+  name %36 "value" param 6
+  name %38 "end" param 6
+  name %28 "value" param 8
+  name %30 "end" param 8
+  name %20 "value" param 10
+  name %22 "end" param 10
+  name %12 "value" param 12
+  name %14 "end" param 12
+  name %4 "value" param 14
+  name %0 "value" param 15
+}

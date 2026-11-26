@@ -5,6 +5,8 @@
 
 /* ---- states ---- */
 
+bool el_tagged(const ElCx *cx, MirValue value);
+
 static ElSt el_part(ElCx *cx, uint32_t alt, uint32_t cs, uint32_t mask) {
   for (uint32_t index = 0; index < cx->nparts; index++) {
     const ElPart *part = &cx->parts[index];
@@ -42,6 +44,14 @@ static uint64_t pack(MirValue value, ElSt kind) {
 }
 
 void el_push(ElCx *cx, ElState *state, MirValue value, ElSt kind) {
+  if (kind == EL_LIVE && el_tagged(cx, value) && cx->tag_kind[value] == 0 && !state->tainted) {
+    ElNode *node = MS_ARENA_NEW(cx->ma, ElNode);
+    *node = (ElNode){.v = value, .scope = cx->tag_scope[value], .next = state->tip, .block = MIR_NONE};
+    node->uniform = state->tip == NULL || (state->tip->uniform && state->tip->scope == node->scope);
+    state->tip = node;
+  } else {
+    state->tainted = true;
+  }
   posmap_insert(cx->ma, &state->at, value, state->next);
   posmap_insert(cx->ma, &state->seq, state->next, pack(value, kind));
   state->next++;
@@ -75,6 +85,7 @@ static void el_set(ElCx *cx, ElState *state, MirValue value, ElSt kind) {
   if (!el_position_of(state, value, &position) || (el_get(state, value, &old) && old == kind)) {
     return;
   }
+  state->tainted = true;
   posmap_insert(cx->ma, &state->seq, position, pack(value, kind));
   if (el_is_odd(kind)) {
     owner_insert(cx->ma, &state->odd, value);
@@ -87,6 +98,11 @@ void el_remove(ElCx *cx, ElState *state, MirValue value) {
   uint32_t position = 0;
   if (!el_position_of(state, value, &position)) {
     return;
+  }
+  if (!state->tainted && state->tip != NULL && state->tip->v == value) {
+    state->tip = (ElNode *)(uintptr_t)state->tip->next; /* the newest owner leaves: the list is a stack */
+  } else {
+    state->tainted = true;
   }
   (void)posmap_remove(cx->ma, &state->at, value);
   (void)posmap_remove(cx->ma, &state->seq, position);
@@ -312,7 +328,7 @@ static void apply_scope_end(ElCx *cx, ElState *state, const MirInst *inst) {
   if (scope >= cx->nscopes) {
     return;
   }
-  for (size_t index = 0; index < cx->owners[scope].len; index++) {
+  for (size_t index = cx->owners[scope].len; index-- > 0;) { /* the newest owner first: the list of the state is a stack */
     el_remove(cx, state, cx->owners[scope].ptr[index]);
   }
 }

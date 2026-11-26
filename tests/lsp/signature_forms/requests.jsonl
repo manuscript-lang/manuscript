@@ -1,8 +1,11 @@
 {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"processId":null,"rootUri":"$ROOT_URI","capabilities":{}}}
 {"jsonrpc":"2.0","method":"initialized","params":{}}
-{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"$ROOT_URI/main.ms","languageId":"manuscript","version":1,"text":"fn first[T](move left T, right T) T {\n    return left\n}\n\ntype Pair {\n    left Int\n}\n\nfn Pair.combine(left Int, right Int) Int {\n    return self.left + left + right\n}\n\nfn use(pair Pair) Int {\n    return first[Int](1, 2) + (pair).combine(3, 4) + f\"{first[Int](5, 6)}\".length()\n}\n"}}}
+{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"$ROOT_URI/main.ms","languageId":"manuscript","version":1,"text":"fn first[T](move left T, right T) T {\n    return left\n}\n\ntype Pair {\n    left Int\n}\n\nfn Pair.combine(left Int, right Int) Int {\n    return self.left + left + right\n}\n\nfn use(pair Pair) Int {\n    return first[Int](1, 2) + (pair).combine(3, 4) + f\"{first[Int](5, 6)}\".length()\n}\n\nfn clamp(low, high Int, value Int = 0) Int {\n    return value\n}\n\nfn grouped() Int {\n    return clamp(1, 2)\n}\n\nfn apply(visit fn(move Int, String) Int) Int {\n    return visit(1, \"a\")\n}\n"}}}
 {"jsonrpc":"2.0","id":2,"method":"textDocument/signatureHelp","params":{"textDocument":{"uri":"$ROOT_URI/main.ms"},"position":{"line":13,"character":24}}}
 {"jsonrpc":"2.0","id":3,"method":"textDocument/signatureHelp","params":{"textDocument":{"uri":"$ROOT_URI/main.ms"},"position":{"line":13,"character":47}}}
 {"jsonrpc":"2.0","id":4,"method":"textDocument/signatureHelp","params":{"textDocument":{"uri":"$ROOT_URI/main.ms"},"position":{"line":13,"character":69}}}
+{"jsonrpc":"2.0","id":10,"method":"textDocument/signatureHelp","params":{"textDocument":{"uri":"$ROOT_URI/main.ms"},"position":{"line":21,"character":17}}}
+{"jsonrpc":"2.0","id":11,"method":"textDocument/signatureHelp","params":{"textDocument":{"uri":"$ROOT_URI/main.ms"},"position":{"line":21,"character":20}}}
+{"jsonrpc":"2.0","id":12,"method":"textDocument/signatureHelp","params":{"textDocument":{"uri":"$ROOT_URI/main.ms"},"position":{"line":25,"character":17}}}
 {"jsonrpc":"2.0","id":9,"method":"shutdown"}
 {"jsonrpc":"2.0","method":"exit"}

@@ -8,4 +8,4 @@ Rule (2026-11-16): lowering joins every piece of `s + a + f"{b}{n}"` into one ca
 
 Apply when: changing how lowering joins text (`src/compiler/lower/lower_text.c`) or `src/compiler/opt/opt_strfuse.c`. Do not add a lowering case keyed on the assigned name; a new join shape needs a growing twin the pass can pick, or the loop is quadratic.
 Evidence: tests `a_join_onto_a_dying_string_grows_it_in_place`, `append_parts_grows_an_owned_string_and_joins_onto_any_other`, fixture `string-grows-from-a-join`, bench `string.append_interpolated`.
-Verify: `MS_EMIT_OPT=1 ms emit` shows one `string_append_fmtN` in the loop and no `string_fmtN`.
+Verify: `MS_EMIT_OPT=1 ms build --emit mir` shows one `string_append_fmtN` in the loop and no `string_fmtN`.

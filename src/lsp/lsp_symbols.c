@@ -9,6 +9,7 @@
 #include "compiler/syntax/ast.h"
 #include "compiler/syntax/format.h"
 #include "compiler/syntax/lex.h"
+#include "tooling/decl_header.h"
 
 enum { KIND_FUNCTION = 12, KIND_CONSTANT = 14, KIND_CLASS = 5, KIND_ENUM = 10, KIND_INTERFACE = 11, KIND_METHOD = 6,
        KIND_FIELD = 8, KIND_ENUM_MEMBER = 22 };
@@ -17,6 +18,7 @@ typedef struct Outline {
   const MsCheckProgram *program;
   MsSpan source;
   LspLines lines; /* the lines of `source`: positions by binary search */
+  MsArena *arena; /* holds the declaration headers shown as details */
 } Outline;
 
 static void write_range(MsStrBuild *out, LspPosition start, LspPosition end) {
@@ -93,9 +95,11 @@ static void write_declaration(const Outline *outline, MsStrBuild *out, uint32_t 
     selection_name = name_text(outline, declared);
     ms_strbuild_append(&name, selection_name);
     const MsSymbol *symbol = symbol_of(outline, module, decl, declared);
-    if (symbol != NULL && (decl->kind == MS_D_FN || decl->kind == MS_D_CONST) && symbol->ty != MS_TY_NONE &&
+    if (symbol != NULL && decl->kind == MS_D_FN && lsp_function_detail(outline->arena, &detail, outline->source, decl->pos.offset, selection_name)) {
+      /* The parameters and result as the formatter writes the declaration. */
+    } else if (symbol != NULL && (decl->kind == MS_D_FN || decl->kind == MS_D_CONST) && symbol->ty != MS_TY_NONE &&
         !ms_ty_is_invalid(&outline->program->types, symbol->ty)) {
-      ms_ty_show_plain(&detail, outline->program->names, &outline->program->types, symbol->ty);
+      ms_ty_show(&detail, outline->program->names, &outline->program->types, symbol->ty);
     }
     if (decl->kind == MS_D_CONST) kind = KIND_CONSTANT;
   }
@@ -184,7 +188,7 @@ void lsp_document_symbols(const LspDocList *docs, const LspDoc *doc, MsStrBuild 
   const MsCheckProgram *program = &analysis.checked.program;
   for (uint32_t m = 0; analysis.resolved && m < program->user_modules; m++) {
     if (!ms_span_equal(analysis.paths[m], ms_string_span(&doc->path))) continue;
-    Outline outline = {.program = program, .source = program->modules.ptr[m].source};
+    Outline outline = {.program = program, .source = program->modules.ptr[m].source, .arena = analysis.arena};
     lsp_lines_init(&outline.lines, outline.source);
     const MsModule *tree = program->modules.ptr[m].tree;
     bool first = true;

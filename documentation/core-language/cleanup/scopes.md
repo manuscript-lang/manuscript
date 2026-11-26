@@ -55,7 +55,7 @@ slow_work(head)
 
 `close` returns `Void!`, so a failed close is returned or faults rather than lost. Flush buffered streams first (`output.flush()?`) so delivery errors can be handled.
 
-`ms lint` reports **MSL114** when a resource closed at scope end has an uncalled `flush` or `commit`. A `FileHandle` is not reported: its writes go straight to the OS, close does not need a flush, and `sync` (fsync) only adds durability. There are no enter or error-suppression hooks.
+`ms check --only lint` reports **MSL114** when a resource closed at scope end has an uncalled `flush` or `commit`. A `FileHandle` is not reported: its writes go straight to the OS, close does not need a flush, and `sync` (fsync) only adds durability. There are no enter or error-suppression hooks.
 
 ## Close a resource explicitly
 

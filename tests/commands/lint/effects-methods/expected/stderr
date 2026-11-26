@@ -1,9 +1,0 @@
-<DIR>/main.ms:11:12: warning MSL116: `Challenge.spec` reaches std.fs.read: Challenge.spec -> read_file; permit it with `// ms: allow_effect std.fs.read`, move the call to the caller, or take a capability parameter
-    |
- 11 |     return read_file(f"{self.dir}/spec.md").wait().get()
-    |            ^
-<DIR>/main.ms:15:14: warning MSL116: `load` reaches std.fs.read: load -> Challenge.spec -> read_file; permit it with `// ms: allow_effect std.fs.read`, move the call to the caller, or take a capability parameter
-    |
- 15 |     return c.spec().length()
-    |              ^
-2 warnings; warnings do not fail ms lint; pass --deny-warnings to fail on them

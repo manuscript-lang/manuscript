@@ -88,6 +88,10 @@ bool lsp_literal_closed(MsSpan source, const LspEditorToken *token);
  * header's declared name is, whatever precedes it. */
 bool lsp_header(MsSpan source, size_t offset, MsSpan name, size_t *at);
 
+/* Appends the declaration header of the function `name` declared on the line holding `offset`, after the name
+ * (`(move b Box) Int`), laid out by the formatter. False, appending nothing, when the line declares no such function. */
+bool lsp_function_detail(MsArena *arena, MsStrBuild *detail, MsSpan source, size_t offset, MsSpan name);
+
 /* Whether the last token of `line` that is not a comment is `:`, which opens an indented suite. */
 bool lsp_line_opens_suite(MsSpan line);
 

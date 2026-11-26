@@ -395,6 +395,10 @@ static bool cleanup_scope(ElEm *em, uint32_t *at, ElState *state, int64_t scope,
   if ((uint64_t)scope >= cx->nscopes) {
     return true;
   }
+  if (em->tail != NULL && kept == MIR_NONE && *outcome == MIR_NONE && !state->tainted && state->tip != NULL &&
+      state->tip->uniform && state->tip->scope == scope && el_share_list(em, *at, state->tip)) {
+    return true; /* every owner of the state is this scope's plain drop: the chain made for the earlier exits holds them */
+  }
   const MirIdList *list = &cx->owners[scope];
   /* The owners are listed in the order they were made, so they come out of the state oldest first and the sort only
    * reverses them; one buffer serves every exit. */

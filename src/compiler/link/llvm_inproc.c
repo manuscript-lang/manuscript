@@ -173,7 +173,7 @@ static bool parse_module(Ref context, MsSpan input, Ref *module, MsStrBuild *why
   size_t unit_at = 0;
   if (ms_span_find(input, ms_span_of_text("!llvm.dbg.cu"), &unit_at) &&
       api.LLVMGetNamedMetadataNumOperands(*module, "llvm.dbg.cu") == 0) {
-    return message_failure(NULL, "the IR's debug info is invalid and LLVM dropped it (see the IR with `ms emit --ir`)", why);
+    return message_failure(NULL, "the IR's debug info is invalid and LLVM dropped it (see the IR with `ms build --emit ir`)", why);
   }
   return true;
 }

@@ -154,7 +154,7 @@ Builder mutations return Void, and `build` returns the sealed result. `BytesBuil
 
 ## Other collections
 
-The standard library adds collections written in Manuscript. Each follows value ownership: use `.clone()` for an independent deep copy. Find exact signatures with `ms search_symbol <name>`.
+The standard library adds collections written in Manuscript. Each follows value ownership: use `.clone()` for an independent deep copy. Find exact signatures with `ms search <name>`.
 
 | Type | Use it for |
 | --- | --- |

@@ -61,15 +61,28 @@ static bool sb_merge_blocks(MirFunc *f) {
 
 /* Redirects the edges into empty block `b`, which only forwards its arguments to `t`. */
 static bool sb_thread_block(MirModule *m, MirFunc *f, OptIdList *preds, MsArena *arena, uint32_t b,
-              const uint32_t *uses) {
+              const uint32_t *uses, uint32_t *forward) {
   if (f->blocks.ptr[b].insts.len != 0 || f->blocks.ptr[b].term.kind != MT_BR) {
     return false;
   }
-  const MirTarget t = f->blocks.ptr[b].term.a;
+  MirTarget t = f->blocks.ptr[b].term.a;
   if (t.block == b) {
     return false;
   }
   const MirBlockData *blk = &f->blocks.ptr[b];
+  /* A bare forward (no parameters, no arguments) goes to where the block it forwards to goes: a chain of them is
+   * resolved from its far end, so the edges into the chain move once and not once per link. */
+  if (blk->params.len == 0 && t.nargs == 0) {
+    uint32_t final = t.block;
+    while (forward[final] != MIR_NONE) {
+      final = forward[final];
+    }
+    if (final == b) {
+      return false;
+    }
+    forward[b] = final;
+    t.block = final;
+  }
   for (uint32_t k = 0; k < blk->params.len; k++) {
     uint32_t in_args = 0;
     for (uint32_t a = 0; a < t.nargs; a++) {
@@ -128,9 +141,13 @@ static bool sb_thread_edges(MirModule *m, MirFunc *f) {
       }
     }
   }
+  uint32_t *forward = MS_ARENA_NEW_ARRAY(&arena, uint32_t, (size_t)f->blocks.len + 1);
+  for (uint32_t b = 0; b < f->blocks.len; b++) {
+    forward[b] = MIR_NONE;
+  }
   bool changed = false;
-  for (uint32_t b = 1; b < f->blocks.len; b++) {
-    changed |= sb_thread_block(m, f, preds, &arena, b, uses);
+  for (uint32_t b = (uint32_t)f->blocks.len; b-- > 1;) { /* the far end of a chain of forwards first */
+    changed |= sb_thread_block(m, f, preds, &arena, b, uses, forward);
   }
   ms_arena_free(&arena);
   return changed;
@@ -154,6 +171,17 @@ static bool sb_thread_flag_branches(MirModule *m, MirFunc *f) {
     }
   }
   uint32_t *uses = any ? mir_use_counts(&arena, f) : NULL;
+  /* The blocks whose terminator targets each block, so a join finds its edges without reading every block. */
+  OptIdList *preds = MS_ARENA_NEW_ARRAY(&arena, OptIdList, (size_t)f->blocks.len + 1);
+  for (uint32_t pb = 0; any && pb < f->blocks.len; pb++) {
+    const MirTerm *t = &f->blocks.ptr[pb].term;
+    for (uint32_t s = 0; s < mir_term_ntargets(t); s++) {
+      OptIdList *l = &preds[mir_term_target_const(t, s)->block];
+      if (l->n == 0 || l->v[l->n - 1] != pb) {
+        opt_id_push(&arena, l, pb);
+      }
+    }
+  }
   bool changed = false;
   for (uint32_t j = 1; any && j < f->blocks.len; j++) {
     const MirBlockData *blk = &f->blocks.ptr[j];
@@ -171,14 +199,18 @@ static bool sb_thread_flag_branches(MirModule *m, MirFunc *f) {
       sb_has_value(els.args, els.nargs, param.value)) {
       continue;
     }
-    for (uint32_t pb = 0; pb < f->blocks.len; pb++) {
+    const uint32_t entering = preds[j].n; /* what an edge moved to `j` meanwhile adds is not revisited */
+    for (uint32_t k = 0; k < entering; k++) {
+      const uint32_t pb = preds[j].v[k];
       MirTerm *term = &f->blocks.ptr[pb].term;
       for (uint32_t s = 0; pb != j && s < mir_term_ntargets(term); s++) {
         MirTarget *e = mir_term_target(term, s);
         if (e->block != j || e->nargs == 0 || flag[e->args[0]] == 0) {
           continue;
         }
-        *e = opt_target_clone(m, flag[e->args[0]] == 2 ? &then : &els);
+        const MirTarget *to = flag[e->args[0]] == 2 ? &then : &els;
+        *e = opt_target_clone(m, to);
+        opt_id_push(&arena, &preds[to->block], pb); /* the edge now enters the target */
         changed = true;
       }
     }

@@ -26,27 +26,33 @@ import (
 HEADER := """
 import Closeable, print from "@std/core.ms"
 
-type Marker:
-    id: Int
+type Marker {
+    id Int
+}
 
-fn move Marker.close() Void!:
+fn move Marker.close() Void! {
     print(f"closed-{self.id}")
+}
 
-fn saw(m: Marker) Void:
+fn saw(m Marker) Void {
     print(f"saw-{m.id}")
+}
 
-fn saw_opt(m: Marker?) Void:
-    print(f"saw-{m.is_some()}")
+fn saw_opt(m Marker?) Void {
+    print(f"saw-{m != null}")
+}
 
-fn mk(id: Int) Marker:
+fn mk(id Int) Marker {
     print(f"made-{id}")
     return Marker(id)
+}
 
-fn run() Void:
+fn run() Void {
 """
 FOOTER := """
-fn main() Void:
+export fn main() Void {
     run()
+}
 """
 
 // One standard operation: the receiver it runs on, its method, its arguments (`@V@` is
@@ -64,13 +70,13 @@ fn list_setup() String => return "var items = [mk(1)]"
 fn map_setup() String => return "var items = Map[Int, Marker]()\n    items.add(1, mk(1))"
 
 fn optional_setup(present Bool) String {
-	if present { return "held: Marker? := mk(1)" }
-	return "held: Marker? := none"
+	if present { return "held Marker? := mk(1)" }
+	return "held Marker? := null"
 }
 
 fn result_setup(good Bool) String {
-	if good { return "held: Marker!Error := ok(mk(1))" }
-	return "held: Marker!Error := error(Error(\"x\"))"
+	if good { return "held Marker!Error := ok(mk(1))" }
+	return "held Marker!Error := error(Error(\"x\"))"
 }
 
 fn operations() List[Operation] {
@@ -113,7 +119,7 @@ fn operations() List[Operation] {
 			result_setup(true),
 			"held",
 			"map",
-			"fn m: m.id",
+			"m => m.id",
 			"r := ",
 			"print(f\"{r.is_ok()}\")",
 		),
@@ -132,9 +138,18 @@ fn operations() List[Operation] {
 			optional_setup(false),
 			"held",
 			"or_else",
-			"fn: @V@",
+			"() => @V@",
 			"r := ",
 			"saw_opt(r)",
+		),
+		op(
+			"result_and_then",
+			result_setup(true),
+			"held",
+			"and_then",
+			"m => ok(m)",
+			"r := ",
+			"print(f\"{r.is_ok()}\")",
 		),
 		op(
 			"result_err",
@@ -238,6 +253,8 @@ fn exempt() List[String] {
 		"List.min: returns a copy of a Comparable and Clonable element, so a resource cannot reach it",
 		"List.sum: declared T: Numeric, a set of number types, so a resource cannot reach it",
 		"List.zip: declared T: Clonable and U: Clonable, so a resource cannot reach it",
+		"Optional.clone: declared T: Clonable, so a resource cannot reach it",
+		"Optional.to_optional: the prelude search lists Result.to_optional here, which has a row",
 		"Map.map: the callback borrows each entry and builds new values",
 		"Map.map_keys: declared U: Clonable, so a resource value cannot reach it",
 		"Map.find: declared U: Clonable, so a resource value cannot reach it",
@@ -304,7 +321,7 @@ fn field(entry JsonValue, key String) String {
 // Every `Type.operation` of the standard type whose declaration mentions a type
 // parameter.
 fn declared_operations(ms, name String) List[String]! {
-	ran := run(ms, ["search_symbol", f"prelude.{name}", "--json", "--limit", "300"]).wait()?
+	ran := run(ms, ["search", f"prelude.{name}", "--json", "--limit", "300"]).wait()?
 	page := parse(ran.stdout.decode_utf8() or "")?
 	var found = List[String]()
 	names := type_parameters(name.clone())
@@ -402,7 +419,7 @@ fn program(o Operation, call_form, arg_form String) String {
 
 	var body = ""
 	for line in lines { body = f"{body}    {line}\n" }
-	return f"{HEADER}\n{body}\n{FOOTER}\n"
+	return f"{HEADER}\n{body}\}\n{FOOTER}\n"
 }
 
 // How many times `prefix` + `id` appears as a line, for each id made.
@@ -441,7 +458,7 @@ fn main() Int {
 				file := f"{scratch.path()}/{name}.ms"
 				void write_file(file, program(o, call_form, arg_form)).wait().get()
 
-				verdict := run(ms.clone(), ["check", file.clone()]).wait()
+				verdict := run(ms.clone(), ["check", "--only", "types", file.clone()]).wait()
 
 				if verdict.is_error() or verdict.get().exit_code != 0 {
 					rejected += 1

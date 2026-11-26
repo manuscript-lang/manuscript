@@ -33,8 +33,8 @@
     "run": "./prog",
     "version": "ms --version",
     "setup": "curl -fsSL https://manuscript-lang.github.io/manuscript/install-skill.sh | sh",
-    "fix": "ms check ms.toml --fix",
-    "notes": "The Manuscript agent skill is installed in .claude/skills/manuscript and .agents/skills/manuscript: SKILL.md with references/ beside it. Load it before writing code and open the reference its table of contents points to, and use `ms search_symbol <name or words>` to look up standard-library APIs before reading files. `ms explain <code>` explains a diagnostic. `ms help` lists commands.",
-    "codes": "ms check ms.toml --json 2>/dev/null | grep -oE '\"code\": \"[A-Z]+[0-9]+\"' | grep -oE '[A-Z]+[0-9]+'"
+    "fix": "ms check --only types ms.toml --fix",
+    "notes": "The Manuscript agent skill is installed in .claude/skills/manuscript and .agents/skills/manuscript: SKILL.md with references/ beside it. Load it before writing code and open the reference its table of contents points to, and use `ms search <name or words>` to look up standard-library APIs before reading files. `ms help <code>` explains a diagnostic. `ms help` lists commands.",
+    "codes": "ms check --only types ms.toml --json 2>/dev/null | grep -oE '\"code\": \"[A-Z]+[0-9]+\"' | grep -oE '[A-Z]+[0-9]+'"
   }
 }

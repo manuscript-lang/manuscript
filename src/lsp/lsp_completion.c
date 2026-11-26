@@ -22,7 +22,9 @@
 #include "compiler/check/scope_walk.h"
 #include "tooling/doc_comment.h"
 
-static void add(Completer *c, MsSpan name, int kind, MsTy ty, int priority, MsSpan insert, MsSpan documentation) {
+/* `declared` is the callable's header after its name, when it has a source declaration: it is shown instead of a printed type. */
+static void add_detailed(Completer *c, MsSpan name, int kind, MsTy ty, int priority, MsSpan insert, MsSpan documentation,
+                         MsSpan declared) {
   if (!name_matches(name, c->prefix) || ms_span_starts_with_text(name, MARKER)) return;
   for (size_t i = 0; i < c->items.len; i++) {
     if (ms_span_equal(ms_string_span(&c->items.ptr[i].label), name)) return;
@@ -33,11 +35,16 @@ static void add(Completer *c, MsSpan name, int kind, MsTy ty, int priority, MsSp
   ms_strbuild_append_byte(&sort, '_');
   ms_strbuild_append(&sort, name);
   MsStrBuild detail = ms_strbuild_new();
-  if (ty != MS_TY_NONE) ms_ty_show_plain(&detail, c->program->names, &c->program->types, ty);
+  if (declared.len > 0) ms_strbuild_append(&detail, declared);
+  else if (ty != MS_TY_NONE) ms_ty_show(&detail, c->program->names, &c->program->types, ty);
   Item item = {.label = own(name), .detail = ms_strbuild_finish(&detail), .documentation = own(documentation),
                .sort = ms_strbuild_finish(&sort), .insert = own(insert), .kind = kind,
                .format = c->snippets && (contains(insert, "${") || contains(insert, "$0")) ? 2 : 1};
   item_list_push(&c->items, item);
+}
+
+static void add(Completer *c, MsSpan name, int kind, MsTy ty, int priority, MsSpan insert, MsSpan documentation) {
+  add_detailed(c, name, kind, ty, priority, insert, documentation, (MsSpan){0});
 }
 
 static void add_text(Completer *c, const char *name, int kind, MsTy ty, int priority, const char *insert) {
@@ -86,9 +93,12 @@ static MsString callable_text(const Completer *c, MsSpan name, MsTy ty, const Ms
 }
 
 static void add_callable(Completer *c, MsSpan name, int kind, MsTy ty, int priority, const MsTy *variables, size_t variable_count,
-                         const MsParams *ast, MsSpan documentation) {
+                         const MsParams *ast, MsSpan documentation, MsSpan source, size_t offset) {
   MsString insert = callable_text(c, name, ty, variables, variable_count, ast);
-  add(c, name, kind, ty, priority, ms_string_span(&insert), documentation);
+  MsStrBuild declared = ms_strbuild_new();
+  if (source.len > 0) (void)lsp_function_detail(c->analysis->arena, &declared, source, offset, name);
+  add_detailed(c, name, kind, ty, priority, ms_string_span(&insert), documentation, ms_strbuild_span(&declared));
+  ms_strbuild_free(&declared);
   ms_string_release(&insert);
 }
 
@@ -112,7 +122,7 @@ static void add_case(Completer *c, const MsTyCase *entry, MsTy owner, int priori
   const MsTyDesc desc = {.name = fn, .id = fn, .kind = MS_TY_FUNCTION, .params = entry->fields.ptr,
                          .param_count = (uint32_t)entry->fields.len, .result = owner};
   const MsTy signature = ms_ty_intern(&c->program->types, &desc);
-  add_callable(c, name, 20, signature, priority, NULL, 0, NULL, (MsSpan){0});
+  add_callable(c, name, 20, signature, priority, NULL, 0, NULL, (MsSpan){0}, (MsSpan){0}, 0);
 }
 
 /* The interned `String`, or MS_TY_NONE when the program never names it. */
@@ -142,7 +152,7 @@ static void add_members(Completer *c, MsTy receiver) {
   }
   for (size_t i = 0; def != NULL && i < def->operations.len; i++) {
     const MsOperation *operation = &def->operations.ptr[i];
-    add_callable(c, ms_names_span(program->names, operation->name), 2, operation->ty, 0, NULL, 0, NULL, (MsSpan){0});
+    add_callable(c, ms_names_span(program->names, operation->name), 2, operation->ty, 0, NULL, 0, NULL, (MsSpan){0}, (MsSpan){0}, 0);
   }
   for (size_t i = 0; i < program->methods.len; i++) {
     const MsMethodEntry *entry = &program->methods.ptr[i];
@@ -165,7 +175,9 @@ static void add_members(Completer *c, MsTy receiver) {
         : ms_declaration_comment(c->analysis->arena, program->modules.ptr[entry->module].source, entry->source->pos.offset,
                                  entry->source->pos.line);
     add_callable(c, ms_names_span(program->names, entry->name), 2, signature, 0, NULL, 0,
-                 entry->source != NULL ? &entry->source->func.params : NULL, documentation);
+                 entry->source != NULL ? &entry->source->func.params : NULL, documentation,
+                 entry->source != NULL ? program->modules.ptr[entry->module].source : (MsSpan){0},
+                 entry->source != NULL ? entry->source->pos.offset : 0);
   }
   /* A record, alternative or opaque type clones and prints itself without declaring either. */
   const MsTyKind kind = ms_ty_kind(&program->types, receiver);
@@ -173,8 +185,8 @@ static void add_members(Completer *c, MsTy receiver) {
     const MsName fn = ms_names_intern(program->names, ms_span_of_text("fn"));
     const MsTyDesc clone = {.name = fn, .id = fn, .kind = MS_TY_FUNCTION, .result = receiver};
     const MsTyDesc print = {.name = fn, .id = fn, .kind = MS_TY_FUNCTION, .result = string_type(program)};
-    add_callable(c, ms_span_of_text("clone"), 2, ms_ty_intern(&program->types, &clone), 0, NULL, 0, NULL, (MsSpan){0});
-    add_callable(c, ms_span_of_text("to_string"), 2, ms_ty_intern(&program->types, &print), 0, NULL, 0, NULL, (MsSpan){0});
+    add_callable(c, ms_span_of_text("clone"), 2, ms_ty_intern(&program->types, &clone), 0, NULL, 0, NULL, (MsSpan){0}, (MsSpan){0}, 0);
+    add_callable(c, ms_span_of_text("to_string"), 2, ms_ty_intern(&program->types, &print), 0, NULL, 0, NULL, (MsSpan){0}, (MsSpan){0}, 0);
   }
   MsSpanList natives = {0};
   ms_check_native_names(program, receiver, &natives);
@@ -252,7 +264,9 @@ static void add_symbol(Completer *c, const MsSymbol *symbol) {
     return;
   }
   const MsParams *ast = symbol->decl != NULL && symbol->decl->kind == MS_D_FN ? &symbol->decl->u.fn.params : NULL;
-  add_callable(c, name, 3, symbol->ty, 2, variables, symbol->var_count, ast, documentation);
+  add_callable(c, name, 3, symbol->ty, 2, variables, symbol->var_count, ast, documentation,
+               symbol->decl != NULL ? program->modules.ptr[symbol->module].source : (MsSpan){0},
+               symbol->decl != NULL ? symbol->decl->pos.offset : 0);
 }
 
 static void add_scope_symbols(Completer *c, const MsScope *scope, bool prelude_only) {
@@ -273,7 +287,7 @@ static void scope_items(Completer *c) {
     for (size_t i = c->scope.len; i > 0; i--) {
       const MsBinding *binding = &c->scope.ptr[i - 1];
       const MsSpan name = ms_names_span(program->names, binding->name);
-      add_callable(c, name, 6, binding_type(c, binding), 0, NULL, 0, NULL, (MsSpan){0});
+      add_callable(c, name, 6, binding_type(c, binding), 0, NULL, 0, NULL, (MsSpan){0}, (MsSpan){0}, 0);
     }
   }
   if (c->module != UINT32_MAX) {
