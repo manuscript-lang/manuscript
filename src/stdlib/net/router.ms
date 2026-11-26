@@ -893,14 +893,22 @@ fn var Tap.write_bytes(move data Bytes) Void! {
 }
 
 // `state` is a slot counting what is sent, which the caller made and reads afterwards.
-fn new_tap(move inner HttpExchange, move extra HttpHeaders, move request HttpHeaders, state Int? = null) Tap {
+fn new_tap(
+	move inner HttpExchange,
+	move extra,
+	request HttpHeaders,
+	state Int? = null,
+) Tap {
 	return Tap(inner: inner, extra: extra, request: request, state: state)
 }
 
 // Replaces `exchange` with one whose `headers()` reports `request` and everything else
 // passes through. Middleware uses it to hand later layers changed request headers,
 // since a received header set is a copy.
-export fn with_request_headers(var exchange HttpExchange, move request HttpHeaders) Void {
+export fn with_request_headers(
+	var exchange HttpExchange,
+	move request HttpHeaders,
+) Void {
 	exchange = new_tap(exchange, headers(), request)
 }
 
