@@ -364,6 +364,10 @@ static void enter_own_variables(Context *context, const MsMethod *method, MsTyLi
   }
 }
 
+/* The checker and the lowerer bind a call's variables in 16-slot arrays: a method past them lost the extra variables
+ * and failed in lowering. */
+enum { MAX_METHOD_VARIABLES = 16 };
+
 static void add_methods(Context *context, const MsDecl *decl, MsTy receiver) {
   MsCheckProgram *program = context->program;
   Resolver *resolver = &context->resolver;
@@ -385,6 +389,10 @@ static void add_methods(Context *context, const MsDecl *decl, MsTy receiver) {
       ms_strbuild_append(&text, ms_names_span(program->names, ms_ty_row(&program->types, receiver)->name));
       ms_strbuild_append_text(&text, ": another receiver form of the same type could match the same application");
       ms_check_report(program, context->module, method->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+    }
+    if (context->open.len + own.len > MAX_METHOD_VARIABLES && context->resolver.report) {
+      ms_check_report(program, context->module, method->pos, MS_CHECK_TYPE,
+                      ms_string_static(ms_span_of_text("a method takes at most 16 type parameters, its receiver's included; group related ones into a record type")));
     }
     MsMethodEntry entry = {.name = method->func.name, .receiver = receiver, .ty = signature,
                            .module = context->module, .source = method};
