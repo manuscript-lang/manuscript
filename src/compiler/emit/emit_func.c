@@ -306,6 +306,7 @@ bool emit_function(EmitCx *cx, uint32_t index) {
   }
   cx->is_iconst = is_iconst;
   cx->iconst = iconst;
+  emit_plan_forwards(cx, &scratch);
   emit_index_edges(cx, &scratch);
   const bool *held = emit_wide_plan(cx, &scratch);
   cx->pool = emit_slot_pool(&scratch, cx, held);
@@ -316,7 +317,7 @@ bool emit_function(EmitCx *cx, uint32_t index) {
   cx->out = &body;
   bool ok = true;
   for (uint32_t block = 0; ok && block < func->blocks.len; block++) {
-    ok = emit_block(cx, block, last);
+    ok = cx->forward[block] != MIR_NONE || emit_block(cx, block, last);
   }
   cx->out = module_out;
   if (ok) {
@@ -332,6 +333,7 @@ bool emit_function(EmitCx *cx, uint32_t index) {
   cx->framed = NULL;
   cx->borrowed = NULL;
   cx->is_iconst = NULL;
+  cx->forward = NULL;
   cx->into_start = cx->into_from = cx->into_edge = NULL;
   cx->unwind_byte = false;
   cx->iconst = NULL;

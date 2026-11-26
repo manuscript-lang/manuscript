@@ -64,7 +64,7 @@ void emit_fault_if(EmitCx *cx, const EmitSite *site, const char *condition, cons
     ms_strbuild_printf(out, "%si64 %%v%u", arg == 0 ? "" : ", ", args[arg]);
   }
   if (leaves) {
-    ms_strbuild_printf(out, ") nomerge\n  br label %%b%u\n", exit);
+    ms_strbuild_printf(out, ") nomerge\n  br label %%b%u\n", emit_block_target(cx, exit));
   } else {
     /* No exit to leave by (a function that only unwinds): the posted fault ends the program. */
     ms_strbuild_append_text(out, ") nomerge\n  call void @msrt_fault_posted() noreturn\n  unreachable\n");

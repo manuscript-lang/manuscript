@@ -87,8 +87,9 @@ static void take_payload(LowerFn *fn, const Match *match, const MsArm *arm, uint
     const MirTy elem = mir_ty_data(module, match->ty)->elem;
     const MirValue item = mir_b_emit(&fn->b, MOP_OptUnbox, &match->scrutinee, 1, (MirImm){0}, elem);
     const MsTy payload = payload_type(fn, match, 1, 0);
+    /* A binding the arm moves a field out of is not closed whole: the arm's scope releases what is left of it. */
     const bool names_resource = closes_rest && payload != MS_TY_NONE && fn_temp_closes(fn, payload) &&
-                                lower_part_close(fn->cx, payload) != MIR_NONE;
+                                lower_part_close(fn->cx, payload) != MIR_NONE && !fn_leaves_fields(fn, ref->local, elem);
     if (names_resource || closes_binding(fn, arm, 0, payload)) {
       (void)fn_bind_closing(fn, ref->local, payload, item, false); /* the arm closes it where it ends */
       return;
