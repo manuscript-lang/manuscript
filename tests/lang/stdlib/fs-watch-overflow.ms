@@ -3,7 +3,12 @@
 import (
 	WatchOptions, create_directory, temporary, watch from "@std/os/fs.ms",
 	expect_ok, expect_true from "@std/test/test.ms",
+	milliseconds, sleep from "@std/time.ms",
 )
+
+// The events reach the queue from the watcher's own thread, a little after the changes. Both tests give them
+// time to arrive before reading, so every one is queued while nothing reads: a reader that keeps pace never
+// overflows the queue, and a host that delivers late (Windows) would otherwise be read one event at a time.
 
 // A queue of one overflows on the second change. By default (`rescan`) the watcher
 // stays alive and reports one `rescan` event for the watched root: "look again".
@@ -18,6 +23,7 @@ test "a full queue becomes one rescan event for the root" {
 		i += 1
 	}
 
+	void sleep(milliseconds(500)).wait()
 	var saw_root = false
 	var reads = 0
 
@@ -46,6 +52,7 @@ test "overflow: error ends the watcher with EOVERFLOW" {
 		i += 1
 	}
 
+	void sleep(milliseconds(500)).wait()
 	var failed = false
 	var reads = 0
 

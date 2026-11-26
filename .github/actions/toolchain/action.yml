@@ -47,7 +47,9 @@ runs:
       uses: msys2/setup-msys2@v2
       with:
         msystem: ${{ runner.arch == 'ARM64' && 'CLANGARM64' || 'CLANG64' }}
-        update: false
+        # The arm64 runner has no MSYS2 of its own: the action unpacks an archive whose keyring can predate the key the
+        # package databases are now signed with, so pacman rejects them until the keyring is updated.
+        update: ${{ runner.arch == 'ARM64' }}
         install: >-
           ${{ runner.arch == 'ARM64' && 'mingw-w64-clang-aarch64-toolchain mingw-w64-clang-aarch64-cmake mingw-w64-clang-aarch64-ninja mingw-w64-clang-aarch64-ccache perl make' || 'mingw-w64-clang-x86_64-toolchain mingw-w64-clang-x86_64-cmake mingw-w64-clang-x86_64-ninja mingw-w64-clang-x86_64-ccache perl make' }}
     - uses: actions/cache/restore@v6
