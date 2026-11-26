@@ -626,8 +626,9 @@ export type WatchOptions {
 	max_entries Int? = null
 	// Most queued native events. Native watchers only. null sets no limit.
 	max_events Int? = null
-	// What a native watcher does when its queue overflows: exactly `error` (default) or
-	// `ignore`. Native watchers only.
+	// What a native watcher does when its queue overflows: exactly `error` (default),
+	// `ignore`, or `rescan`, which drops the queued events and queues one change of the
+	// watched root, meaning "look at the tree again". Native watchers only.
 	overflow String? = null
 }
 
