@@ -1,0 +1,8 @@
+{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"rootUri": "$ROOT_URI", "capabilities": {}}}
+{"jsonrpc": "2.0", "method": "initialized", "params": {}}
+{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "$ROOT_URI/app.ms", "languageId": "manuscript", "version": 1, "text": "import twice from \"./lib.ms\"\n\nfn main() Void {\n\tprint(twice(2))\n}\n"}}}
+{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "$ROOT_URI/lib.ms", "languageId": "manuscript", "version": 1, "text": "export fn twice(v Int) Int {\n\treturn v * (\n}\n"}}}
+{"jsonrpc": "2.0", "id": 2, "method": "textDocument/definition", "params": {"textDocument": {"uri": "$ROOT_URI/app.ms"}, "position": {"line": 3, "character": 8}}}
+{"jsonrpc": "2.0", "id": 3, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/app.ms"}, "position": {"line": 3, "character": 8}}}
+{"jsonrpc": "2.0", "id": 4, "method": "textDocument/documentSymbol", "params": {"textDocument": {"uri": "$ROOT_URI/lib.ms"}}}
+{"jsonrpc": "2.0", "id": 5, "method": "shutdown"}
