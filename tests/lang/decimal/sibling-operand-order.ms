@@ -26,7 +26,7 @@ test "list elements read before a later match assigns them" {
 		match present("b") {
 			value => {
 				y = "z"
-				value
+				value.clone()
 			} null => ""
 		}
 	]

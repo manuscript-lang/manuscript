@@ -354,7 +354,8 @@ bool fn_match_names_places(const LowerFn *fn, const MsExpr *expr) {
       continue;
     }
     const MsExprKind kind = (MsExprKind)arm->value->kind;
-    if (arm->body.len != 0 || (kind != MS_E_NAME && kind != MS_E_MEMBER) || ms_facts_use(fn->facts, arm->value->id) == MS_USE_MOVE) {
+    const bool literal = fn_is_text_literal(arm->value); /* static text is viewed, never copied */
+    if (arm->body.len != 0 || (kind != MS_E_NAME && kind != MS_E_MEMBER && !literal) || ms_facts_use(fn->facts, arm->value->id) == MS_USE_MOVE) {
       return false; /* a name the arm gives up is moved out, not viewed */
     }
     yields = true;

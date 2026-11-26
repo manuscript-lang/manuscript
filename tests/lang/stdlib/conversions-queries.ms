@@ -135,7 +135,7 @@ test "conversions retain unconstrained payloads nesting and lazy counts" {
 	nested_result Int!? := nested_inner
 	(
 		(
-			ok_or(nested_result, Error("absent")).to_optional()
+			ok_or(nested_result.clone(), Error("absent")).to_optional()
 			or panic("called Optional.get() on null")
 		).err().message | expect_equal("nested")?
 	)

@@ -74,7 +74,7 @@ fn optional_callback(fail Bool) (fn() Marker?)! {
 	return ok(() => null)
 }
 
-fn result_callback(fail Bool) (fn(Error) Marker!Error)! {
+fn result_callback(fail Bool) (fn(move Error) Marker!Error)! {
 	if fail { return error(Error("callback unavailable")) }
 	return ok(cause => error(cause))
 }

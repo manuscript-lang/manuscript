@@ -22,7 +22,7 @@ fn marked(markup String) String {
 	parts := f"{tree}".split("«")
 	if parts.length() < 2 { return "<missing>" }
 
-	return parts[1].split("»")[0]
+	return parts[1].split("»")[0].clone()
 }
 
 fn answer(mode, input String) String {

@@ -779,6 +779,8 @@ static void mark_module(Uses *pass, const MsModule *tree) {
         mark_callable(pass, decl->u.impl.methods.ptr[at]->func.params, decl->u.impl.methods.ptr[at]->func.body,
                     decl->u.impl.methods.ptr[at]->consuming);
       }
+    } else if (decl->kind == MS_D_TEST) {
+      mark_callable(pass, (MsParams){0}, decl->u.test.body, false); /* a test body is code like any other */
     } else {
       ms_walk_decl(&(MsVisitor){.ctx = pass, .stmt = collect_views, .expr = borrow_expr}, decl);
       ms_walk_decl(&(MsVisitor){.ctx = pass, .stmt = visit_stmt, .expr = visit_expr}, decl);

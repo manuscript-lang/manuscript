@@ -22,7 +22,7 @@ test "a call over a temporary returns none when the callee does" {
 	expect_false(keep(Tok("a"), true) == null)?
 
 	kept := keep(Tok("b"), true)
-	expect_equal((kept or Tok("")).s, "b")?
+	expect_equal((kept.clone() or Tok("")).s, "b")?
 
 	dropped := keep(Tok("c"), false)
 	expect_true(dropped == null)?
