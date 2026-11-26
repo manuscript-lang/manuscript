@@ -1179,7 +1179,6 @@ Same machine, min of 5, `ms` before and after the change (`export_all` removed):
 ## 2026-11-25: a file read runs inline when every other task is stalled
 
 `pargroup` (2000 files, `map_concurrent` over 4 workers) sent each `read_file` through libuv's pool, since a worker had more than one task, although the others were parked on remote waits: strace counted 12466 futex, 3003 epoll_pwait and 3016 write calls (Rust: one futex), and four workers (50 ms) were slower than `MS_THREADS=1` (39 ms). `ms_fs_run` now runs the job inline when `ms_task_others_stalled()`, the test `pool_alone()` already uses. Same machine, min of 9: `pargroup` 41-50 ms to 17-21 ms (Rust 28-33 ms); callgrind 367.3M to 357.6M; `treegrep` unchanged.
-
 ## 2026-11-25: a string view that is only loaded and stored gets its own alloca
 
 Slots that are never live together shared one frame alloca; a view cell that only loads and stores now gets its own, which SROA keeps in registers, and a pooled slot joins only a cell of its own size (a 16-byte view in an 88-byte cell kept its stores). Callgrind instructions, same machine, all 23 programs against `main`: `wordfreq` -1.7%, `concat` -1.5%, `csvgroup` -1.0%, `logstats` -0.7%, `report` -0.35%, `objgraph` -0.3%, `jsonrt` -0.3%, `strings` -0.1%, `dedupe` -0.1%; `exprparse` +0.22% (wall +0.4%, inside the spread of 0.8%), `jsonsum` +0.12% (wall -1.6%); the rest within 0.05%. Unsharing list slots as well gives `lz` -1.3% but `report` +1.2% wall (a register allocation change in its `main`), so that half is held.
@@ -1187,10 +1186,6 @@ Slots that are never live together shared one frame alloca; a view cell that onl
 ## 2026-11-25: a push that has room stores only the length
 
 `list.push` followed by a put back to the slot it was taken from stored the whole list header on every pass; the path with room now stores the length leaf only, the grow path the whole list. Callgrind instructions, same machine, all 23 programs against `main`: `lz` 667.9M to 652.0M (-2.3%), `graph` -0.8%, `exprparse` -0.4%, `jsonrt` -0.2%; `dispatch` +0.8% (one register move in the 20M-iteration push loop; wall min of 21: 376.3 ms before, 375.2 ms after); the rest within 0.05%. `lz` decompress copy loop: 19 to 17 instructions per element (checked Rust 11).
-
-## 2026-11-26: `split`, `lines` and `fields_by` are lazy iterators written in Manuscript
-
-`split` and the other text splitters return look records (`Split`, `Lines`, `Fields`) whose `next` yields one borrowed piece; `for` reads them with no list and `.collect()` builds one. Same machine, same inputs (1M-line `records.txt`, 400k-line `access.log`), against the commit before the change. Callgrind instructions: dedupe 1072.7M to 1106.8M (+3.2%), logstats 433.7M to 444.4M (+2.5%): `Split.next` costs about 58 instructions per line (offset loads, a checked `end + step`, the optional) where the list builder was one C loop, and the consumer saves about 24. CPU time, median of 15 runs, repeated twice: dedupe 0.284 and 0.293 s before, 0.296 and 0.292 s after; logstats 0.051 and 0.053 s before, 0.052 and 0.053 s after: equal within the noise of the machine.
 
 ## 2026-11-26: a branch to a cold block carries a branch weight
 

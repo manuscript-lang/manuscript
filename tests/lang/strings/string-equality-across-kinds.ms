@@ -25,7 +25,7 @@ test "equal text is equal whether stored inline, static, owned, or borrowed" {
 	expect_equal(same(long, built(["a long string past ", "fifteen bytes"])), true)?
 	expect_equal(same("  abcd ".trim(), short), true)?
 
-	pieces := "abcd,a long string past fifteen bytes".split(",").collect()
+	pieces := "abcd,a long string past fifteen bytes".split(",")
 	expect_equal(same(pieces[0], short), true)?
 	expect_equal(same(pieces[1], long), true)?
 	expect_equal(same(built(["", ""]), ""), true)?

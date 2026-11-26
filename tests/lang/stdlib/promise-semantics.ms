@@ -14,7 +14,7 @@ import (
 
 fn report(reason Error) String {
 	if reason.kind == "EIO" {
-		return reason.details["report"].split("\n").collect()[0].clone()
+		return reason.details["report"].split("\n")[0].clone()
 	}
 	return reason.message.clone()
 }

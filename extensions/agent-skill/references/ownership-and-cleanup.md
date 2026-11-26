@@ -67,7 +67,7 @@ fn has(items List[String], want String) Bool {
 }
 ```
 
-Pieces of a value are borrows too: `line.split(" ").collect()`, `xs.first()`, `m.keys()`, `xs.slice(a, b)` and `xs[i]` borrow their source, so store them with `.clone()`: `out.append(line.split(" ").collect().clone())`. Fields move the same way: `out.append(user.name.clone())`, never `out.append(user.name)`. A store `m[key] = v` takes `key` after `v` ran, so `v` may read it: `counts[key] = counts.get_or(key, 0) + 1`. Do not use `key` after the store unless it is a scalar; store `key.clone()` to keep it. A list parameter changes only if declared `var xs List[Int]`; otherwise copy it into a `var` local first (`var ys = xs.clone()`).
+Pieces of a value are borrows too: `line.split(" ")`, `xs.first()`, `m.keys()`, `xs.slice(a, b)` and `xs[i]` borrow their source, so store them with `.clone()`: `out.append(line.split(" ").clone())`. Fields move the same way: `out.append(user.name.clone())`, never `out.append(user.name)`. A store `m[key] = v` takes `key` after `v` ran, so `v` may read it: `counts[key] = counts.get_or(key, 0) + 1`. Do not use `key` after the store unless it is a scalar; store `key.clone()` to keep it. A list parameter changes only if declared `var xs List[Int]`; otherwise copy it into a `var` local first (`var ys = xs.clone()`).
 
 `Map.get_or`, `List.first`, `find`, `min` and `max` return borrows, so a mutable copy of one is `var x = m.get_or(k, []).clone()`. Hand the changed value back with `m.add(k, x)`.
 

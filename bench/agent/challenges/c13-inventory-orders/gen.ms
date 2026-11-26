@@ -35,7 +35,7 @@ type Item {
 }
 
 fn solve(s String) String {
-	var lines = s.split("\n").collect().clone()
+	var lines = s.split("\n").clone()
 	if not lines.is_empty() and lines[lines.length() - 1] == "" { lines.pop() }
 
 	var stock = Map[String, Int]()
@@ -50,7 +50,7 @@ fn solve(s String) String {
 	for l in lines {
 		if l.replace(" ", "") == "" { continue }
 
-		t := l.split(" ").collect()
+		t := l.split(" ")
 		c := t[0].clone()
 
 		if c != "order" and arity(c) == 0 {
@@ -114,7 +114,7 @@ fn solve(s String) String {
 			var bad = ""
 
 			for tok in t.slice(2, t.length()).get_or([]) {
-				p := tok.split(":").collect()
+				p := tok.split(":")
 
 				if p.length() != 2 or not full_match(SKU, p[0]) or not qty_ok(p[1]) {
 					bad = tok.clone()

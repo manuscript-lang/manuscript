@@ -10,7 +10,7 @@ fn kept(text String) String {
 }
 
 fn piece(hold text String) &String {
-	parts := text.split(",").collect()
+	parts := text.split(",")
 	return parts[1].trim_end()
 }
 

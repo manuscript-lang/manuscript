@@ -9,7 +9,7 @@ fn say(text String) Void {
 
 fn keep(text String) List[String] {
 	var out List[String] = []
-	out.extend(text.split(",").collect())
+	out.extend(text.split(","))
 	return out
 }
 
@@ -77,7 +77,7 @@ fn main() Void {
 }
 
 fn let_form(text String) Int {
-	parts := text.split(",").collect()
+	parts := text.split(",")
 	var total = 0
 	for p in parts {
 		total += p.length()
@@ -86,7 +86,7 @@ fn let_form(text String) Int {
 }
 
 fn let_kept(text String) Int {
-	parts := text.split(",").collect()
+	parts := text.split(",")
 	var total = 0
 	for p in parts {
 		total += p.length()
@@ -105,7 +105,7 @@ fn nested(text String) Int {
 }
 
 fn closure_keeps(text String) Int {
-	var fs = text.split(",").collect().map(
+	var fs = text.split(",").map(
 		p => {
 			kept := p.clone()
 			return fn() Int => return kept.length()

@@ -20,7 +20,7 @@ fn replace_first[T Clonable](var xs List[T], value T) List[T] {
 }
 
 test "string members" {
-	("  a,b ".trim().split(separator: ",").collect().length() == 2) | expect_true?
+	("  a,b ".trim().split(separator: ",").length() == 2) | expect_true?
 	("abc".upper() == "ABC") | expect_true?
 }
 

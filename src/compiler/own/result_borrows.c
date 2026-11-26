@@ -117,8 +117,7 @@ static void view_stmt(void *ctx, const MsStmt *stmt) {
     if (ref != NULL && ref->kind == MS_REF_LOCAL) {
       add_view(pass, ref->local, stmt->u.branch.cond);
     }
-  } else if (stmt->kind == MS_S_FOR && (stmt->u.each.iter->kind == MS_E_NAME || stmt->u.each.iter->kind == MS_E_MEMBER ||
-                                       (pass->call_views && stmt->u.each.iter->kind == MS_E_CALL))) {
+  } else if (stmt->kind == MS_S_FOR && (stmt->u.each.iter->kind == MS_E_NAME || stmt->u.each.iter->kind == MS_E_MEMBER)) {
     /* The loop variable of a walk over a place views one element of it. */
     const MsRef *ref = ms_facts_ref(pass->facts, stmt->id);
     if (ref != NULL && ref->kind == MS_REF_LOCAL) {
@@ -237,10 +236,6 @@ static Reach classify_call(Pass *pass, const MsExpr *call) {
     position = 1;
   }
   for (uint32_t index = 0; index < call->u.call.args.len; index++, position++) {
-    /* A text literal is static data: a result that holds it borrows nothing and owns nothing. */
-    if (call->u.call.args.ptr[index].value->kind == MS_E_TEXT) {
-      continue;
-    }
     if (kind == MS_REF_CASE || ms_own_call_borrows(pass->program, fact, position)) {
       out = join(out, classify(pass, call->u.call.args.ptr[index].value));
     }

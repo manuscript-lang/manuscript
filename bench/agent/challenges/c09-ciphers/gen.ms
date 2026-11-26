@@ -74,7 +74,7 @@ fn solve_line(line String) String {
 }
 
 fn solve(s String) String {
-	var lines = s.split("\n").collect().clone()
+	var lines = s.split("\n").clone()
 	if not lines.is_empty() and lines[lines.length() - 1] == "" { lines.pop() }
 	return lines.filter(l => l.replace(" ", "") != "").map(
 		l => solve_line(l) + "\n"

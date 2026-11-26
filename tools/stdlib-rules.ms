@@ -171,7 +171,7 @@ fn declared_of(
 // Every function a file declares: free and `fn Type.method` at column 0, and the
 // methods of its interfaces.
 fn declarations(text String) List[Declared] {
-	lines := text.split("\n").collect()
+	lines := text.split("\n")
 	var found = List[Declared]()
 	var interface_name = ""
 	var interface_exported = false
@@ -262,7 +262,7 @@ fn type_names(text String, only_exported Bool) List[String] {
 // ---- allow lists that only shrink ----
 
 fn allow_list(path String) List[String] {
-	entries := text_of(path).split("\n").collect().filter(
+	entries := text_of(path).split("\n").filter(
 		line => (line != "" and not line.starts_with("//"))
 	).map(line => line.trim().clone())
 	return entries
@@ -328,11 +328,8 @@ fn optional_defaults(
 	return found
 }
 
-// A look iterator (`fn var Type.next() &T?`) walks a value it borrows; it is an
-// iterator, not a stream.
 fn stream_names(
-	path,
-	text String,
+	path String,
 	declared List[Declared],
 	exported_types List[String],
 ) List[String] {
@@ -340,12 +337,7 @@ fn stream_names(
 
 	for d in declared {
 		if d.owner == "" or d.owner == "Iterator" { continue }
-		if not exported_types.contains(
-			d.owner
-		) { continue }
-		if d.name == "next" and text.contains(
-			f"fn var {d.owner}.next() &"
-		) { continue }
+		if not exported_types.contains(d.owner) { continue }
 
 		if banned_methods.contains(
 			d.name
@@ -446,7 +438,10 @@ fn contains_word(text, word String) Bool {
 	return false
 }
 
-fn internal_externs(sources Map[String, String]) List[String] {
+// An internal native is live when another standard-library file names it, or a test
+// that imports from
+// `@std/internal/` does: the test support natives serve the tests themselves.
+fn internal_externs(sources, tests Map[String, String]) List[String] {
 	var issues = List[String]()
 
 	for path in sources.keys() {
@@ -469,9 +464,12 @@ fn internal_externs(sources Map[String, String]) List[String] {
 					)
 				) { used = true }
 			}
+			for file in tests.keys() {
+				if contains_word(tests[file].clone(), name.clone()) { used = true }
+			}
 			if not used {
 				issues.append(
-					f"{path}: `extern fn {name}` is not used by any other standard-library file; delete it and its native side"
+					f"{path}: `extern fn {name}` is not used by any other standard-library file or test; delete it and its native side"
 				)
 			}
 		}
@@ -483,9 +481,16 @@ fn internal_externs(sources Map[String, String]) List[String] {
 // Every problem the four rules find in the tracked standard-library declaration files.
 export fn stdlib_issues(files List[String]) List[String] {
 	var sources = Map[String, String]()
+	var tests = Map[String, String]()
+
 	for path in files {
 		if path.starts_with("src/stdlib/") and path.ends_with(".ms") {
 			sources[path.clone()] = text_of(path.clone())
+		}
+
+		if path.starts_with("tests/") and path.ends_with(".ms") {
+			text := text_of(path.clone())
+			if text.contains("@std/internal/") { tests[path.clone()] = text }
 		}
 	}
 
@@ -513,12 +518,7 @@ export fn stdlib_issues(files List[String]) List[String] {
 		}
 		if not stream_modules.contains(path) {
 			stream_found = stream_found.concat(
-				stream_names(
-					path.clone(),
-					text,
-					declared,
-					exported_types,
-				)
+				stream_names(path.clone(), declared, exported_types)
 			)
 		}
 		issues = issues.concat(adjacency(path.clone(), text))
@@ -540,5 +540,5 @@ export fn stdlib_issues(files List[String]) List[String] {
 			"has a stream-shaped name; return a ReadStream[T] or take a WriteStream[T] instead (see design/proposals/stream-redesign.md)",
 		)
 	)
-	return issues.concat(internal_externs(sources))
+	return issues.concat(internal_externs(sources, tests))
 }

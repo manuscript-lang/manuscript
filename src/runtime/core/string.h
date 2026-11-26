@@ -65,8 +65,6 @@ uint8_t msrt_string_ends_with(const MsString *a, const MsString *v);
 int64_t msrt_string_scalar_length(const MsString *s);
 /* ms-sig: msrt_string_char_width(s: *const StrVal, at: i64) -> i64 @domain=string @end */
 int64_t msrt_string_char_width(const MsString *s, int64_t at);
-/* ms-sig: msrt_string_scalar_step(s: *const StrVal, at: i64) -> i64 @domain=string @end */
-int64_t msrt_string_scalar_step(const MsString *s, int64_t at);
 /* ms-sig: msrt_string_scalar_at_byte(s: *const StrVal, at: i64) -> i64 @domain=string @end */
 int64_t msrt_string_scalar_at_byte(const MsString *s, int64_t at);
 /* ms-sig: msrt_string_contains(a: *const StrVal, v: *const StrVal) -> u8 @domain=string @end */
@@ -83,7 +81,6 @@ uint8_t msrt_string_index_of(const MsString *a, const MsString *v, int64_t *out)
 uint8_t msrt_string_last_index_of(const MsString *a, const MsString *v, int64_t *out);
 /* The scalar at byte offset `at` of `s` as an inline string; `for c in s.chars()` reads each scalar this way and
  * advances by its length. `at` is the start of a scalar of the valid text. */
-/* ms-sig: msrt_string_scalar_text(s: *const StrVal, at: i64, out: *mut StrVal) @leaf @domain=string @end */
 void msrt_string_scalar_text(const MsString *s, int64_t at, MsString *out);
 /* ms-sig: msrt_string_chars(s: *const StrVal, out: *mut VecVal) @domain=string @end */
 void msrt_string_chars(const MsString *s, MsList *out);

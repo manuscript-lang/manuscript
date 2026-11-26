@@ -235,7 +235,7 @@ fn parse_digits(text String) BigInt! {
 // `1.25`, `6.02e23`, `5e-3`. A zero denominator returns EINVAL, malformed text EBADMSG
 // and an exponent beyond 100000 in magnitude EOVERFLOW.
 export fn parse_rat(text String) BigRat! {
-	slash := text.split("/").collect()
+	slash := text.split("/")
 	if slash.length() > 2 { return error(Error("bigrat: invalid data", kind: "EBADMSG")) }
 
 	if slash.length() == 2 {
@@ -244,7 +244,7 @@ export fn parse_rat(text String) BigRat! {
 		return rat(top, bottom)
 	}
 
-	exponent_parts := text.lower().split("e").collect()
+	exponent_parts := text.lower().split("e")
 	if exponent_parts.length() > 2 {
 		return error(Error("bigrat: invalid data", kind: "EBADMSG"))
 	}
@@ -259,7 +259,7 @@ export fn parse_rat(text String) BigRat! {
 		}
 	}
 
-	point := exponent_parts[0].split(".").collect()
+	point := exponent_parts[0].split(".")
 	if point.length() > 2 { return error(Error("bigrat: invalid data", kind: "EBADMSG")) }
 
 	var fraction_digits = 0

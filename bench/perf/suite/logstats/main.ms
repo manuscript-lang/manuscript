@@ -13,7 +13,7 @@ fn main() Void {
 	for line in data.split("\n") {
 		if line.is_empty() { continue }
 
-		f := line.split(" ").collect()
+		f := line.split(" ")
 		rows += 1
 		latency += f[5].parse_int() or 0
 

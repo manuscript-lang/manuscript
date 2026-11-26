@@ -11,7 +11,7 @@ fn of_map(values Map[String, String]) String {
 }
 
 fn of_piece(text String) String {
-	parts := text.split(",").collect()
+	parts := text.split(",")
 	return parts[0].trim()
 }
 

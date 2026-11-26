@@ -31,7 +31,7 @@ export fn summarize(lines List[String], repeats Int) String! {
 	var best = Map[String, Int]()
 
 	for line in lines {
-		f := line.replace("\t", " ").trim().split(" ").collect().filter(p => p != "")
+		f := line.replace("\t", " ").trim().split(" ").filter(p => p != "")
 		if f.length() != 6 or f[4] != "#" {
 			return invalid(f"invalid sample: {line.trim()}")
 		}

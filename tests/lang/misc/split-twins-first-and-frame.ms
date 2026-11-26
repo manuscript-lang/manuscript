@@ -6,11 +6,11 @@ import expect_equal from "@std/test/test.ms"
 // without the list, and a short text with few pieces splits into the frame. Every other
 // shape keeps the list and must agree with it.
 fn first_of(line String) String {
-	return line.split(" ").collect()[0].clone()
+	return line.split(" ")[0].clone()
 }
 
 fn fields(line String) Int {
-	parts := line.split(" ").collect()
+	parts := line.split(" ")
 	var total = 0
 	for i in 0..parts.length() {
 		total += parts[i].length()
@@ -19,7 +19,7 @@ fn fields(line String) Int {
 }
 
 fn kept(line String) List[String] {
-	parts := line.split(" ").collect()
+	parts := line.split(" ")
 	return parts.clone()
 }
 
@@ -57,7 +57,7 @@ test "a piece longer than a short string is read in the loop that made it" {
 	var seen = 0
 
 	for line in ["alpha-bravo-charlie-delta one two", "three four"] {
-		f := line.split(" ").collect()
+		f := line.split(" ")
 		seen += f[0].length() + f.length()
 	}
 

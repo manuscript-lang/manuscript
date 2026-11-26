@@ -24,7 +24,7 @@ import (
 
 // The text after `prefix` on every line that starts with it.
 fn after(text, prefix String) List[String] {
-	found := text.split("\n").collect().filter(
+	found := text.split("\n").filter(
 		line => line.starts_with(prefix)
 	).map(line => (line.slice(prefix.length(), line.length()).clone()))
 	return found
@@ -114,7 +114,7 @@ fn main() Int {
 
 			var have = List[String]()
 			if not counts.is_empty() {
-				have = counts[0].split(" ").collect().clone()
+				have = counts[0].split(" ").clone()
 			}
 
 			for header in after(source, f"// expect-{build}: ") {

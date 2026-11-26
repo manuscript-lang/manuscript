@@ -95,7 +95,7 @@ export fn uuid_version(text String) Int? {
 fn uuid_to_bytes(text String) Bytes! {
 	if text.length() != 36 { return error(Error("uuid: invalid data", kind: "EBADMSG")) }
 
-	groups := text.split("-").collect()
+	groups := text.split("-")
 	if groups.length() != 5 { return error(Error("uuid: invalid data", kind: "EBADMSG")) }
 	if groups[0].length() != 8 or groups[1].length() != 4 or groups[2].length() != 4 {
 		return error(Error("uuid: invalid data", kind: "EBADMSG"))

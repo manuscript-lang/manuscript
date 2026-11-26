@@ -193,7 +193,7 @@ fn raw_status(address String, request String) String! {
 
 	reply := recv(client, 2.seconds()) | expect_ok?
 	text := (reply or Bytes([])).decode_utf8() or ""
-	return ok(text.split("\r\n").collect()[0].clone())
+	return ok(text.split("\r\n")[0].clone())
 }
 
 test "asterisk-form target is accepted only for OPTIONS" {

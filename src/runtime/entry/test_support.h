@@ -26,6 +26,12 @@ void msrt_test_record(const MsString *path, const MsString *text);
 /* ms-sig: msrt_test_capture_fault(id: i64, out: *mut StrVal) */
 void msrt_test_capture_fault(int64_t id, MsString *out);
 
+/* A borrowed copy of `text` whose last byte is the last byte of readable memory: the next page is unreadable, so a read
+ * of the byte after the end, which no string promises, faults every time instead of once in many runs (#7144). The
+ * mapping is never given back: a test calls this a few times. */
+/* ms-sig: msrt_test_edge_string(text: *const StrVal, out: *mut StrVal) */
+void msrt_test_edge_string(const MsString *text, MsString *out);
+
 /* Reports a failed expectation: the message and its `site` detail on standard error, and a fault record. */
 /* ms-sig: msrt_test_failure(message: *const StrVal, details: *const MapVal) */
 void msrt_test_failure(const MsString *message, const MsMap *details);

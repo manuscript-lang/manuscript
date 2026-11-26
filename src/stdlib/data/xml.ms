@@ -820,7 +820,7 @@ fn decode(text String, chars List[String], start Int) String! {
 	var out = ""
 
 	// Every piece after the first starts right after an `&`, so each is scanned once.
-	pieces := text.split("&").collect()
+	pieces := text.split("&")
 	out += pieces[0]
 
 	var index = 1
