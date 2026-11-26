@@ -49,3 +49,4 @@ Checking, lowering, MIR, LLVM emission, build, fault sites.
 - [A returned view of a temporary is rejected](a-returned-view-of-a-temporary-is-rejected.md): `x.slice(..).trim()` returned as an owned `String` dangled.
 - [A closure that keeps a borrowed value needs move or clone](a-closure-that-keeps-a-borrowed-value-needs-move-or-clone.md): an escaping closure over a borrowed parameter is a checker error, not a copy.
 - [Lowering tables grow; a fixed cap turns a view into a copy](lowering-tables-grow-instead-of-capping.md): eight entries of borrowed-view tracking silently ran out in a long function.
+- [`m.get(k) or d` answers a view of the entry or of `d`](a-map-get-or-answers-a-view-of-the-entry-or-the-fallback.md): `Map.get_or` copies nothing; Optional values and owned `var` stores are the cases that still copy.

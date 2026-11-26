@@ -428,6 +428,7 @@ bool fn_entry_read_parts(LowerFn *fn, const MsExpr *place, MsExpr **container, M
 bool fn_default_param_place(const LowerFn *fn, const MsExpr *place, uint32_t *at);
 /* `m.get(k)` over a resource as an Optional that views the entry; MIR_NONE (nothing emitted) for any other call. */
 MirValue fn_map_get_view(LowerFn *fn, const MsExpr *call);
+MirValue fn_map_entry_view(LowerFn *fn, const MsExpr *call);
 /* Stores the owned `value` (held by no scope) into `place`. */
 bool fn_put_place(LowerFn *fn, const MsExpr *place, MirValue value);
 

@@ -44,6 +44,40 @@ static bool narrowed_local(const LowerFn *fn, uint32_t local, MirTy ty) {
   return scan.found;
 }
 
+/* Whether a `var` is ever given a value that is not a borrowing call's result (`found = own.clone()`, `found += "!"`): it then
+ * owns what it holds, so a view bound at its declaration is copied there. */
+typedef struct OwnedStores {
+  const LowerFn *fn;
+  uint32_t local;
+  bool found;
+} OwnedStores;
+
+static void note_owned_store(void *ctx, const MsStmt *stmt) {
+  OwnedStores *scan = ctx;
+  if (stmt->kind != MS_S_ASSIGN || scan->found || stmt->u.assign.member_target) {
+    return;
+  }
+  const MsRef *ref = ms_facts_ref(scan->fn->facts, stmt->u.assign.target != NULL ? stmt->u.assign.target->id : stmt->id);
+  if (ref == NULL || ref->kind != MS_REF_LOCAL || ref->local != scan->local) {
+    return;
+  }
+  const MsExpr *stored = stmt->u.assign.value;
+  const MsCall *called = stored != NULL && stored->kind == MS_E_CALL && !stmt->u.assign.has_compound ? ms_facts_call(scan->fn->facts, stored->id) : NULL;
+  scan->found = called == NULL || (called->callee.kind != MS_REF_FUNCTION && called->callee.kind != MS_REF_METHOD) ||
+                !ms_own_result_is_borrowed(scan->fn->cx->program, called->callee.decl.module, called->callee.decl.node);
+}
+
+static bool var_stores_owned(const LowerFn *fn, uint32_t local) {
+  OwnedStores scan = {.fn = fn, .local = local};
+  const MsVisitor visitor = {.ctx = &scan, .stmt = note_owned_store};
+  if (fn->func != NULL) {
+    ms_walk_block(&visitor, fn->func->body);
+  } else if (fn->lambda != NULL) {
+    ms_walk_block(&visitor, fn->lambda->expr->u.lambda.body);
+  }
+  return scan.found;
+}
+
 static MirValue take_value(LowerFn *fn, const MsExpr *expr) {
   const MirValue value = fn_expr(fn, expr, LW_MOVE);
   return value;
@@ -96,8 +130,23 @@ static const MsParams *bound_value_params(LowerFn *fn, const MsExpr *value) {
 /* `b := m.get(k)` over a resource: an Optional that views the entry in place, `none` when the key is absent, so the
  * binding borrows what the map keeps instead of copying it. MIR_NONE (nothing emitted) for any other call. */
 MirValue fn_map_get_view(LowerFn *fn, const MsExpr *call) {
-  if (ms_own_native_get(fn->cx->program, fn->facts, call) != MS_NATIVE_GET_MAP ||
-      !ms_check_holds_resource(fn->cx->program, ms_facts_type(fn->facts, call->id))) {
+  if (!ms_check_holds_resource(fn->cx->program, ms_facts_type(fn->facts, call->id))) {
+    return MIR_NONE;
+  }
+  return fn_map_entry_view(fn, call);
+}
+
+/* `m.get(k)` of any value type, read in place: an Optional that views the entry, `none` when the key is absent. MIR_NONE
+ * (nothing emitted) for any other call. */
+MirValue fn_map_entry_view(LowerFn *fn, const MsExpr *call) {
+  if (ms_own_native_get(fn->cx->program, fn->facts, call) != MS_NATIVE_GET_MAP) {
+    return MIR_NONE;
+  }
+  /* a value that is itself an Optional is stored as it is, and the answer wraps it once more: no view of the entry */
+  const MsTy map_ty = ms_facts_type(fn->facts, call->u.call.callee->u.member.left->id);
+  const MirTy answer_ty = fn_type(fn, ms_facts_type(fn->facts, call->id));
+  if (map_ty == MS_TY_NONE || ms_ty_arg_count(&fn->cx->program->types, map_ty) != 2 ||
+      mir_ty_data(fn->cx->module, answer_ty)->elem != fn_type(fn, ms_ty_args(&fn->cx->program->types, map_ty)[1])) {
     return MIR_NONE;
   }
   const MsExpr *receiver = call->u.call.callee->u.member.left;
@@ -209,7 +258,8 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   const bool view_var = stmt->u.bind.is_mutable && called != NULL &&
                         (called->callee.kind == MS_REF_FUNCTION || called->callee.kind == MS_REF_METHOD) &&
                         ms_own_result_is_borrowed(fn->cx->program, called->callee.decl.module, called->callee.decl.node) &&
-                        !call_reads_temporary(fn->facts, stmt->u.bind.value);
+                        !call_reads_temporary(fn->facts, stmt->u.bind.value) &&
+                        !var_stores_owned(fn, ms_facts_ref(fn->facts, pattern->id)->local);
   const bool from_call = (!stmt->u.bind.is_mutable || view_var) && kind == MS_E_CALL;
   /* A function bound to a name may take the type that lets its omittable parameters be left out. */
   const MsTy bound_ty = ms_facts_type(fn->facts, pattern->id);
