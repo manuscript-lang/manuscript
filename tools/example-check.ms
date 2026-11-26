@@ -143,7 +143,7 @@ fn examples_of(path, text String, var problems List[String]) List[Example] {
 		)
 
 		if at > 0 {
-			above := if commented { uncomment(lines[at - 1]) } else { lines[at - 1] }
+			above := if commented { uncomment(lines[at - 1]) } else { lines[at - 1].clone() }
 			json := marker_json(above.trim_end())
 
 			if json != "" {

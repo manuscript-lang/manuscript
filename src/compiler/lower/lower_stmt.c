@@ -601,7 +601,13 @@ static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
     if (stmt->u.assign.has_compound && (!update_map_entry(fn, stmt->u.assign.target, value, &done) || done)) {
       return done && !fn->failed;
     }
-    return fn_put_place(fn, stmt->u.assign.target, value);
+    /* A field of a list or map element is stored where the element lies, not in a copy put back over it. */
+    MirValue element_field = MIR_NONE;
+    const MsExpr *target = stmt->u.assign.target;
+    if (target->kind == MS_E_MEMBER && fn_element_field_address(fn, target, &element_field)) {
+      return fn_store_field_in_place(fn, target, element_field, value);
+    }
+    return fn_put_place(fn, target, value);
   }
   /* A name target records its local on the statement, a member target on its expression. */
   const MsRef *ref = ms_facts_ref(fn->facts, stmt->u.assign.target != NULL ? stmt->u.assign.target->id : stmt->id);

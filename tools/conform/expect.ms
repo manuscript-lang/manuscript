@@ -44,7 +44,7 @@ fn diagnostic_lines(one JsonValue) List[String] {
 	if fix != null {
 		replacement := (fix.get("replacement") or JsonValue.Null).as_string() or ""
 		fix_start := fix.get("position") or JsonValue.Null
-		fix_end := fix.get("end") or fix_start
+		fix_end := fix.get("end") or fix_start.clone()
 		lines.append(
 			f"expect-fix: {span(fix_start, fix_end)} {stringify(JsonValue.StringValue(replacement.clone())).get()}"
 		)
