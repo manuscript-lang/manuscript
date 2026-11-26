@@ -65,8 +65,6 @@ uint8_t msrt_string_ends_with(const MsString *a, const MsString *v);
 int64_t msrt_string_scalar_length(const MsString *s);
 /* ms-sig: msrt_string_char_width(s: *const StrVal, at: i64) -> i64 @domain=string @end */
 int64_t msrt_string_char_width(const MsString *s, int64_t at);
-/* ms-sig: msrt_string_scalar_step(s: *const StrVal, at: i64) -> i64 @domain=string @end */
-int64_t msrt_string_scalar_step(const MsString *s, int64_t at);
 /* ms-sig: msrt_string_scalar_at_byte(s: *const StrVal, at: i64) -> i64 @domain=string @end */
 int64_t msrt_string_scalar_at_byte(const MsString *s, int64_t at);
 /* ms-sig: msrt_string_contains(a: *const StrVal, v: *const StrVal) -> u8 @domain=string @end */

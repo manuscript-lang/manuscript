@@ -15,7 +15,6 @@ static MirRole string_role(MsSpan name) {
                {"msrt_bytes_index_of_byte", MR_BYTES_INDEX_OF_BYTE},
                {"msrt_string_parse_int", MR_STRING_PARSE_INT},
                {"msrt_string_contains", MR_STRING_CONTAINS},
-               {"msrt_string_scalar_step", MR_STRING_SCALAR_STEP},
                {"msrt_string_eq", MR_STRING_EQ},
                {"msrt_string_compare", MR_STRING_COMPARE},
                {"msrt_string_starts_with", MR_STRING_STARTS_WITH},

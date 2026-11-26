@@ -2,7 +2,7 @@
  * instead of a call.
  *
  * Lowering declares the runtime functions with a role (`string_parse_int`, `string_contains`, `string_compare`,
- * `string_starts_with`, `string_ends_with`, `string_scalar_step`, `string_scalar_at`). Each role gets one generated
+ * `string_starts_with`, `string_ends_with`, `string_scalar_at`). Each role gets one generated
  * function marked `inline(always)`, shared by every call site, which does the common case itself and calls the
  * runtime function for the rest.
  *
@@ -17,9 +17,9 @@
  * - `eq`: two strings of the same length up to sixteen bytes are compared like an affix; others call the runtime.
  * - `compare`: -1, 0 or 1; two inline strings from at most two word compares, a prefix of up to sixteen bytes byte
  *   by byte or eight at a time; a longer one calls the runtime.
- * - `scalar_at`, `scalar_step`: an offset inside the text decodes in place (the lead byte fixes the width, and a
- *   string is valid UTF-8 so every continuation byte is in bounds); an offset outside the text, or a continuation
- *   byte, calls the runtime for the default or the fault. `scalar_step` answers `scalar << 3 | width`.
+ * - `scalar_at`: an offset inside the text decodes in place (the lead byte fixes the width, and a string is valid
+ *   UTF-8 so every continuation byte is in bounds); an offset outside the text, or a continuation byte, calls the
+ *   runtime for the default.
  * - `to_bytes`: an empty string is the empty bytes without a call (so a literal `"".to_bytes()` folds to constant
  *   zeros); any other string calls the runtime. */
 #include "compiler/opt/opt_pass.h"
@@ -170,19 +170,15 @@ static void sf_contains(MirBuilder *b, uint32_t slow_ext) {
   sf_call_slow(b, slow_ext, rest, 2);
 }
 
-/* ---- scalar_at, scalar_step ---- */
+/* ---- scalar_at ---- */
 
 /* Decodes the multi-byte scalar whose lead byte `b0` (at least 0x80) is at `offset` of `text`; each path returns
- * the scalar, or for a step `scalar << 3 | width`. A continuation byte in the lead position goes to `slow`. */
-static void sf_return_scalar(MirBuilder *b, MirValue scalar, int64_t width, bool step) {
-  mir_b_ret(b, step ? ob_int(b, MOP_Or, ob_int(b, MOP_Shl, scalar, 3), width) : scalar);
-}
-
+ * the scalar. A continuation byte in the lead position goes to `slow`. */
 static MirValue sf_continuation(MirBuilder *b, MirValue text, MirValue offset, int64_t k) {
   return ob_int(b, MOP_And, sf_byte_of_text(b, text, ob_int(b, MOP_IAdd, offset, k)), 0x3F);
 }
 
-static void sf_decode(MirBuilder *b, MirValue text, MirValue offset, MirValue b0, MirBlock slow, bool step) {
+static void sf_decode(MirBuilder *b, MirValue text, MirValue offset, MirValue b0, MirBlock slow) {
   const MirBlock lead_ok = mir_b_new_block(b), two = mir_b_new_block(b), wide = mir_b_new_block(b);
   const MirBlock three = mir_b_new_block(b), four = mir_b_new_block(b);
   /* 0x80..0xBF is a continuation byte: the offset is inside a scalar. */
@@ -192,30 +188,28 @@ static void sf_decode(MirBuilder *b, MirValue text, MirValue offset, MirValue b0
   ob_br_if(b, sf_const_cmp(b, MCC_LT, b0, 0xE0), two, wide);
   mir_b_switch_to(b, two);
   MirValue r = mir_b_binop(b, MOP_Or, ob_int(b, MOP_Shl, ob_int(b, MOP_And, b0, 0x1F), 6), sf_continuation(b, text, offset, 1));
-  sf_return_scalar(b, r, 2, step);
+  mir_b_ret(b, r);
   mir_b_switch_to(b, wide);
   ob_br_if(b, sf_const_cmp(b, MCC_LT, b0, 0xF0), three, four);
   mir_b_switch_to(b, three);
   const MirValue x = ob_int(b, MOP_Shl, ob_int(b, MOP_And, b0, 0x0F), 12);
   const MirValue y = ob_int(b, MOP_Shl, sf_continuation(b, text, offset, 1), 6);
   r = mir_b_binop(b, MOP_Or, mir_b_binop(b, MOP_Or, x, y), sf_continuation(b, text, offset, 2));
-  sf_return_scalar(b, r, 3, step);
+  mir_b_ret(b, r);
   mir_b_switch_to(b, four);
   const MirValue w = ob_int(b, MOP_Shl, ob_int(b, MOP_And, b0, 0x07), 18);
   const MirValue x4 = ob_int(b, MOP_Shl, sf_continuation(b, text, offset, 1), 12);
   const MirValue y4 = ob_int(b, MOP_Shl, sf_continuation(b, text, offset, 2), 6);
   r = mir_b_binop(b, MOP_Or, mir_b_binop(b, MOP_Or, mir_b_binop(b, MOP_Or, w, x4), y4), sf_continuation(b, text, offset, 3));
-  sf_return_scalar(b, r, 4, step);
+  mir_b_ret(b, r);
 }
 
-/* `scalar_at(text, offset, has, default)`, or `scalar_step(text, offset)` answering `scalar << 3 | width`. Both read a
- * byte only for an offset inside the text. */
-static void sf_scalar(MirBuilder *b, uint32_t slow_ext, bool step) {
+/* `scalar_at(text, offset, has, default)`: a byte is read only for an offset inside the text. */
+static void sf_scalar_at(MirBuilder *b, uint32_t slow_ext) {
   MirValue ps[4];
-  mir_b_params(b, ps, step ? 2 : 4);
+  mir_b_params(b, ps, 4);
   const MirValue text = ps[0], offset = ps[1];
   const MirBlock slow = mir_b_new_block(b), ascii = mir_b_new_block(b), multi = mir_b_new_block(b);
-  /* An offset outside the text is the runtime's to answer (an invalid byte, or the default): no byte is read for it. */
   const MirBlock read = mir_b_new_block(b);
   const MirValue len = mir_b_emit(b, MOP_StrBytes, &text, 1, (MirImm){0}, MIR_INT);
   const MirValue inside = ob_and(b, sf_const_cmp(b, MCC_GE, offset, 0), mir_b_icmp(b, MCC_LT, offset, len));
@@ -225,15 +219,13 @@ static void sf_scalar(MirBuilder *b, uint32_t slow_ext, bool step) {
   const MirValue b0 = sf_byte_of_text(b, text, offset);
   ob_br_if(b, sf_const_cmp(b, MCC_LT, b0, 128), ascii, multi);
   mir_b_switch_to(b, ascii);
-  mir_b_ret(b, step ? ob_int(b, MOP_Or, ob_int(b, MOP_Shl, b0, 3), 1) : b0);
+  mir_b_ret(b, b0);
   mir_b_switch_to(b, multi);
-  sf_decode(b, text, offset, b0, slow, step);
+  sf_decode(b, text, offset, b0, slow);
   mir_b_seal_block(b, slow);
   mir_b_switch_to(b, slow);
-  sf_call_slow(b, slow_ext, ps, step ? 2 : 4);
+  sf_call_slow(b, slow_ext, ps, 4);
 }
-
-static void sf_scalar_at(MirBuilder *b, uint32_t slow_ext) { sf_scalar(b, slow_ext, false); }
 
 /* `scalar_text(text, offset)`: the scalar at a byte offset inside the text, as a string. A scalar is at most four
  * bytes, so the string is always inline: its two words are built here from the scalar's bytes and length (a
@@ -270,7 +262,6 @@ static void sf_scalar_text(MirBuilder *b, uint32_t slow_ext) {
   (void)mir_b_emit(b, MOP_Store, high, 2, (MirImm){0}, MIR_NONE);
   mir_b_ret(b, mir_b_emit(b, MOP_Take, &out, 1, (MirImm){.tag = MI_TY, .a = MIR_STR}, MIR_STR));
 }
-static void sf_scalar_step(MirBuilder *b, uint32_t slow_ext) { sf_scalar(b, slow_ext, true); }
 
 /* ---- to_bytes ---- */
 
@@ -519,7 +510,6 @@ static const SfKind sf_kinds[] = {
   {MR_STRING_ENDS_WITH, "ends_with", 2, {MIR_STR, MIR_STR}, MIR_BOOL, sf_ends_with},
   {MR_STRING_EQ, "string_equal", 2, {MIR_STR, MIR_STR}, MIR_BOOL, sf_equal},
   {MR_STRING_COMPARE, "string_compare", 2, {MIR_STR, MIR_STR}, MIR_INT, sf_compare},
-  {MR_STRING_SCALAR_STEP, "scalar_step", 2, {MIR_STR, MIR_INT}, MIR_INT, sf_scalar_step},
   {MR_STRING_SCALAR_TEXT, "scalar_text", 2, {MIR_STR, MIR_INT}, MIR_STR, sf_scalar_text},
   {MR_STRING_TO_BYTES, "to_bytes", 1, {MIR_STR}, MIR_BYTES, sf_to_bytes},
   {MR_STRING_SCALAR_AT, "scalar_at", 4, {MIR_STR, MIR_INT, MIR_BOOL, MIR_INT}, MIR_INT, sf_scalar_at},
