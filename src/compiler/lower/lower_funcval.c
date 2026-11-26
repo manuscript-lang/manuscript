@@ -309,6 +309,10 @@ MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
     }
   }
   MirValue args[16];
+  MirValue pending[16]; /* a fresh resource waiting in a closing slot while a later argument is built */
+  for (uint32_t at = 0; at < 16; at++) {
+    pending[at] = MIR_NONE;
+  }
   VarSlot slots[16];
   uint32_t nslots = 0;
   args[0] = callee;
@@ -367,9 +371,29 @@ MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
         /* A supplied argument of a parameter the function type made optional. */
         args[index + 1] = fn_emit(fn, moves ? MOP_OptSome : MOP_OptView, &args[index + 1], 1, (MirImm){0}, param_ty);
       }
+      if (moves && args[index + 1] != MIR_NONE && step + 1 < data->nargs &&
+          (written->kind == MS_E_CALL || written->kind == MS_E_LIST ||
+           (written->kind == MS_E_NAME && ms_facts_use(fn->facts, written->id) == MS_USE_MOVE))) {
+        /* A fault in a later argument (`f(open(), g()?)`) closes what an earlier one already built. A value converted to
+         * the Optional the parameter takes closes as that Optional. */
+        MsTyTable *types = &fn->cx->program->types;
+        MsTy checked = ms_ty_subst(types, fn_read_type(fn, written), fn->subst.vars, fn->subst.args,
+                                   fn->subst.count);
+        const size_t declared = facts ? ms_ty_param_count(types, fact->callee_ty) : 0;
+        if (declared != 0 && index + declared >= fact->arg_count && fn_type(fn, checked) != mir_b_ty(&fn->b, args[index + 1])) {
+          checked = ms_ty_subst(types, ms_ty_params(types, fact->callee_ty)[index + declared - fact->arg_count].ty,
+                                fn->subst.vars, fn->subst.args, fn->subst.count);
+        }
+        pending[index] = fn_pending_own(fn, checked, args[index + 1]);
+      }
     }
     if (args[index + 1] == MIR_NONE) {
       return MIR_NONE;
+    }
+  }
+  for (uint32_t at = 0; at < data->nargs; at++) {
+    if (pending[at] != MIR_NONE) {
+      args[at + 1] = fn_pending_take(fn, pending[at], mir_b_ty(&fn->b, args[at + 1]));
     }
   }
   mir_b_set_loc(&fn->b, fn_loc(fn, expr->pos));

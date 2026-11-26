@@ -74,14 +74,27 @@ static bool part_of_place(LowerFn *fn, const MsExpr *call, uint32_t depth) {
   return false;
 }
 
+/* A function with a body of its own: its parameters are the source of truth for what it keeps. A native may take a
+ * written list's elements into its receiver (`xs.splice(i, j, [r])`), so the list is not a temporary there. */
+static bool callee_has_body(LowerFn *fn, const MsCall *call) {
+  if (call->callee.kind == MS_REF_NATIVE || call->callee.kind == MS_REF_OPERATION) {
+    return false;
+  }
+  if (call->callee.kind != MS_REF_FUNCTION && call->callee.kind != MS_REF_METHOD) {
+    return true; /* a function value: its callee is checked as a borrower or a consumer by the call itself */
+  }
+  const MsFunc *callee = ms_own_find_func(fn->cx->program, &call->callee);
+  return callee != NULL && !callee->bodiless && !callee->external;
+}
+
 /* The type the borrowed argument `index` (written as `written`) has once the callee gets it: the Optional it is
  * converted to, else its own. False when the argument is not a borrowed call result, or the call may hand a part of it
  * on in its result (it then owns what it took). */
 static bool temp_type(LowerFn *fn, const MsExpr *expr, uint32_t index, const MsExpr *written, MsTy *checked) {
   const MsCall *call = fn_find_call(fn->facts, expr->id);
   MsTyTable *types = &fn->cx->program->types;
-  if (call == NULL || written->kind != MS_E_CALL || fn_arg_moves(fn, expr, call, index, written) ||
-      callee_consumes(fn, call, index) ||
+  if (call == NULL || (written->kind != MS_E_CALL && !(written->kind == MS_E_LIST && callee_has_body(fn, call))) ||
+      fn_arg_moves(fn, expr, call, index, written) || callee_consumes(fn, call, index) ||
       ms_own_native_get(fn->cx->program, fn->facts, written) == MS_NATIVE_GET_MAP ||  /* `m.get(k)` views the entry: its map closes it */
       part_of_place(fn, written, 0)) {                                                 /* `xs.first().get()` is a part of `xs`, which closes it */
     return false;
@@ -272,10 +285,11 @@ static bool conditional(const MsExpr *expr) {
 
 static void scan_enter(void *ctx, const MsExpr *expr) {
   TempScan *scan = ctx;
+  MsTy member = MS_TY_NONE;
+  scan->found |= expr->kind == MS_E_MATCH && scan->skip == 0 && operand_temp_type(scan->fn, expr->u.match.scrutinee, &member);
   if (conditional(expr)) {
     scan->skip++;
   }
-  MsTy member = MS_TY_NONE;
   if (expr->kind == MS_E_BINARY && (expr->op == MS_B_EQ || expr->op == MS_B_NE) && scan->skip == 0) {
     scan->found |= operand_temp_type(scan->fn, expr->u.bin.left, &member) || operand_temp_type(scan->fn, expr->u.bin.right, &member);
   }
