@@ -20,9 +20,10 @@ enum {
   MAX_DEPTH = 4096,
 };
 
-static void event_push(MsList *list, MsSpan path, bool rename) {
-  const MsFsEvent event = {.path = ms_string_from_span(path),
-                           .kind = ms_string_from_span(ms_span_of_text(rename ? "rename" : "change"))};
+static const char *event_kind(bool rename) { return rename ? "rename" : "change"; }
+
+static void event_push(MsList *list, MsSpan path, const char *kind) {
+  const MsFsEvent event = {.path = ms_string_from_span(path), .kind = ms_string_from_span(ms_span_of_text(kind))};
   ms_list_push(list, sizeof event, &event);
 }
 
@@ -116,24 +117,24 @@ static void snapshot_diff(const Snapshot *before, const Snapshot *now, MsList *o
     const SnapEntry *fresh = &now->ptr[j];
     const int order = entry_compare(old, fresh);
     if (order < 0) {
-      event_push(out, ms_string_span(&old->path), true);
+      event_push(out, ms_string_span(&old->path), "rename");
       i++;
     } else if (order > 0) {
-      event_push(out, ms_string_span(&fresh->path), true);
+      event_push(out, ms_string_span(&fresh->path), "rename");
       j++;
     } else {
       if (!same_stamp(old, fresh)) {
-        event_push(out, ms_string_span(&fresh->path), false);
+        event_push(out, ms_string_span(&fresh->path), "change");
       }
       i++;
       j++;
     }
   }
   for (; i < before->len; i++) {
-    event_push(out, ms_string_span(&before->ptr[i].path), true);
+    event_push(out, ms_string_span(&before->ptr[i].path), "rename");
   }
   for (; j < now->len; j++) {
-    event_push(out, ms_string_span(&now->ptr[j].path), true);
+    event_push(out, ms_string_span(&now->ptr[j].path), "rename");
   }
 }
 
@@ -142,6 +143,7 @@ static void snapshot_diff(const Snapshot *before, const Snapshot *now, MsList *o
 typedef struct WatchEvent {
   MsString path;
   bool rename;
+  bool rescan; /* the queue overflowed: events were lost, look at the tree again */
 } WatchEvent;
 
 typedef struct WatchRow WatchRow;
@@ -247,7 +249,7 @@ static void set_terminal(MsFsWatcher *watcher, uint8_t status, const char *text)
 static bool queued_already(const MsFsWatcher *watcher, MsSpan path, bool rename) {
   for (size_t i = 0; i < watcher->count; i++) {
     const WatchEvent *event = &watcher->queue[(watcher->head + i) % watcher->capacity];
-    if (event->rename == rename && ms_span_equal(ms_string_span(&event->path), path)) {
+    if (!event->rescan && event->rename == rename && ms_span_equal(ms_string_span(&event->path), path)) {
       return true;
     }
   }
@@ -268,7 +270,7 @@ static void queue_event(MsFsWatcher *watcher, MsSpan path, bool rename) {
       }
       watcher->head = 0;
       watcher->count = 1;
-      watcher->queue[0] = (WatchEvent){.path = ms_string_from_span(ms_string_span(&watcher->root)), .rename = false};
+      watcher->queue[0] = (WatchEvent){.path = ms_string_from_span(ms_string_span(&watcher->root)), .rescan = true};
       watcher_unlock(watcher);
       watcher_wake(watcher);
       return;
@@ -856,7 +858,7 @@ static uint8_t next_native(MsFsWatcher *watcher, MsList *out, MsFail *fail) {
       watcher->head = (watcher->head + 1) % watcher->capacity;
       watcher->count--;
       watcher_unlock(watcher);
-      event_push(out, ms_string_span(&event.path), event.rename);
+      event_push(out, ms_string_span(&event.path), event.rescan ? "rescan" : event_kind(event.rename));
       ms_string_release(&event.path);
       return MS_STATUS_OK;
     }

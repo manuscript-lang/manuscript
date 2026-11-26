@@ -488,7 +488,7 @@ type WatchSource {
 
 // Waits for the next change. null once the watched path itself has been removed (its
 // removal event comes first). A stream closed by the caller ends (`null`); a native
-// watcher that overflowed with policy `error` is `EOVERFLOW`.
+// watcher that overflowed with policy `error` is `EOVERFLOW`; with the default `rescan` it delivers one `rescan` event instead.
 fn var WatchSource.next() FileEvent?! {
 	while true {
 		event := self.pending.pop()
@@ -543,8 +543,9 @@ export type FileEvent {
 	// Path of the affected entry, formed from the watched path plus any child
 	// components.
 	path String
-	// Exactly `rename` (an entry appeared, disappeared, or was renamed) or `change`
-	// (its contents or metadata changed).
+	// Exactly `rename` (an entry appeared, disappeared, or was renamed), `change`
+	// (its contents or metadata changed), or `rescan` (the queue overflowed and
+	// events were lost; `path` is the watched root, so look at the tree again).
 	kind String
 }
 
@@ -626,9 +627,9 @@ export type WatchOptions {
 	max_entries Int? = null
 	// Most queued native events. Native watchers only. null sets no limit.
 	max_events Int? = null
-	// What a native watcher does when its queue overflows: exactly `error` (default),
-	// `ignore`, or `rescan`, which drops the queued events and queues one change of the
-	// watched root, meaning "look at the tree again". Native watchers only.
+	// What a native watcher does when its queue overflows: exactly `rescan` (default),
+	// which drops the queued events and queues one `rescan` event for the watched
+	// root, `error` (the stream fails with EOVERFLOW), or `ignore`. Native watchers only.
 	overflow String? = null
 }
 
@@ -1227,7 +1228,7 @@ export fn watch(
 				recursive,
 				options.max_entries,
 				options.max_events,
-				options.overflow or "error",
+				options.overflow or "rescan",
 			)?
 		)
 	)
