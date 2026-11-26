@@ -146,7 +146,7 @@ fn sha256(k, data List[Int]) Int {
 }
 
 fn main() Void {
-	var data = List[Int]()
+	var data = List[Int](reserve: 8000000)  // workaround, #7169
 	var x = 5
 
 	for i in 0..8000000 {

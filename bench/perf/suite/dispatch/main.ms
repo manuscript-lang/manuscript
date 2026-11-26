@@ -42,7 +42,7 @@ fn Tri.grow(by Int) Int {
 }
 
 fn shapes(n Int) Int {
-	var xs List[Shape] = []
+	var xs = List[Shape](reserve: n)  // workaround, #7169
 
 	for i in 0..n {
 		k := i % 3
@@ -103,7 +103,7 @@ fn fold_with[T](xs List[T], init Int, step fn(Int, T) Int) Int {
 }
 
 fn generics(n Int) Int {
-	var s = Stack[Int]()
+	var s = Stack[Int](items: List[Int](reserve: n))  // workaround, #7169
 	var t = 0
 
 	for i in 0..n {

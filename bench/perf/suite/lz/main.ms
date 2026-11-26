@@ -20,7 +20,7 @@ fn make_input(n Int) List[Int] {
 		vocab.append(word)
 	}
 
-	var out List[Int] = []
+	var out = List[Int](reserve: n + 16)  // workaround, #7169
 
 	while out.length() < n {
 		x = lcg(x)
@@ -39,7 +39,7 @@ fn compress(data List[Int]) List[Int] {
 		head.append(-1)
 	}
 
-	var out List[Int] = []
+	var out = List[Int](reserve: data.length())  // workaround, #7169
 	n := data.length()
 	var i = 0
 
@@ -78,8 +78,8 @@ fn compress(data List[Int]) List[Int] {
 	return out
 }
 
-fn decompress(tokens List[Int]) List[Int] {
-	var out List[Int] = []
+fn decompress(tokens List[Int], size Int) List[Int] {
+	var out = List[Int](reserve: size)  // workaround, #7169
 	var i = 0
 
 	while i < tokens.length() {
@@ -107,7 +107,7 @@ fn main() Void {
 
 	for pass in 0..3 {
 		packed := compress(data)
-		unpacked := decompress(packed)
+		unpacked := decompress(packed, data.length())
 		if unpacked != data { print("MISMATCH") }
 		checksum += packed.length()
 	}
