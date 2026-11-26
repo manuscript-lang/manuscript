@@ -45,9 +45,10 @@ fn parsed(lines List[String]) List[String] {
 	var out = List[String]()
 
 	for line in lines {
-		r := identity(ok(line.clone()))
+		held String! := ok(line.clone())
+		r := identity(held)
 		event := r.to_optional()
-		if event != null { out.append(event) }
+		if event != null { out.append(event.clone()) }
 	}
 
 	return out

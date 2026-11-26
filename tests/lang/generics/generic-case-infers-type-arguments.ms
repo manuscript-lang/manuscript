@@ -18,10 +18,10 @@ type Box {
 	o Opt[Int]
 }
 
-fn pick[T](o Opt[T], d T) T {
+fn pick[T Clonable](o Opt[T], d T) T {
 	return match o {
-		Opt.Has(v) => v
-		Opt.None => d
+		Opt.Has(v) => v.clone()
+		Opt.None => d.clone()
 	}
 }
 

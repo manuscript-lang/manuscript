@@ -335,6 +335,24 @@ static MirValue view_as_interface(LowerFn *fn, const MsExpr *expr, const MsConve
   return view;
 }
 
+/* The cell `value` lies in: the element of the list it was read from, else a slot it is put in for the view. */
+static MirValue value_cell(LowerFn *fn, MirValue value) {
+  const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
+  for (size_t at = insts->len; at-- > 0;) {
+    if (insts->ptr[at].res == value) {
+      if (insts->ptr[at].op == MOP_ListGet) {
+        return fn_checked_emit(fn, MOP_ListAddr, insts->ptr[at].args, 2, (MirImm){0}, MIR_PTR);
+      }
+      break;
+    }
+  }
+  const MirTy ty = mir_b_ty(&fn->b, value);
+  const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, (MirImm){.tag = MI_TY, .a = ty}, MIR_PTR);
+  const MirValue stored[2] = {slot, value};
+  (void)mir_b_emit(&fn->b, MOP_Store, stored, 2, (MirImm){0}, MIR_NONE); /* a view's leaves, which own nothing */
+  return slot;
+}
+
 static MirValue apply_conversion(LowerFn *fn, const MsExpr *expr, const MsConversion *conversion, MirValue value) {
   if (conversion->kind == MS_CONV_INTERFACE_VIEW) {
     return view_as_interface(fn, expr, conversion, value);
@@ -367,10 +385,9 @@ static MirValue apply_conversion(LowerFn *fn, const MsExpr *expr, const MsConver
       return fn_emit(fn, MOP_OptSome, &value, 1, none, to);
     }
     /* A view of a value something else owns: `opt.view` is borrowed, so dropping it closes nothing. A boxed Optional
-     * holds its payload in a heap block of its own, which a view cannot own: it holds a copy. */
+     * views the payload where it lies: a list element's own cell, or a cell the value is put in. */
     if (mir_ty_opt_boxed(fn->cx->module, mir_b_ty(&fn->b, value))) {
-      value = fn_implicit_clone(fn, value, true);
-      return value == MIR_NONE ? MIR_NONE : fn_emit(fn, MOP_OptSome, &value, 1, none, to);
+      return mir_b_emit(&fn->b, MOP_OptViewAt, (MirValue[]){value_cell(fn, value)}, 1, none, to);
     }
     return mir_b_emit(&fn->b, MOP_OptView, &value, 1, none, to);
   }

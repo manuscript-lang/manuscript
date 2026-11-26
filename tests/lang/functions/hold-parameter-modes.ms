@@ -9,7 +9,7 @@ fn hold Person.name_of() &String {
 	return self.name
 }
 
-fn var hold Person.rename(value String) Void {
+fn var hold Person.rename(move value String) Void {
 	self.name = value
 }
 
@@ -39,7 +39,7 @@ fn main() Void {
 	p.rename("y")
 	print(pick(p, p))
 	print(p.name_of())
-	print(apply(q => q.name, p))
+	print(apply(q => q.name.clone(), p))
 	print(hold(3))
 	print(first_of([4, 5]) or 0)
 }

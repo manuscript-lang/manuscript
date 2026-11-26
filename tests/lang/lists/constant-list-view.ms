@@ -14,7 +14,7 @@ fn doubled(values List[Int]) List[Int] {
 }
 
 fn main() Void {
-	var copy = TABLE
+	var copy = TABLE.clone()
 	copy.append(5)
 	copy[0] = 99
 	moved := TABLE

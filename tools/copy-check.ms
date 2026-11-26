@@ -51,7 +51,7 @@ fn main() Int {
 		source := read_file(absolute.clone()).wait().get().decode_utf8() or ""
 		var command = List[String]()
 
-		if source.contains("export fn main") {
+		if source.contains("fn main(") {
 			command = [
 				"build",
 				absolute.clone(),
