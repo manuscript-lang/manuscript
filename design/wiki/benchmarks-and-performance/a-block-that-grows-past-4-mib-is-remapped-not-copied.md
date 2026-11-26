@@ -1,0 +1,10 @@
+# A block that grows past 4 MiB is remapped, not copied
+
+A list that doubles from a few KiB to tens of MiB (`data.append(...)` in a loop) copied its whole content at each step into pages that had never been touched, so every byte was faulted in twice: the 8M-element fill loop took 32,240 page faults and 69 ms of system time (about 2 us a fault on this VM), checked Rust 15,700 faults and 20 ms, because glibc's `realloc` moves a large mapping with `mremap` and touches nothing. mimalloc (3.x here) has no remap, so `realloc` copies.
+
+`ms_realloc` now turns a block that grows to 4 MiB or more into an `mmap`ed block (`base/alloc_huge.c`, Linux only) and resizes it with `mremap(MREMAP_MAYMOVE)` from then on; a shrink below 2 MiB makes it a mimalloc block again. The live mappings are in a 256-slot table behind a spin lock. `ms_free` and `ms_realloc` learn of them through one word (`free_slow`: bit 0 something is hooked, bit 1 a mapping is live), so a free or resize of an ordinary block stays a load, a compare and the mimalloc call; while a mapping is live, an address range check (two more loads) rules out nearly every other block before the table is read. The slow paths are out of line so the fast ones keep a small frame (an inlined version cost `exprparse` +3% instructions). A full table, or macOS and Windows, leave the block with mimalloc.
+
+Measured (wall min of 21, same machine, old and new runtime): a lone fill loop 75.6 to 42.4 ms (Rust 38.7); `lz` -22%, `dispatch` -21%, `hashing` -12%, `report` -9%, `jsonsum` -9%, `dedupe` -8%, the rest within 1%. Callgrind counts do not see the kernel work: `jsonrt` +1.8%, `strings` +1.4% and `report` +1.1% instructions come from the extra check on every free while a mapping is live, and their wall time is equal or lower.
+
+- Do not test a block with `mi_is_in_heap_region`: it is a call on every free. The `free_slow` word keeps the common case to one load.
+- `mi_usable_size` of a mapped block is invalid: `usable()` asks the table first.

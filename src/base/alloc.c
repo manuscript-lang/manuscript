@@ -9,6 +9,7 @@
 #include <stdio.h>
 #endif
 
+#include "base/alloc_huge.h"
 #include "base/fatal.h"
 
 /* The one other mutable global of base besides the fatal handler: set once before threads. */
@@ -22,6 +23,28 @@ static _Atomic bool hooked = true; /* the counting runtime tracks live blocks fr
 static _Atomic bool hooked = false;
 #endif
 static void refresh_hooked(void);
+
+/* What ms_free must look further for: bit 0 is `hooked`, bit 1 a live mapping (base/alloc_huge.h). One load settles a
+ * free of an ordinary block. */
+enum { FREE_SLOW_HOOKED = 1, FREE_SLOW_HUGE = 2 };
+#ifdef MS_STATS
+static _Atomic unsigned free_slow = FREE_SLOW_HOOKED;
+#else
+static _Atomic unsigned free_slow;
+#endif
+
+/* Whether a block with `slow` set is mimalloc's with nothing hooked: only a live mapping may make it another's. */
+static inline bool ordinary(unsigned slow, const void *block) {
+  return slow == 0 || (slow == FREE_SLOW_HUGE && !ms_huge_maybe(block));
+}
+
+void ms_alloc_huge_flag(bool live) {
+  if (live) {
+    atomic_fetch_or_explicit(&free_slow, FREE_SLOW_HUGE, memory_order_relaxed);
+  } else {
+    atomic_fetch_and_explicit(&free_slow, ~(unsigned)FREE_SLOW_HUGE, memory_order_relaxed);
+  }
+}
 
 static void *mimalloc_allocate(size_t size) {
   return mi_malloc(size);
@@ -147,6 +170,11 @@ static void refresh_hooked(void) {
   const bool on = installed != NULL || observer != NULL || atomic_load_explicit(&tracking, memory_order_relaxed);
 #endif
   atomic_store_explicit(&hooked, on, memory_order_relaxed);
+  if (on) {
+    atomic_fetch_or_explicit(&free_slow, FREE_SLOW_HOOKED, memory_order_relaxed);
+  } else {
+    atomic_fetch_and_explicit(&free_slow, ~(unsigned)FREE_SLOW_HOOKED, memory_order_relaxed);
+  }
 }
 
 static LiveStripe *stripe(void) {
@@ -272,6 +300,9 @@ static int64_t usable(const void *block) {
   if (block == NULL || installed != NULL || !atomic_load_explicit(&tracking, memory_order_relaxed)) {
     return 0;
   }
+  if (ms_huge_maybe(block) && ms_huge_owns(block)) {
+    return (int64_t)ms_huge_usable(block);
+  }
   return (int64_t)mi_usable_size(block);
 }
 
@@ -312,10 +343,21 @@ void *ms_alloc_zeroed(size_t size) {
   return block;
 }
 
-void *ms_realloc(void *block, size_t size) {
+/* The resize when something is hooked, a mapping is live or the size asks for one. */
+__attribute__((noinline)) static void *realloc_slow(void *block, size_t size) {
+  if (size < MS_HUGE_MIN && ordinary(atomic_load_explicit(&free_slow, memory_order_relaxed), block)) {
+    counted_allocations++;
+    counted_bytes += (int64_t)size;
+    return checked(mi_realloc(block, size));
+  }
   count(size);
   const int64_t before = usable(block);
-  void *moved = checked(block == NULL ? current()->allocate(size) : current()->reallocate(block, size));
+  void *moved = NULL;
+  if (installed == NULL && !use_libc && (size >= MS_HUGE_MIN || ms_huge_maybe(block)) && ms_huge_realloc(block, size, &moved)) {
+    checked(moved);
+  } else {
+    moved = checked(block == NULL ? current()->allocate(size) : current()->reallocate(block, size));
+  }
   live_add(usable(moved) - before);
   if (block == NULL) {
     block_add(1);
@@ -327,9 +369,29 @@ void *ms_realloc(void *block, size_t size) {
   return moved;
 }
 
-void ms_free(void *block) {
+void *ms_realloc(void *block, size_t size) {
+  if (size < MS_HUGE_MIN && atomic_load_explicit(&free_slow, memory_order_relaxed) == 0) {
+    counted_allocations++; /* nothing hooked, no mapping live, an ordinary size: the counters and mimalloc */
+    counted_bytes += (int64_t)size;
+    return checked(mi_realloc(block, size));
+  }
+  return realloc_slow(block, size);
+}
+
+__attribute__((noinline)) static void free_slow_path(void *block) {
+  if (ordinary(atomic_load_explicit(&free_slow, memory_order_relaxed), block)) {
+    mi_free(block);
+    return;
+  }
+  if (ms_huge_maybe(block) && ms_huge_owns(block)) {
+    live_add(-usable(block));
+    block_add(-1);
+    trace_free(block);
+    ms_huge_free(block);
+    return;
+  }
   if (!atomic_load_explicit(&hooked, memory_order_relaxed)) {
-    mi_free(block); /* accepts NULL */
+    mi_free(block);
     return;
   }
   if (block != NULL) {
@@ -338,4 +400,12 @@ void ms_free(void *block) {
     trace_free(block);
     current()->release(block);
   }
+}
+
+void ms_free(void *block) {
+  if (atomic_load_explicit(&free_slow, memory_order_relaxed) == 0) {
+    mi_free(block); /* accepts NULL */
+    return;
+  }
+  free_slow_path(block);
 }

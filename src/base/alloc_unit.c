@@ -50,6 +50,28 @@ int main(void) {
   ms_free(NULL);
   CHECK(ms_alloc_live_bytes() == live_before);
 
+  /* A block that grows past a few MiB is a mapping that moves with its content, and an ordinary block beside it still
+   * frees; one that shrinks again is ordinary. */
+  uint8_t *ordinary = ms_alloc(64);
+  uint8_t *grown = ms_alloc(100);
+  for (size_t i = 0; i < 100; i++) {
+    grown[i] = (uint8_t)(i * 7);
+  }
+  for (size_t size = 1u << 10; size <= (96u << 20); size *= 4) {
+    grown = ms_realloc(grown, size);
+    CHECK(ms_alloc_live_bytes() >= live_before + (int64_t)size);
+    CHECK(grown[99] == (uint8_t)(99 * 7) && grown[0] == 0);
+    grown[size - 1] = 1; /* the whole block is writable */
+  }
+  ms_free(ordinary);
+  uint8_t *second = ms_realloc(NULL, 8u << 20);
+  second[(8u << 20) - 1] = 2;
+  ms_free(grown);
+  second = ms_realloc(second, 100);
+  CHECK(second != NULL);
+  ms_free(second);
+  CHECK(ms_alloc_live_bytes() == live_before);
+
   ms_alloc_install(&counting);
   block = ms_alloc(16);
   ms_free(block);
