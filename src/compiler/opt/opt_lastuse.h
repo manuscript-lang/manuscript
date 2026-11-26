@@ -116,6 +116,7 @@ bool lu_live(const LuCtx *x, uint32_t bi, uint32_t ii);
 uint32_t lu_use_block(uint64_t u);
 uint32_t lu_use_inst(uint64_t u);
 bool lu_in_family(const LuCtx *x, MirValue w);
+bool lu_store_view(const LuCtx *x, const MirInst *i, MirValue w);
 void lu_fit(LuCtx *x);
 void lu_insert_pending(LuCtx *x, uint32_t bi, LuPos pos, MirValue v);
 void lu_family(LuCtx *x, MsArena *ca, LuFamily *fam, MirValue v, uint32_t param_of);
