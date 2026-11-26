@@ -1186,3 +1186,7 @@ Slots that are never live together shared one frame alloca; a view cell that onl
 ## 2026-11-25: a push that has room stores only the length
 
 `list.push` followed by a put back to the slot it was taken from stored the whole list header on every pass; the path with room now stores the length leaf only, the grow path the whole list. Callgrind instructions, same machine, all 23 programs against `main`: `lz` 667.9M to 652.0M (-2.3%), `graph` -0.8%, `exprparse` -0.4%, `jsonrt` -0.2%; `dispatch` +0.8% (one register move in the 20M-iteration push loop; wall min of 21: 376.3 ms before, 375.2 ms after); the rest within 0.05%. `lz` decompress copy loop: 19 to 17 instructions per element (checked Rust 11).
+
+## 2026-11-26: a branch to a cold block carries a branch weight
+
+LLVM ignored the `cold` flag on MIR blocks (unwind exits, grow and fault blocks), so they were laid out and register-allocated as hot. A conditional branch with exactly one cold target now carries `!prof` weights 1:64. Same machine, wall min of 21 pinned to one CPU, median of 3 rounds, before and after: `interp` 267.8 to 254.6 ms (-4.9%), `dispatch` 371.1 to 363.3 ms (-2%), `hashing` 182.0 to 179.1 ms (-1.6%), `exprparse` 885 to 876 ms (-1%); `lz`, `objgraph`, `treegrep`, `wordfreq`, `report` within noise. Callgrind instructions, all 23 programs: `hashing` -4.1%, `objgraph` -2.4%, `dispatch` -1.8%, `exprparse` -1.2%, `wordfreq` -1.0%, `report` -0.6%, `dedupe` -0.9%; `interp` +6.7% (register moves in `run`; wall time is lower), `lz` +1.1% and `treegrep` +0.4% (wall equal).
