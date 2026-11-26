@@ -212,12 +212,12 @@ static bool callable(const MsCheckProgram *program, MsTy ty, const MsTyParam **p
   }
 }
 
-/* The declared parameters of the callee: function types keep no parameter names in their identity, so the names (and the
+/* The declared function of the callee, for its parameters: function types keep no parameter names in their identity, so the names (and the
  * defaults) come from the declaration. NULL for a callee with no declaration in the program. */
-static const MsParams *declared_params(const MsCheckProgram *program, const MsOccurrence *callee) {
+static const MsFunc *declared_func(const MsCheckProgram *program, const MsOccurrence *callee) {
   if (callee->symbol != 0 && callee->symbol < program->symbols.len) {
     const MsDecl *decl = program->symbols.ptr[callee->symbol].decl;
-    if (decl != NULL && decl->kind == MS_D_FN) return &decl->u.fn.params;
+    if (decl != NULL && decl->kind == MS_D_FN) return &decl->u.fn;
   }
   /* A method's key is `method:<file>:<offset of its declaration>`. */
   if (!callee->method || !ms_span_starts_with_text(callee->key, "method:")) return NULL;
@@ -231,7 +231,7 @@ static const MsParams *declared_params(const MsCheckProgram *program, const MsOc
     const MsMethodEntry *entry = &program->methods.ptr[i];
     if (entry->source != NULL && entry->source->pos.offset == offset &&
         ms_span_equal(ms_names_span(program->names, program->modules.ptr[entry->module].file), file)) {
-      return &entry->source->func.params;
+      return &entry->source->func;
     }
   }
   return NULL;
@@ -287,7 +287,8 @@ static void signature_for(LspAnalysis *analysis, const LspDocList *docs, MsSpan 
     ms_strbuild_append_text(out, "null");
     return;
   }
-  const MsParams *ast = ms_ty_kind(&program->types, callee->ty) == MS_TY_FUNCTION ? declared_params(program, callee) : NULL;
+  const MsFunc *declared = ms_ty_kind(&program->types, callee->ty) == MS_TY_FUNCTION ? declared_func(program, callee) : NULL;
+  const MsParams *ast = declared != NULL ? &declared->params : NULL;
   if (ast != NULL && ast->len != count) ast = NULL;
   /* A constructed type's fields keep their defaults in the declaration. */
   const MsParams *defaults = ast;
@@ -302,12 +303,15 @@ static void signature_for(LspAnalysis *analysis, const LspDocList *docs, MsSpan 
   ms_strbuild_append_byte(&label, '(');
   for (size_t i = 0; i < count; i++) {
     MsStrBuild one = ms_strbuild_new();
+    /* The modes read as the declaration writes them: `var`, `move`, `hold`. */
     if (params[i].flags & MS_PARAM_VAR) ms_strbuild_append_text(&one, "var ");
+    if (params[i].flags & MS_PARAM_MOVE) ms_strbuild_append_text(&one, "move ");
+    if (ast != NULL && ast->ptr[i]->holding) ms_strbuild_append_text(&one, "hold ");
     if (ast != NULL || ms_ty_kind(&program->types, callee->ty) != MS_TY_FUNCTION) {
       ms_strbuild_append(&one, ms_names_span(program->names, ast != NULL ? ast->ptr[i]->name : params[i].name));
       ms_strbuild_append_text(&one, " ");
     }
-    ms_ty_show_plain(&one, program->names, &program->types, params[i].ty);
+    ms_ty_show(&one, program->names, &program->types, params[i].ty);
     if (defaults != NULL && defaults->ptr[i]->def != NULL) ms_strbuild_append_text(&one, " = ...");
     if (i > 0) ms_strbuild_append_text(&label, ", ");
     ms_strbuild_append(&label, ms_strbuild_span(&one));
@@ -318,7 +322,8 @@ static void signature_for(LspAnalysis *analysis, const LspDocList *docs, MsSpan 
     ms_strbuild_free(&one);
   }
   ms_strbuild_append_text(&label, ") ");
-  if (result != MS_TY_NONE) ms_ty_show_plain(&label, program->names, &program->types, result);
+  if (declared != NULL && declared->result != NULL && declared->result->is_ref) ms_strbuild_append_byte(&label, '&');
+  if (result != MS_TY_NONE) ms_ty_show(&label, program->names, &program->types, result);
   /* The active parameter: a written label picks its slot, an unlabeled argument the first slot not yet taken. */
   size_t active = 0;
   bool *used = count == 0 ? NULL : calloc(count, sizeof *used);

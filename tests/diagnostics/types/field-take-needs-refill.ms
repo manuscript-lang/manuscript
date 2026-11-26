@@ -21,4 +21,4 @@ type Pair {
 fn end_first(var pair Pair) Void! {
 	pair.first.close()?
 }
-// expect-error: MS3000 22:10 cannot move the resource `pair.first` out of `pair`: a resource cannot be cloned, and it leaves `pair` only when `pair` is a `let` or a parameter and no type on the path has a `close` of its own; use `pair.first` in place, move the whole `pair`, or take it with `part := pair.first` and refill `pair.first = ...` in the next statement
+// expect-error: MS3000 22:10 cannot move the resource `pair.first` out of `pair`: a resource cannot be cloned, and it leaves `pair` only when `pair` is a local binding or a parameter and no type on the path has a `close` of its own; use `pair.first` in place, move the whole `pair`, or take it with `part := pair.first` and refill `pair.first = ...` in the next statement

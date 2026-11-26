@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "base/cstr.h"
 #include "base/dir.h"
 #include "base/file.h"
 #include "base/message.h"
@@ -14,6 +15,7 @@
 #include "compiler/project/project.h"
 #include "tooling/checked_input.h"
 #include "compiler/check/std_cache.h"
+#include "tooling/decl_header.h"
 #include "tooling/doc_comment.h"
 #include "tooling/facts.h"
 #include "tooling/inspect.h"
@@ -438,14 +440,19 @@ static MsSymbolMatch describe(MsArena *arena, const Candidate *c, MsSpan cwd) {
                          .rank = (size_t)c->rank, .project = true,
                          .definition = place(arena, c->path, c->line, c->column)};
   if (c->entry->ty != MS_TY_NONE && !ms_ty_is_invalid(&program->types, c->entry->ty)) {
-    MsStrBuild text = ms_strbuild_new();
-    ms_strbuild_append(&text, c->entry->name);
-    ms_strbuild_append_text(&text, " ");
-    ms_ty_show(&text, program->names, &program->types, c->entry->ty);
-    match.type = ms_arena_copy(arena, ms_strbuild_span(&text));
-    ms_strbuild_free(&text);
-    if (ms_span_starts_with(match.type, ms_message_format(arena, "%S fn(", c->entry->name, (MsSpan){0}))) {
+    /* A function reads as its declaration header, formatted like the source (modes and `&` results included). */
+    const MsSpan header = !ms_cstr_equal(c->kind, "fn") ? (MsSpan){0}
+                          : ms_declaration_header(arena, program->modules.ptr[c->entry->module].source, c->entry->offset);
+    if (header.len > 0) {
+      match.type = header;
       match.effects = effects_of(arena, c);
+    } else {
+      MsStrBuild text = ms_strbuild_new();
+      ms_strbuild_append(&text, c->entry->name);
+      ms_strbuild_append_text(&text, " ");
+      ms_ty_show(&text, program->names, &program->types, c->entry->ty);
+      match.type = ms_arena_copy(arena, ms_strbuild_span(&text));
+      ms_strbuild_free(&text);
     }
   }
   match.doc = first_sentence(ms_declaration_comment(arena, program->modules.ptr[c->entry->module].source, c->entry->offset,
