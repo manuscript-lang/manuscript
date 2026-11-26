@@ -446,16 +446,16 @@ fn contains_word(text, word String) Bool {
 	return false
 }
 
-fn internal_externs(sources Map[String, String]) List[String] {
+// An internal native is live when another standard-library file names it, or a test
+// that imports from
+// `@std/internal/` does: the test support natives serve the tests themselves.
+fn internal_externs(sources, tests Map[String, String]) List[String] {
 	var issues = List[String]()
 
 	for path in sources.keys() {
-		if not path.starts_with("src/stdlib/internal/") { continue }
-
-		// The natives of the test support module serve the test runner and the tests
-		// themselves, which import them from here; no other standard-library file need
-		// name them.
-		if path == "src/stdlib/internal/test.ms" { continue }
+		if not path.starts_with(
+			"src/stdlib/internal/"
+		) { continue }
 
 		for line in sources[path].split("\n") {
 			rest := without_words(line.trim(), ["export"])
@@ -472,9 +472,12 @@ fn internal_externs(sources Map[String, String]) List[String] {
 					)
 				) { used = true }
 			}
+			for file in tests.keys() {
+				if contains_word(tests[file].clone(), name.clone()) { used = true }
+			}
 			if not used {
 				issues.append(
-					f"{path}: `extern fn {name}` is not used by any other standard-library file; delete it and its native side"
+					f"{path}: `extern fn {name}` is not used by any other standard-library file or test; delete it and its native side"
 				)
 			}
 		}
@@ -486,9 +489,16 @@ fn internal_externs(sources Map[String, String]) List[String] {
 // Every problem the four rules find in the tracked standard-library declaration files.
 export fn stdlib_issues(files List[String]) List[String] {
 	var sources = Map[String, String]()
+	var tests = Map[String, String]()
+
 	for path in files {
 		if path.starts_with("src/stdlib/") and path.ends_with(".ms") {
 			sources[path.clone()] = text_of(path.clone())
+		}
+
+		if path.starts_with("tests/") and path.ends_with(".ms") {
+			text := text_of(path.clone())
+			if text.contains("@std/internal/") { tests[path.clone()] = text }
 		}
 	}
 
@@ -543,5 +553,5 @@ export fn stdlib_issues(files List[String]) List[String] {
 			"has a stream-shaped name; return a ReadStream[T] or take a WriteStream[T] instead (see design/proposals/stream-redesign.md)",
 		)
 	)
-	return issues.concat(internal_externs(sources))
+	return issues.concat(internal_externs(sources, tests))
 }
