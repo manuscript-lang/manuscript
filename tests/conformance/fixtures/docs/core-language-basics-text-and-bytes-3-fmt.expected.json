@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn text[T](value T) String {\n\treturn value.to_string()\n}\n\ntest \"string conversion\" {\n\tcount := 3\n\tconvert fn() String := count.to_string\n\t_direct := count.to_string()\n\t_bound := convert()\n\t_embedded := f\"{count}\"\n}\n"
-  }
-}

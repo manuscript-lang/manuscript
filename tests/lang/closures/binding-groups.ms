@@ -1,0 +1,31 @@
+// conform: tags=closures,destructuring,formatter,interpolation,modules,mutation,stdlib-testing,testing,tier-core,try-result
+// conform: phase=test,parse
+// conform: origin=tests/e2e/testdata/accept/binding-groups.ms
+import expect_equal, expect_false from "@std/test/test.ms"
+
+LOW := 1
+HIGH Int := LOW + 9
+export LABEL := f"range {LOW}..{HIGH}"
+
+test "a constant group declares each constant" {
+	expect_false(not (HIGH == 10 and LABEL == "range 1..10"))?
+}
+
+test "a var group declares mutable locals" {
+	var (
+		total = 0
+		step = fn(value Int) Int {
+			return value + 1
+		}
+	)
+	total = step(total)
+	expect_equal(total, 1)?
+}
+
+test "a let group declares immutable locals" {
+	name := "Ada"
+	[first, second] := [1, 2]
+	expect_false(not (name == "Ada" and first + second == 3))?
+}
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

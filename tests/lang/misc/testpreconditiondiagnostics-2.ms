@@ -1,0 +1,8 @@
+// conform: tags=formatter,testing,tier-core
+// conform: phase=test,parse
+// conform: origin=tests/e2e/precondition_diagnostics_test.go:59 TestPreconditionDiagnostics
+test "continues after preconditions" {
+	_valid := 1
+}
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

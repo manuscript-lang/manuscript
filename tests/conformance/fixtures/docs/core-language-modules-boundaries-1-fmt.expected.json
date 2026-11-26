@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "export type Item {\n\tprice, quantity Int\n}\n\nexport fn total(items List[Item]) Int {\n\tvar result = 0\n\tfor item in items {\n\t\tresult += item.price * item.quantity\n\t}\n\treturn result\n}\n"
-  }
-}

@@ -1,0 +1,67 @@
+// conform: tags=aliasing,control-flow,faults,match,modules,optional,records,stdlib-io,strings,tier-core
+// conform: phase=run
+// conform: origin=tests/e2e/mutation_test.go:49 TestClonedRecordRetainsFileHandleLifetime
+import open_read from "@std/io/io.ms"
+import File from "@std/io/io.ms"
+
+type Holder {
+    file File
+    label String
+}
+
+export fn main() Int {
+    opened := open_read("data.txt")
+    if opened.is_error() {
+        return 4
+    }
+
+    file := opened.get()
+    read := file.read(1)
+    if read.is_error() {
+        return 7
+    }
+
+    chunk := read.get()
+
+    match chunk {
+        data => {
+            if data.decode_utf8() != "d" {
+                return 5
+            }
+        }
+        null => {
+            return 6
+        }
+    }
+
+    original := Holder(file: file, label: "original")
+    var copy = original.clone()
+    copy.label = "copy"
+    if original.label != "original" {
+        return 1
+    }
+
+    copy.file.close()
+
+    reread := original.file.read(1)
+    if reread.is_ok() {
+        return 3
+    }
+
+    cause := reread.err()
+
+    match cause {
+        Error("I/O: resource is closed", kind: "EBADF") => {
+            return 0
+        }
+        _ => {
+            return 2
+        }
+    }
+}
+// expect-exit: 1
+// expect-stderr: <DIR>/testclonedrecordretainsfilehandlelifetime-1.ms:54:15: parse: expected a name, found text "I/O: resource is closed"
+// expect-stderr:     |
+// expect-stderr:  54 |         Error("I/O: resource is closed", kind: "EBADF") => {
+// expect-stderr:     |               ^^^^^^^^^^^^^^^^^^^^^^^^^
+// expect-stderr: 1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

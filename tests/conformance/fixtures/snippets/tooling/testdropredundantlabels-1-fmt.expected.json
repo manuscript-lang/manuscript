@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type Point {\n\tx, y Int\n}\n\nfn bump(map, key Int, step Int = 1) Int => map + key + step\n\ntype Counter {\n\ttotal Int\n}\n\ninterface Adder {\n\tfn add(amount, extra Int) Int\n}\n\nfn Counter.add(amount, extra Int) Int => self.total + amount + extra\n\nfn use(map, key, y, x Int, counter Counter) Int { ... }\n"
-  }
-}

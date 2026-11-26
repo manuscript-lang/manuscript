@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import value from \"@lib/value.ms\"\n\nfn report() Int => return value()\n"
-  }
-}

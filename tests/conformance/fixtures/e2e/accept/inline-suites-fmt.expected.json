@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import expect_equal from \"@std/test/test.ms\"\n\nfn double(value Int) Int => value * 2\n\nfn apply(value Int, transform fn(Int) Int) Int => transform(value)\n\nfn choose(value Int) Int {\n\tif value > 0 {\n\t\treturn double(value)\n\t} else {\n\t\treturn 0\n\t}\n}\n\nfn alternate(value Int) Int {\n\tif value < 0 {\n\t\treturn -1\n\t} else if value == 0 {\n\t\treturn 0\n\t} else {\n\t\treturn 1\n\t}\n}\n\ntest \"inline functions and branches\" {\n\texpect_equal(choose(3), 6)?\n\texpect_equal(choose(-3), 0)?\n\texpect_equal(alternate(0), 0)?\n\texpect_equal(alternate(3), 1)?\n\n\tincrement := fn(value Int) => value + 1\n\texpect_equal(increment(2), 3)?\n\n\tresult := apply(4, value => value * 3)\n\texpect_equal(result, 12)?\n\n\tvar count = 0\n\twhile count < 3 { count += 1 }\n\texpect_equal(count, 3)?\n}\n\ntest \"inline test\" { return }\n"
-  }
-}

@@ -1,0 +1,9 @@
+// conform: tags=diagnostics,formatter,mutation,tier-core
+// conform: phase=check,parse
+// conform: origin=pkg/tooling/lint_program_test.go:89 TestSelfAssignmentDoesNotCountAsRead
+fn answer() Int {
+	var _total = 0
+	_total += 2
+	return 0
+}
+// expect-exit: 0

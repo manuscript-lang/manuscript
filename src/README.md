@@ -55,7 +55,7 @@ Fixtures are recorded from the `ms` built here: `ms run tools/conform-run.ms -- 
 ## Command fixtures
 
 Commands the corpus does not cover (`lint`, `inspect`, `init`, ...) have fixtures under
-`tests/conformance/commands/<command>/<name>/`: `args`, optional `input/`, and `expected/`
+`tests/commands/<command>/<name>/`: `args`, optional `input/`, and `expected/`
 (`stdout`, `stderr`, `status`, `tree/`). Record from the `ms` built here, review the diff, and replay with the
 Manuscript runner:
 

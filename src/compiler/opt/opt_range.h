@@ -163,6 +163,11 @@ void rg_build_env(RgFa *fa, uint32_t bi, RgEnv *out);
 void rg_refine_cond(RgFa *fa, MirValue cond, bool truth, RgEnv *env);
 bool rg_eval(const RgFa *fa, const MirInst *inst, const RgEnv *env, RgItv *out);
 
+/* The analysis of one function (opt_range.c): `rg_fa_solve` is false when it gave up. */
+void rg_fa_init(RgFa *fa, const MirModule *m, const MirFunc *f);
+bool rg_fa_solve(RgFa *fa);
+void rg_fa_free(RgFa *fa);
+
 /* ---- length origins (opt_range_len.c) ---- */
 
 MirValue *rg_length_origins(MsArena *arena, const MirModule *m, const MirFunc *f);

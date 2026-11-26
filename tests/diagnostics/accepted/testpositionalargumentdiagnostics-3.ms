@@ -1,0 +1,7 @@
+// conform: tags=closures,diagnostics,formatter,tier-core
+// conform: phase=check,parse
+// conform: origin=pkg/checker/positional_arguments_test.go:68 TestPositionalArgumentDiagnostics
+fn f(n Int) Int => n
+
+fn apply(callback fn(Int) Int, input Int) Int => callback(input)
+// expect-exit: 0

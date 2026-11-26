@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type Node {\n\tnext Node?\n}\n\nexport fn main() Int {\n\tnode := Node(null)\n\tnode.next = node\n\treturn node.hash()\n}\n"
-  }
-}

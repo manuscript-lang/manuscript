@@ -13,14 +13,8 @@ import (
 	CopyOptions, copy, temporary from "@std/os/fs.ms",
 
 	summarize from "./datastructures_table.ms",
-	build_go,
-	build_ms,
-	build_rust,
-	finish,
-	repeats,
-	rotate,
-	sample,
-	usage from "./lib.ms",
+	build_go, build_ms, build_rust, finish, repeats, usage from "./lib.ms",
+	run_trials from "./trials.ms",
 )
 
 fn run(work String, n Int) Result[String, Error] {
@@ -36,18 +30,12 @@ fn run(work String, n Int) Result[String, Error] {
 	build_go(f"{work}/go", f"{work}/go/bench")?
 	build_rust(f"{here}/rust/main.rs", f"{work}/rs", [])?
 
-	var raw = List[String]()
-
-	for i in 0..n {
-		for v in rotate(["ms", "go", "rs"], i) {
-			exe := if v == "rs" { f"{work}/rs" } else { f"{work}/{v}/bench" }
-			for line in (sample(exe, [])?).split("\n") {
-				if line != "" { raw.append(f"{v} {line}") }
-			}
-			raw.append(f"{v} # end")
-		}
-	}
-
+	versions := ["ms", "go", "rs"]
+	raw := run_trials(
+		versions,
+		v => if v == "rs" { f"{work}/rs" } else { f"{work}/{v}/bench" },
+		n,
+	)?
 	return summarize(raw, n)
 }
 

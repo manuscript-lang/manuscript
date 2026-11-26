@@ -1,5 +1,0 @@
-<DIR>/src/shapes.ms:1:1: type: entry must declare fn main; no main function is declared, so add 'fn main() Void { ... }' with an indented body
-   |
- 1 | type Shape {
-   | ^
-1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

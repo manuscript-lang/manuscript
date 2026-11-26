@@ -1,0 +1,4 @@
+// conform: tags=projects,testing,tier-stdlib
+// conform: phase=check
+// conform: entry=main.ms
+// expect-error: MS3000 8:5 Approved is opaque outside gate.ms: its fields cannot be destructured here; use the functions gate.ms exports

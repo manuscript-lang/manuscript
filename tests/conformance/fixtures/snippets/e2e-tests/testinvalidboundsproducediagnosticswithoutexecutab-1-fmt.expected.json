@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "interface Named {\n\tfn name() String\n}\n\ntype Box[Named Named] {\n\tcause Named\n}\n\nfn Box[Named].name() String => self.cause.name()\n\nexport fn main() Int => 0\n"
-  }
-}

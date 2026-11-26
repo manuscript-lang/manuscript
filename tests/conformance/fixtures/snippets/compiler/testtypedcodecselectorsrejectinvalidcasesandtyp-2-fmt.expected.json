@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import NormalizationForm from \"@std/string.ms\"\n\nfn choose(form NormalizationForm) Void {\n\treturn\n}\n\nfn wrong() Void {\n\tchoose(\"NFC\")\n}\n"
-  }
-}

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn probe(flag Bool) Void {\n\tvar i = 0\n\tif flag {\n\t\twhile i < 1000 {\n\t\t\ti += 1\n\t\t}\n\t}\n}\n"
-  }
-}

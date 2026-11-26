@@ -18,7 +18,7 @@ argument replaces that source ([#2843](https://github.com/manuscript-lang/manusc
 Do not silently add blanket key clones or suppress implicit-copy/ownership checks to hide it.
 
 Apply when: removing bound-call wrappers or lowering expressions to direct operations.
-Evidence: [evaluation order](../../../documentation/contributing/compiler/lowering/evaluation-order.md), [receiver reassignment regression](../../../tests/conformance/fixtures/e2e/accept/collection-call-order.ms), [operand order](../../../tests/conformance/fixtures/e2e/accept/operand-order.ms).
+Evidence: [evaluation order](../../../documentation/contributing/compiler/lowering/evaluation-order.md), [receiver reassignment regression](../../../tests/lang/faults/collection-call-order.ms), [operand order](../../../tests/lang/control-flow/operand-order.ms).
 Verify: a list receiver initially holding 7 still yields 7 when its index expression reassigns the local to a list holding 9.
 
 Map counter fusion requires a stable key, not merely two references to the same local. A
@@ -27,7 +27,7 @@ clone can also leave a borrowed String pointing at consumed storage. Keep the si
 path for literals and immutable keys the other operand does not reference; an immutable
 key can still be consumed by that operand. A direct numeric-literal operand also permits a
 mutable key because it cannot access that key. Otherwise use ordinary lowering. See
-[key stability regressions](../../../tests/conformance/fixtures/e2e/accept/map-counter-key-stability.ms) and
+[key stability regressions](../../../tests/lang/maps/map-counter-key-stability.ms) and
 [#2857](https://github.com/manuscript-lang/manuscript/issues/2857).
 
 The fused key slot must also have the map's checked key representation. A plain key lifted
@@ -46,4 +46,4 @@ arguments succeed, restore ownership of that captured value before refreshing or
 arguments. Otherwise lowering can reread a moved source or silently copy an explicit clone
 ([#2866](https://github.com/manuscript-lang/manuscript/issues/2866)).
 
-Regression checks: [checked places](../../../tests/conformance/fixtures/e2e/accept/checked-place-evaluation.ms) and [resource places](../../../tests/conformance/fixtures/e2e/accept/resource-place-evaluation.ms).
+Regression checks: [checked places](../../../tests/lang/misc/checked-place-evaluation.ms) and [resource places](../../../tests/lang/misc/resource-place-evaluation.ms).

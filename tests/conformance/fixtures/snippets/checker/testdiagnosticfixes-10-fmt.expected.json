@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import panic from \"@std/core.ms\"\n\nfn f() Int {\n\tpanic = 2\n\treturn 0\n}\n"
-  }
-}

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "enum Wrapped[T] {\n\tvalue(r T!)\n}\n\nfn first() Wrapped[Int] => Wrapped.value(f())\n"
-  }
-}

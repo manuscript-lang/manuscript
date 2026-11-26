@@ -1,0 +1,74 @@
+// conform: tags=control-flow,faults,formatter,interfaces,maps,match,modules,optional,records,stdlib-bytes,stdlib-io,stdlib-queues,stdlib-testing,strings,testing,tier-stdlib,try-result
+// conform: phase=test,parse
+// conform: origin=tests/e2e/testdata/accept/stdlib-revamp.ms
+import (
+	Bytes from "@std/bytes.ms",
+	PriorityQueue from "@std/collections/queue.ms",
+	expect_equal, expect_false, fail from "@std/test/test.ms",
+)
+
+type Key {
+	id Int
+	label String
+}
+
+fn Key.equals(other Key) Bool {
+	return self.id == other.id
+}
+
+fn Key.hash() Int => self.id
+
+fn Key.compare(other Key) Int {
+	return self.id - other.id
+}
+
+test "domain equality and hashing select interfaces" {
+	a := Key(1, "first")
+	b := Key(1, "second")
+	expect_equal(a, b)?
+	expect_equal(a.hash(), b.hash())?
+
+	var values = Map[Key, String]()
+	values.add(a.clone(), "a")
+	values.add(b.clone(), "b")
+	expect_equal(values.length(), 1)?
+	expect_equal(values.get(a), "b")?
+	expect_false(not ([a.clone()].contains(b)))?
+
+	view Equal := a
+	expect_false(not (view.equals(b)))?
+}
+
+test "stable priority queue and optional capacity" {
+	var queue = PriorityQueue[Key]()
+	queue.enqueue(Key(2, "later"))
+	queue.enqueue(Key(1, "first"))
+	queue.enqueue(Key(1, "second"))
+
+	value := queue.dequeue()
+
+	if value != null {
+		expect_equal(value.label, "first")?
+	} else {
+		return fail("missing item")
+	}
+
+	value := queue.dequeue()
+
+	if value != null {
+		expect_equal(value.label, "second")?
+	} else {
+		return fail("missing item")
+	}
+
+	var bounded = PriorityQueue[Key](1)
+	expect_false(not (bounded.enqueue(Key(1, "only"))))?
+	expect_false(bounded.enqueue(Key(0, "full")))?
+}
+
+test "repeat builds plain text" {
+	repeated := "ab".repeat(3)
+	expect_equal(repeated, "ababab")?
+}
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

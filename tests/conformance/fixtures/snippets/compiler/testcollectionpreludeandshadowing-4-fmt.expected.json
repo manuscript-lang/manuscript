@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn f() Int {\n\tList := fn(value Int) Int => value\n\tMap := fn(value Int) Int => value\n\tSet := fn(value Int) Int => value\n\titems := [1]\n\tentries := {1: 2}\n\treturn List(3) + Map(4) + Set(5) + items.length() + entries.length()\n}\n"
-  }
-}

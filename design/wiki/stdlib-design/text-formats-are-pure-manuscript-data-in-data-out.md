@@ -7,8 +7,8 @@ Decision (2026-11-02): templates (`@std/text/template.ms`), XML, PEM, MIME/multi
 Verified: `String.split(sep)` has no piece limit (the old cap truncated rather than keeping a remainder, and was removed in #4415), `List.get_or(i, default)` takes a default, a `{`/`}` inside a string literal must be written `\{`/`\}`, `test` is a keyword and cannot name a binding, and an exported record may not expose a private type (an opaque `Template` needs exported opaque node types with documented fields).
 
 Apply when: adding a text format, parser or template feature.
-Evidence: [template.ms](../../../src/stdlib/text/template.ms), [xml.ms](../../../src/stdlib/data/xml.ms), [mime.ms](../../../src/stdlib/net/mime.ms), fixtures in `tests/conformance/fixtures/e2e/stdlib/`.
-Verify: `ms test tests/conformance/fixtures/e2e/stdlib/template.ms` and `make docs-check`.
+Evidence: [template.ms](../../../src/stdlib/text/template.ms), [xml.ms](../../../src/stdlib/data/xml.ms), [mime.ms](../../../src/stdlib/net/mime.ms), fixtures in `tests/lang/stdlib/`.
+Verify: `ms test tests/lang/stdlib/template.ms` and `make docs-check`.
 
 YAML flow values spanning physical lines must carry lexical state forward rather than rescan the accumulated source on every line (#3174). Keep quote/property and nesting state, strip comments with scalar offsets, and test cross-line quoting, Unicode comments, and ordinary single-line workloads alongside long flows.
 

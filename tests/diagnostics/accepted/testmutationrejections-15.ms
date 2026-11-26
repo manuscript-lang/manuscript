@@ -1,0 +1,9 @@
+// conform: tags=aliasing,diagnostics,formatter,modules,stdlib-net,tier-io
+// conform: phase=check,parse
+// conform: origin=pkg/compiler/mutation_test.go:36 TestMutationRejections
+import Connection from "@std/net/net.ms"
+
+fn f(socket Connection) Void {
+	socket.clone()
+}
+// expect-exit: 0

@@ -9,4 +9,4 @@ Rejected: a warning when a plain string holds `{name}` for a variable in scope (
 A nested literal inside `{...}` interpolates only if it is itself `f"..."`. The `f` is part of the string token, so scanners that find literals by their opening quote (formatter, editor, grammars) must also recognise `f"` and `f"""`. `tools/f-strings.ms` rewrites old-syntax source and Markdown fences.
 
 Apply when: changing the lexer's text scanning, editor/LSP literal scanners, grammars, or writing Manuscript examples (insert values with `f"..."`).
-Evidence: [text and bytes](../../../documentation/core-language/basics/text-and-bytes.md#interpolation); `tests/conformance/fixtures/e2e/accept/f-text-and-plain-braces.ms`.
+Evidence: [text and bytes](../../../documentation/core-language/basics/text-and-bytes.md#interpolation); `tests/lang/misc/f-text-and-plain-braces.ms`.

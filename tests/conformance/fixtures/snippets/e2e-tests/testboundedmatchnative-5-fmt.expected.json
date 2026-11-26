@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "export fn main() Int {\n\tshapes := [Shape.Circle(2)]\n\tvar sum = 9223372036854775807\n\tvar i = 0\n\n\twhile i < 2 {\n\t\tsum += area(shapes.get(0))\n\t\ti += 1\n\t}\n\n\treturn sum\n}\n"
-  }
-}

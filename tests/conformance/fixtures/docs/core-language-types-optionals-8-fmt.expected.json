@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn display_name(name String?) String {\n\tvalue := name\n\tif value != null { return value }\n\n\treturn \"Anonymous\"\n}\n"
-  }
-}

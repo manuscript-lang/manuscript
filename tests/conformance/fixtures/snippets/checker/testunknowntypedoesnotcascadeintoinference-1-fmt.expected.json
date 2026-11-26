@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn collect[T, U](items List[T], step fn(T) List[U]!MissingError) List[U]!MissingError {\n\treturn step(items[0])\n}\n\nfn first() Void {\n\tresult := collect(\n\t\titems: [1, 2],\n\t\tstep: fn(value Int) List[Int]!MissingError => ok([value])\n\t)\n\tunrelated Int := \"wrong\"\n}\n"
-  }
-}

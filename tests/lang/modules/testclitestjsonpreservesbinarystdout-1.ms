@@ -1,0 +1,14 @@
+// conform: tags=formatter,modules,stdlib-bytes,stdlib-io,testing,tier-stdlib
+// conform: phase=test,parse
+// conform: origin=tests/e2e/cli_json_test.go:157 TestCLITestJSONPreservesBinaryStdout
+import (
+	Bytes from "@std/bytes.ms",
+	stdout_bytes from "@std/io/io.ms",
+)
+
+test "bytes" {
+	data := "x".to_bytes().with_value(index: 0, value: 255)
+	_out := stdout_bytes().write(data)
+}
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

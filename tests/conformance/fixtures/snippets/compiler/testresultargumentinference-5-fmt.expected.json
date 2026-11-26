@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type Holder[T] {\n\tr T!\n}\n\nfn first() Holder[Int] => Holder(f())\n"
-  }
-}

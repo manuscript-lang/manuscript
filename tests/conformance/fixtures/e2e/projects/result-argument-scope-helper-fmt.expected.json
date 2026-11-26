@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "export fn erase[T](hold r T!) &T! => r\n\nexport fn forward[T](hold r T!) &T! => erase(r)\n"
-  }
-}

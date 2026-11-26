@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type List[T] {\n\tvalue T\n}\n\nfn f() Void {\n\txs := [1]\n}\n"
-  }
-}

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "interface Named {\n\tfn name() String\n}\n\ntype E {\n\ttext String\n}\n\nfn E.name() String => self.text.clone()\n\nfn named_value() Named => E(\"bad input\")\n"
-  }
-}

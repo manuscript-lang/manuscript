@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import Closeable from \"@std/core.ms\"\n\ntype Resource {\n\tvisits List[Int]\n}\n\nfn move Resource.close() Void! {\n\tself.visits.append(1)\n}\n"
-  }
-}

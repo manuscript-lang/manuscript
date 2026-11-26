@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn domain[T](r T!E2) Void => return\n\nfn first() Void => domain(f())\n"
-  }
-}

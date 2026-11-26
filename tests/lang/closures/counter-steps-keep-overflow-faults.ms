@@ -1,0 +1,77 @@
+// conform: tags=closures,control-flow,formatter,modules,mutation,stdlib-testing,testing,tier-core,try-result
+// conform: phase=test,parse
+// conform: origin=tests/e2e/testdata/accept/counter-steps-keep-overflow-faults.ms
+import expect_contains, expect_equal, expect_fault from "@std/test/test.ms"
+
+fn count_up(limit Int) Int {
+	var i = limit - 3
+	var steps = 0
+
+	while i < limit {
+		steps += 1
+		i += 1
+	}
+
+	return steps
+}
+
+fn count_down(limit Int) Int {
+	var i = limit + 3
+	var steps = 0
+
+	while i > limit {
+		steps += 1
+		i -= 1
+	}
+
+	return steps
+}
+
+fn reset_then_step() Int {
+	var i = 0
+
+	while i < 1 {
+		i = 9223372036854775807
+		i += 1
+	}
+
+	return i
+}
+
+fn nested_reset(flag Bool) Int {
+	var i = 0
+
+	while i < 1 {
+		if flag {
+			i = 9223372036854775807
+		}
+		i += 1
+	}
+
+	return i
+}
+
+test "counts reach the extreme without a fault" {
+	count_up(limit: 9223372036854775807) | expect_equal(3)?
+	count_down(limit: -9223372036854775807) | expect_equal(3)?
+}
+
+test "reassigned counter still faults" {
+	message := expect_fault(
+		() => {
+			_ignored := reset_then_step()
+		}
+	)?
+	message | expect_contains("Int overflow;")?
+}
+
+test "conditionally reassigned counter still faults" {
+	message := expect_fault(
+		() => {
+			_ignored := nested_reset(flag: true)
+		}
+	)?
+	message | expect_contains("Int overflow;")?
+}
+// expect-exit: 0
+// expect-tests: passed=3 failed=0

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import panic from \"@std/core.ms\"\n\nfn add(a, b Int) Int => a + b\n\nexport fn main() Int {\n\tvar sum = 0\n\tfor i in 0..5000000 {\n\t\tsum = add(sum, i)\n\t}\n\tif sum != 12499997500000 { return panic(\"calls checksum\") }\n\n\treturn 0\n}\n"
-  }
-}

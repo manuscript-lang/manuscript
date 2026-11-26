@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn f(value Int?) Void => return\n\nfn call() Void => f(4, value: 5)\n"
-  }
-}

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "enum Failure {\n\tNotFound\n\tDenied\n}\n\nenum Envelope {\n\tPair(left, right Failure)\n}\n\nfn use(value Envelope) Int {\n\tmatch value {\n\t\tPair(_payload, NotFound) => return 1\n\t}\n}\n"
-  }
-}

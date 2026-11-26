@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "enum Other {\n\tOutOfRange\n}\n\nfn get() Other => OutOfRange\n"
-  }
-}

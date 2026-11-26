@@ -1,0 +1,13 @@
+// conform: tags=diagnostics,formatter,modules,stdlib-bytes,stdlib-encoding,strings,tier-stdlib,try-result
+// conform: phase=check,parse
+// conform: origin=documentation/core-language/errors/results.md:97
+import (
+	Bytes from "@std/bytes.ms",
+	hex_decode from "@std/data/encoding.ms",
+)
+
+fn decode(text String) Result[Bytes, Error] {
+	bytes := hex_decode(text)?
+	return ok(bytes)
+}
+// expect-exit: 0

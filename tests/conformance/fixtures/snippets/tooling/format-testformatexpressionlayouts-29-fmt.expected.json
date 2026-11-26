@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn work() Void {\n\tsend(\n\t\tdestination: destination_address,\n\t\tpayload: encoded_message_payload,\n\t\ttimeout: configured_request_timeout,\n\t)\n}\n"
-  }
-}

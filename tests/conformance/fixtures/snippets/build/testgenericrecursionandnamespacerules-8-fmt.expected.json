@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn recurse[T](hold value T, count Int) &T {\n\tif count == 0 {\n\t\treturn value\n\t}\n\treturn recurse(value: value, count: count - 1)\n}\n"
-  }
-}

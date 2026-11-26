@@ -1,0 +1,33 @@
+// conform: tags=closures,control-flow,formatter,lists,modules,stdlib-testing,testing,tier-core,try-result
+// conform: phase=test,parse
+// conform: origin=tests/e2e/testdata/accept/cl-18.ms
+import expect_equal from "@std/test/test.ms"
+
+fn apply(value Int, transform fn(Int) Int) Int {
+	return transform(value)
+}
+
+test "function suite boundaries" {
+	var calls List[Int] = []
+	_dormant := fn() Void {
+		calls.append(1)
+	}
+
+	grouped := apply(
+		transform: (
+			value => {
+				if value > 0 {
+					return value - 1
+				} return 0
+			}
+		),
+		value: 3,
+	)
+
+	final_argument := apply(value: 3, transform: value => return value - 1)
+	calls.length() | expect_equal(0)?
+	grouped | expect_equal(2)?
+	final_argument | expect_equal(2)?
+}
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

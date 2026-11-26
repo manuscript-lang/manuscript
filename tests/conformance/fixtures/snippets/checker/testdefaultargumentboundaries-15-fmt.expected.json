@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn run[T](operation fn() T) T {\n\treturn operation()\n}\n\nfn f(value Int = 1) Int {\n\treturn value\n}\n\nfn call() Int {\n\treturn run(f)\n}\n"
-  }
-}

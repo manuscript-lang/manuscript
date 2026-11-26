@@ -168,7 +168,7 @@ static bool build_tests(MsCheckedInput *checked, const MsInvocation *invocation,
   const MsLinkRequest request = {.program = &checked->program, .entry = checked->entry,
                                  .build_type = invocation->build_type, .output = path,
                                  .link = invocation->link.ptr, .link_count = invocation->link.len,
-                                 .static_libc = invocation->static_libc, .tests = true};
+                                 .static_libc = invocation->static_libc, .temporary = true, .tests = true};
   return ms_pipeline_link(&request, error);
 }
 

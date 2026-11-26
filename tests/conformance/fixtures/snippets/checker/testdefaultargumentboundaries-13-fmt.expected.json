@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn f(value Int = 1) Int {\n\treturn value\n}\n\nfn forward[T](value T) T {\n\treturn value\n}\n\nfn call() Int {\n\tcopy := forward(f)\n\treturn copy()\n}\n"
-  }
-}

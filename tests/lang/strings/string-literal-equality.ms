@@ -1,0 +1,37 @@
+// conform: tags=strings,tier-io
+// conform: phase=run
+// conform: origin=string == short literal compiled inline
+import stdout from "@std/io/io.ms"
+
+fn score(s String) Int {
+	var n = 0
+	if s == "a" {
+		n += 1
+	}
+	if "héllo" == s {
+		n += 2
+	}
+	if s == "abcdefgh" {
+		n += 4
+	}
+	if s == "abcde" {
+		n += 8
+	}
+	if s == "" {
+		n += 16
+	}
+	if s == "abcdefghi" {
+		n += 32
+	}
+	return n
+}
+
+fn main() Void {
+	all := ["a", "", "héllo", "abcdefgh", "abcde", "abcdef", "b", "é", "abcdefghi"]
+	for s in all {
+		_i := stdout().write(f"{score(s)} ")
+	}
+}
+// expect-exit: 0
+// expect-stdout: 1 16 2 4 8 0 0 0 32\x20
+// expect-stdout-partial

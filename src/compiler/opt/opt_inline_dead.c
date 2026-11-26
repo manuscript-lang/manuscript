@@ -7,6 +7,74 @@ static void il_push_root(uint32_t *stack, uint32_t *n, uint32_t f) {
   stack[(*n)++] = f;
 }
 
+static void il_mark_root(bool *out, uint32_t f) {
+  out[f] = true;
+}
+
+/* Marks every function that something other than an instruction names: the module entry and close, exports
+ * (test entries), vtables, descriptor glue and the shape tables of types, alternatives and object hooks. */
+void opt_external_roots(const MirModule *m, bool *out) {
+  if (m->entry != MIR_NONE) {
+    il_mark_root(out, m->entry);
+  }
+  if (m->close != MIR_NONE) {
+    il_mark_root(out, m->close);
+  }
+  for (uint32_t i = 0; i < m->funcs.len; i++) {
+    if (m->funcs.ptr[i].linkage == ML_EXPORT) {
+      il_mark_root(out, i);
+    }
+  }
+  for (uint32_t v = 0; v < m->vtables.len; v++) {
+    for (uint32_t k = 0; k < m->vtables.ptr[v].nmethods; k++) {
+      il_mark_root(out, m->vtables.ptr[v].methods[k]);
+    }
+    if (m->vtables.ptr[v].close_drop != 0) {
+      il_mark_root(out, m->vtables.ptr[v].close_drop - 1);
+    }
+  }
+  for (uint32_t g = 0; g < m->desc_glue.len; g++) {
+    il_mark_root(out, m->desc_glue.ptr[g].eq);
+    il_mark_root(out, m->desc_glue.ptr[g].hash);
+  }
+  /* A field default is named by the shape table of its type, which is made after this pass. */
+  for (uint32_t t = 0; t < m->type_defs.len; t++) {
+    for (uint32_t f = 0; f < m->type_defs.ptr[t].nfields; f++) {
+      if (m->type_defs.ptr[t].fields[f].default_fn1 != 0) {
+        il_mark_root(out, m->type_defs.ptr[t].fields[f].default_fn1 - 1);
+      }
+    }
+  }
+  /* The functions a shape table calls for a type's own text and JSON form. */
+  for (uint32_t t = 0; t < m->type_defs.len; t++) {
+    if (m->type_defs.ptr[t].text_fn1 != 0) {
+      il_mark_root(out, m->type_defs.ptr[t].text_fn1 - 1);
+    }
+    if (m->type_defs.ptr[t].json_fn1 != 0) {
+      il_mark_root(out, m->type_defs.ptr[t].json_fn1 - 1);
+    }
+  }
+  for (uint32_t a = 0; a < m->alts.len; a++) {
+    if (m->alts.ptr[a].text_fn1 != 0) {
+      il_mark_root(out, m->alts.ptr[a].text_fn1 - 1);
+    }
+    if (m->alts.ptr[a].tree_fn1 != 0) {
+      il_mark_root(out, m->alts.ptr[a].tree_fn1 - 1);
+    }
+    if (m->alts.ptr[a].json_fn1 != 0) {
+      il_mark_root(out, m->alts.ptr[a].json_fn1 - 1);
+    }
+  }
+  for (uint32_t o = 0; o < m->obj_hooks.len; o++) {
+    if (m->obj_hooks.ptr[o].text_fn1 != 0) {
+      il_mark_root(out, m->obj_hooks.ptr[o].text_fn1 - 1);
+    }
+    if (m->obj_hooks.ptr[o].json_fn1 != 0) {
+      il_mark_root(out, m->obj_hooks.ptr[o].json_fn1 - 1);
+    }
+  }
+}
+
 /* Marks every function a root reaches; false when there are no roots. */
 static bool il_mark_live(MsArena *arena, const MirModule *m, bool *live) {
   size_t cap = (size_t)m->funcs.len + 1;
@@ -25,63 +93,12 @@ static bool il_mark_live(MsArena *arena, const MirModule *m, bool *live) {
   }
   uint32_t *stack = MS_ARENA_NEW_ARRAY(arena, uint32_t, cap + 1);
   uint32_t n = 0;
-  if (m->entry != MIR_NONE) {
-    il_push_root(stack, &n, m->entry);
-  }
-  if (m->close != MIR_NONE) {
-    il_push_root(stack, &n, m->close);
-  }
+  bool *roots = MS_ARENA_NEW_ARRAY(arena, bool, (size_t)m->funcs.len + 1);
+  __builtin_memset(roots, 0, ((size_t)m->funcs.len + 1) * sizeof(bool));
+  opt_external_roots(m, roots);
   for (uint32_t i = 0; i < m->funcs.len; i++) {
-    if (m->funcs.ptr[i].linkage == ML_EXPORT) {
+    if (roots[i]) {
       il_push_root(stack, &n, i);
-    }
-  }
-  for (uint32_t v = 0; v < m->vtables.len; v++) {
-    for (uint32_t k = 0; k < m->vtables.ptr[v].nmethods; k++) {
-      il_push_root(stack, &n, m->vtables.ptr[v].methods[k]);
-    }
-    if (m->vtables.ptr[v].close_drop != 0) {
-      il_push_root(stack, &n, m->vtables.ptr[v].close_drop - 1);
-    }
-  }
-  for (uint32_t g = 0; g < m->desc_glue.len; g++) {
-    il_push_root(stack, &n, m->desc_glue.ptr[g].eq);
-    il_push_root(stack, &n, m->desc_glue.ptr[g].hash);
-  }
-  /* A field default is named by the shape table of its type, which is made after this pass. */
-  for (uint32_t t = 0; t < m->type_defs.len; t++) {
-    for (uint32_t f = 0; f < m->type_defs.ptr[t].nfields; f++) {
-      if (m->type_defs.ptr[t].fields[f].default_fn1 != 0) {
-        il_push_root(stack, &n, m->type_defs.ptr[t].fields[f].default_fn1 - 1);
-      }
-    }
-  }
-  /* The functions a shape table calls for a type's own text and JSON form. */
-  for (uint32_t t = 0; t < m->type_defs.len; t++) {
-    if (m->type_defs.ptr[t].text_fn1 != 0) {
-      il_push_root(stack, &n, m->type_defs.ptr[t].text_fn1 - 1);
-    }
-    if (m->type_defs.ptr[t].json_fn1 != 0) {
-      il_push_root(stack, &n, m->type_defs.ptr[t].json_fn1 - 1);
-    }
-  }
-  for (uint32_t a = 0; a < m->alts.len; a++) {
-    if (m->alts.ptr[a].text_fn1 != 0) {
-      il_push_root(stack, &n, m->alts.ptr[a].text_fn1 - 1);
-    }
-    if (m->alts.ptr[a].tree_fn1 != 0) {
-      il_push_root(stack, &n, m->alts.ptr[a].tree_fn1 - 1);
-    }
-    if (m->alts.ptr[a].json_fn1 != 0) {
-      il_push_root(stack, &n, m->alts.ptr[a].json_fn1 - 1);
-    }
-  }
-  for (uint32_t o = 0; o < m->obj_hooks.len; o++) {
-    if (m->obj_hooks.ptr[o].text_fn1 != 0) {
-      il_push_root(stack, &n, m->obj_hooks.ptr[o].text_fn1 - 1);
-    }
-    if (m->obj_hooks.ptr[o].json_fn1 != 0) {
-      il_push_root(stack, &n, m->obj_hooks.ptr[o].json_fn1 - 1);
     }
   }
   const bool any = n > 0;

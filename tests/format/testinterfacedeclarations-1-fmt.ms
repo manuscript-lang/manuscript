@@ -1,0 +1,15 @@
+// conform: tags=control-flow,formatter,generics,interfaces,parser,records,tier-core
+// conform: phase=parse
+// conform: origin=pkg/parser/parser_test.go:118 TestInterfaceDeclarations
+export interface Read[T Equal] {
+	fn get() T
+}
+
+type Box[T] {
+	value T
+}
+
+fn hold Box[T Equal].get() &T {
+	return self.value
+}
+// expect-format: unchanged

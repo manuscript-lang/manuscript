@@ -1,0 +1,7 @@
+// conform: tags=diagnostics,formatter,tier-core
+// conform: phase=check,parse
+// conform: origin=pkg/tooling/format/format_layout_test.go:487 TestFormatExpressionLayouts
+fn work() Bool {
+	return (Error("command diagnostic", kind: "EIO").message != "command diagnostic")
+}
+// expect-exit: 0

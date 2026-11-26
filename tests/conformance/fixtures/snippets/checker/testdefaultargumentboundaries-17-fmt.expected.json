@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn grow[T](value T, optional Int = grow(value: [value])) Int {\n\treturn optional\n}\n"
-  }
-}

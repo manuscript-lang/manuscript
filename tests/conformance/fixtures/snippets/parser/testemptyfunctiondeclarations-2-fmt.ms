@@ -1,8 +1,0 @@
-// conform: tags=closures,formatter,generics,interfaces,lists,parser,records,tier-core
-// conform: phase=parse
-// conform: origin=pkg/parser/empty_declarations_test.go:12 TestEmptyFunctionDeclarations
-type List[T] { ... }
-
-fn List[T].map[U](transform fn(T) U) List[U] { ... }
-
-fn List[T].length() Int { ... }

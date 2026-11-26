@@ -1,0 +1,15 @@
+// conform: tags=control-flow,faults,formatter,modules,mutation,stdlib-collections,stdlib-faults,tier-stdlib
+// conform: phase=run,parse
+// conform: origin=bench/perf/language/numeric.ms
+import panic from "@std/core.ms"
+
+export fn main() Int {
+	var sum = 0
+	for i in 0..5000000 {
+		if i % 100 >= 48 { sum += 1 }
+	}
+	if sum != 2600000 { return panic("numeric checksum") }
+
+	return 0
+}
+// expect-exit: 0

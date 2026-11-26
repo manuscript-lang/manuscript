@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn work() Void {\n\tsend_message(\n\t\tcondition: account_is_active and payment_is_allowed and remaining_balance > 0\n\t)\n}\n"
-  }
-}

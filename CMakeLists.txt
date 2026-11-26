@@ -57,7 +57,7 @@ endforeach()
 # `cmake --build <dir> --target conform`: the conformance corpus (parse, check, run, test) and the command
 # fixtures, replayed against the ms built here, one `passed/total` line each (cmake/Conform.cmake).
 # MS_CONFORM_ENFORCE=ON fails the target on any corpus difference; the command fixtures always must pass.
-# `conform-commands` replays only the command fixtures (tests/conformance/commands).
+# `conform-commands` replays only the command fixtures (tests/commands).
 option(MS_CONFORM_ENFORCE "Fail conform when a corpus phase has a difference" OFF)
 function(ms_conform_target name only comment)
   add_custom_target(${name}

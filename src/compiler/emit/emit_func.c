@@ -102,6 +102,32 @@ static bool types_ok(EmitCx *cx) {
   return true;
 }
 
+void emit_assume_range(EmitCx *cx, MirValue value, int64_t lo, int64_t hi) {
+  uint32_t number = cx->next++;
+  if (lo != INT64_MIN && hi != INT64_MAX) {
+    ms_strbuild_printf(cx->out,
+                       "  %%as%ua = icmp sge i64 %%v%u, %lld\n  %%as%ub = icmp sle i64 %%v%u, %lld\n"
+                       "  %%as%uc = and i1 %%as%ua, %%as%ub\n  call void @llvm.assume(i1 %%as%uc)\n",
+                       number, value, (long long)lo, number, value, (long long)hi, number, number, number, number);
+    return;
+  }
+  /* One bound is unknown: assume the other alone. */
+  ms_strbuild_printf(cx->out, "  %%as%ua = icmp %s i64 %%v%u, %lld\n  call void @llvm.assume(i1 %%as%ua)\n", number,
+                     lo != INT64_MIN ? "sge" : "sle", value, (long long)(lo != INT64_MIN ? lo : hi), number);
+}
+
+void emit_entry_assume(EmitCx *cx, MirValue value, uint32_t slot) {
+  const MirFunc *func = cx->func;
+  if (func->entry == NULL || slot >= func->nentry || func->values.ptr[value] != MIR_INT) {
+    return;
+  }
+  const int64_t lo = func->entry[2 * slot], hi = func->entry[2 * slot + 1];
+  if (lo == INT64_MIN && hi == INT64_MAX) {
+    return;
+  }
+  emit_assume_range(cx, value, lo, hi);
+}
+
 /* The start of the entry block: the frame slots, then the leaves of each parameter that arrived as an
  * address. */
 static void emit_entry(EmitCx *cx) {
@@ -117,6 +143,11 @@ static void emit_entry(EmitCx *cx) {
     char from[24];
     emit_register_name(from, sizeof from, "in", value);
     emit_leaves_at(cx, value, from, true);
+  }
+  for (uint32_t param = 0; param < cx->func->nparams; param++) {
+    if (!emit_is_indirect(cx, cx->func->params[param].ty)) {
+      emit_entry_assume(cx, cx->func->blocks.ptr[0].params.ptr[param].value, param);
+    }
   }
   if (cx->unwind_byte) {
     emit_unwinding_address(cx);
@@ -135,6 +166,7 @@ static bool emit_block(EmitCx *cx, uint32_t block, const uint32_t *last) {
     emit_entry(cx);
   } else {
     emit_phis(cx, block, last);
+    emit_block_facts(cx, block);
   }
   MsStrBuild text = ms_strbuild_new();
   MsStrBuild piece = ms_strbuild_new();

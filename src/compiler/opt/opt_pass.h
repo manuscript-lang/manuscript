@@ -21,6 +21,7 @@ bool opt_copyelim_takes(MirModule *m); /* fields of a dying type are moved out *
 bool opt_lastuse(MirModule *m);   /* a plain owned value is dropped after its last use */
 bool opt_lastuse_func(MirModule *m, MirFunc *f);
 bool opt_range_func(MirModule *m, MirFunc *f);
+bool opt_entry_ranges(MirModule *m); /* the intervals every caller and closure construction passes seed `range` */
 bool opt_simplify(MirModule *m);  /* folding, identities, block cleanup, value numbering, dead code */
 bool opt_simplify_func(MirModule *m, MirFunc *f);
 uint32_t opt_sortgen_drift(MirModule *m, uint32_t g, MirTy elem); /* the generated comparison-sort function for comparator `g` */

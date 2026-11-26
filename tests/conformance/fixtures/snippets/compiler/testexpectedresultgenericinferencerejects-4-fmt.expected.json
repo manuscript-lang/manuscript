@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn required(value Int) Int => value\n\nfn first() Void {\n\tvar callback fn(Int) Int = from_callback(() => fn(value Int = 4) => value)\n\tcallback = required\n\tcallback()\n}\n"
-  }
-}

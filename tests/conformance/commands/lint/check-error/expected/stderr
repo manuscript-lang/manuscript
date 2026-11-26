@@ -1,5 +1,0 @@
-<DIR>/main.ms:2:11: parse: an immutable binding uses ':=' after its type: write 'x Type := value'; '=' binds only after 'var'
-   |
- 2 |     x Int = "no"
-   |           ^
-1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)

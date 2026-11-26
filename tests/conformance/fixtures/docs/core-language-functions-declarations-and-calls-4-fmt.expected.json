@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn sum(values List[Int]) Int {\n\tvar total = 0\n\tfor value in values {\n\t\ttotal += value\n\t}\n\treturn total\n}\n\ntotal := sum([1, 2, 3])\nempty := sum([])\n"
-  }
-}

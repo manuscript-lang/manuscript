@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn combine(first Int = 3, second Int = first) Int {\n\treturn first + second\n}\n"
-  }
-}

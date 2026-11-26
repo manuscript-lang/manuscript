@@ -19,6 +19,7 @@ typedef struct MsLinkRequest {
   bool static_libc;        /* static musl instead of the glibc 2.28 stand-ins */
   bool tests;              /* the entry is the test runner over the program's `test` blocks, not `main` */
   bool bench;              /* with `tests`: the runner over the `bench` blocks instead */
+  bool temporary;          /* the executable is run once and discarded (`run`, `test`, `bench`), so nothing debugs it */
   bool count_ops;          /* count executed MIR operations (`MS_COUNT_OPS=1` asks for it too) */
 } MsLinkRequest;
 

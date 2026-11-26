@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn answer(\n\tvalue Int = (\n\t\tfn() Int {\n\t\t\tvar current = 0\n\t\t\tcurrent += 1\n\t\t\treturn current\n\t\t}\n\t)()\n) Int {\n\tcallbacks := [\n\t\tfn() Int {\n\t\t\tnested := 1\n\t\t\treturn nested\n\t\t}\n\t]\n\treturn value + callbacks.length()\n}\n"
-  }
-}

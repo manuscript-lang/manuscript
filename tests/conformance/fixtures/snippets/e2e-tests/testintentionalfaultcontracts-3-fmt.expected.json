@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import (\n\tpanic from \"@std/core.ms\",\n\texpect_contains, expect_fault from \"@std/test/test.ms\",\n)\n\ntest \"expect_fault reports the injected fault\" {\n\texpect_contains(expect_fault(() => panic(\"boom\"))?, \"boom\")?\n}\n"
-  }
-}

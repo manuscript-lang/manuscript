@@ -1,0 +1,19 @@
+// conform: tags=closures,formatter,modules,stdlib-testing,testing,tier-core,try-result
+// conform: phase=test,parse
+// conform: origin=tests/e2e/testdata/accept/cl-05.ms
+import expect_equal from "@std/test/test.ms"
+
+fn increase(value Int) Int {
+	return value + 1
+}
+
+fn apply(value Int, transform fn(Int) Int) Int {
+	return transform(value)
+}
+
+test "function label compatibility" {
+	transform fn(Int) Int := increase
+	expect_equal(apply(4, transform), 5)?
+}
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

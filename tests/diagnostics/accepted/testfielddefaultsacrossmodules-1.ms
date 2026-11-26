@@ -1,0 +1,11 @@
+// conform: tags=diagnostics,formatter,generics,lists,records,tier-core
+// conform: phase=check,parse
+// conform: origin=tests/e2e/e2e_test.go:541 TestFieldDefaultsAcrossModules
+fn copy[T](hold value T) &T => return value
+
+export type Box[T] {
+	value T
+	copied T = copy(value)
+	items List[T] = [value]
+}
+// expect-exit: 0

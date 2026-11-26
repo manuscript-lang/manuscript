@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import (\n\tpanic from \"@std/core.ms\",\n\texpect_contains, expect_fault from \"@std/test/test.ms\",\n)\n\nfn failed_initializer() Never {\n\t_impossible Int := panic(message: \"initializer cannot return\")\n}\n\nfn returned_failure() Int {\n\treturn panic(message: \"result cannot return\")\n}\n\nfn endless() Int {\n\twhile true {\n\t\tcontinue\n\t}\n}\n\ntest \"Never faults propagate through initializers and returned values\" {\n\texpect_contains(\n\t\texpect_fault(\n\t\t\t() => {\n\t\t\t\t_impossible := failed_initializer()\n\t\t\t}\n\t\t)?,\n\t\t\"initializer cannot return\",\n\t)?\n\texpect_contains(\n\t\texpect_fault(\n\t\t\t() => {\n\t\t\t\t_impossible := returned_failure()\n\t\t\t}\n\t\t)?,\n\t\t\"result cannot return\",\n\t)?\n}\n"
-  }
-}

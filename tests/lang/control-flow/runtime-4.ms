@@ -1,0 +1,34 @@
+// conform: tags=control-flow,formatter,interfaces,modules,optional,records,scope-cleanup,stdlib-bytes,stdlib-io,stdlib-testing,testing,tier-stdlib,try-result
+// conform: phase=test,parse
+// conform: origin=tests/e2e/testdata/accept/runtime-4.ms
+import (
+	Bytes from "@std/bytes.ms",
+	expect_equal, expect_false from "@std/test/test.ms",
+)
+
+interface File {
+	fn read(max_bytes Int?) Bytes?!
+	fn close() Void
+}
+
+type ClosedFile {
+	marker Void
+}
+
+fn ClosedFile.read(max_bytes Int?) Bytes?! {
+	return error(Error("I/O: resource is closed", kind: "EBADF"))
+}
+
+fn ClosedFile.close() Void {
+	return
+}
+
+test "contract-valued cleanup" {
+	opened File := ClosedFile(void)
+	file := opened
+	read := file.read(1)
+	expect_false(read.is_ok())?
+	expect_equal(read.err(), Error("I/O: resource is closed", kind: "EBADF"))?
+}
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

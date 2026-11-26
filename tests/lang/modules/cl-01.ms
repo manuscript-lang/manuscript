@@ -1,0 +1,15 @@
+// conform: tags=modules,stdlib-testing,testing,tier-core,try-result
+// conform: phase=test
+// conform: origin=tests/e2e/testdata/accept/cl-01.ms
+import expect_equal from "@std/test/test.ms"
+
+fn subtract(amount Int, deduction Int) Int {
+	return amount - deduction
+}
+
+test "named multiline call" {
+	remaining := subtract(deduction: 2, amount: 9)
+	expect_equal(remaining, 7)?
+}
+// expect-exit: 0
+// expect-tests: passed=1 failed=0

@@ -61,8 +61,14 @@ static bool place_root(const Uses *pass, const MsExpr *expr) {
 }
 
 /* Whether `scrutinee` names a local or a parameter the callable owns: the arms of a match over it take its payload. */
+/* A call's result, or the payload `?` takes out of it: a new owner whose arms own what they bind. */
+static bool fresh_scrutinee(const MsExpr *scrutinee) {
+  return scrutinee->kind == MS_E_CALL ||
+         (scrutinee->kind == MS_E_UNARY && scrutinee->op == MS_U_TRY && scrutinee->u.bin.left->kind == MS_E_CALL);
+}
+
 static bool owned_name(const Uses *pass, const MsExpr *scrutinee) {
-  if (scrutinee->kind == MS_E_CALL) { /* a call's result is a new owner: its arms own what they bind */
+  if (fresh_scrutinee(scrutinee)) {
     return true;
   }
   const MsRef *ref = scrutinee->kind == MS_E_NAME ? ms_facts_ref(pass->facts, scrutinee->id) : NULL;
@@ -326,7 +332,7 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
     return;
   case MS_E_MATCH:
     /* An arm over a call's result owns what it binds, so an arm that yields it hands it on. */
-    for (uint32_t arm = 0; expr->u.match.scrutinee->kind == MS_E_CALL && arm < expr->u.match.arms.len; arm++) {
+    for (uint32_t arm = 0; fresh_scrutinee(expr->u.match.scrutinee) && arm < expr->u.match.arms.len; arm++) {
       mark_move(pass, expr->u.match.arms.ptr[arm]->value);
     }
     return;

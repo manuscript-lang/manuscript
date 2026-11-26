@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import expect_true from \"@std/test/test.ms\"\n\ntest \"string and float members\" {\n\ttext := \"héllo\"\n\texpect_true((text.scalar_length() == 5 and not text.is_empty() and \"\".is_empty()))?\n\texpect_true((\"a\".compare(other: \"b\") == 0 - 1 and \"b\".compare(other: \"b\") == 0))?\n\texpect_true((text.concat(other: \"!\") == \"héllo!\"))?\n\texpect_true(((0.0 / 0.0).is_nan() and not (1.0).is_nan() and (1.0).is_finite()))?\n}\n"
-  }
-}

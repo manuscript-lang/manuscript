@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn convert[T, U](values List[T], transform fn(T) U) List[U] {\n\treturn values.map(transform: transform)\n}\n"
-  }
-}

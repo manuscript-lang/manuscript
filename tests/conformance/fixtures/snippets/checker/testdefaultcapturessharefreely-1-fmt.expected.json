@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn run[T](operation fn() T) T {\n\treturn operation()\n}\n\ninterface Read {\n\tfn get() Int\n}\n\nfn call(view Read) Void {\n\tcallback := fn(value Int = view.get()) Int {\n\t\treturn value\n\t}\n\ttask := fn() Int {\n\t\treturn callback()\n\t}\n\t_result := run(task)\n}\n"
-  }
-}

@@ -1,0 +1,5 @@
+// conform: tags=formatter,lists,parser,tier-core,try-result
+// conform: phase=parse
+// conform: origin=pkg/tooling/lsp/prelude_imports_test.go:89 TestMissingValuePreludeNavigation
+fn first(values List[Int]) Int! => values.first().ok_or()
+// expect-format: unchanged

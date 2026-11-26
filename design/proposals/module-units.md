@@ -13,7 +13,7 @@
 
 ## Problem
 
-- `bench` of `tests/conformance/fixtures/e2e/stdlib/router.ms`, `ms test`, median of runs on 4 cores, serial: Release 12.5 to 14.0 s (opt 5.7 s, llc 5.6 s), Debug 4.4 s.
+- `bench` of `tests/lang/stdlib/router.ms`, `ms test`, median of runs on 4 cores, serial: Release 12.5 to 14.0 s (opt 5.7 s, llc 5.6 s), Debug 4.4 s.
 - A prototype (`llvm-split -j4`, then `opt` and `llc` per part) built the 355k-line Release IR in 4.4 s against 11.3 s serial. The largest part (one 13k-line closure) bounds the speedup.
 - The back end's IR reduction lowers the volume but not the shape: one module is one thread however small the IR gets.
 

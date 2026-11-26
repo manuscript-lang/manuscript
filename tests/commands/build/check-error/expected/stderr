@@ -1,0 +1,5 @@
+<DIR>/main.ms:2:14: type: expected Int, found String (in the initializer of 'x')
+   |
+ 2 |     x Int := "no"
+   |              ^
+1 error; fix them and re-run

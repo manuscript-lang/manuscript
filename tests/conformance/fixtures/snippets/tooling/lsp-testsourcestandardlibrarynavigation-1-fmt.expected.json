@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import TomlValue, parse from \"@std/data/toml.ms\"\n\nfn read() Void {\n\t_result := parse(text: \"a=1\")\n}\n"
-  }
-}

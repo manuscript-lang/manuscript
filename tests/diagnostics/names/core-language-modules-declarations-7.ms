@@ -1,0 +1,5 @@
+// conform: tags=diagnostics,formatter,modules,tier-core
+// conform: phase=check,parse
+// conform: origin=documentation/core-language/modules/declarations.md:100
+import CustomerId from "@domain/customers.ms"
+// expect-error: MS2002 4:1 unknown import alias @domain; this project declares none, so add one under [aliases] in ms.toml, e.g. "@lib" = "./src/lib" (use @std/... for the standard library)

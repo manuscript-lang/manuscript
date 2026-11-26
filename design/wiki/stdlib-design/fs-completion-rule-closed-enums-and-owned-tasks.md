@@ -7,5 +7,5 @@ Decision: in `@std/os/fs.ms`, operations on whole file contents (`read_file`, `w
 A promise-returning wrapper binds `owned := path.clone()` and returns `promise(() => work(owned, ...), options: PromiseOptions(placement: Placement.Here))`; a returned promise owns its closure's captures, so no `owned_task` or job-returning function is needed. Release a write-slot permit inside the work function as a local (`permit := WritePermit(held: held)`): a captured permit only closes when the promise handle drops, and the task runs at once, so parked callers would deadlock on the pool.
 
 Apply when: adding or changing an fs operation, or any wrapper that must hand an owned value to a promise.
-Evidence: `tests/conformance/fixtures/e2e/stdlib/fs-write-backpressure.ms` hangs if the permit is held by a captured resource; `src/stdlib/os/fs.ms`.
-Verify: `ms test tests/conformance/fixtures/e2e/stdlib/fs-write-backpressure.ms` passes in under a second.
+Evidence: `tests/lang/stdlib/fs-write-backpressure.ms` hangs if the permit is held by a captured resource; `src/stdlib/os/fs.ms`.
+Verify: `ms test tests/lang/stdlib/fs-write-backpressure.ms` passes in under a second.

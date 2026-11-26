@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn wrong(value Map[String, Int]) Void {\n\toutput := value.filter((k, n) => n)\n}\n"
-  }
-}

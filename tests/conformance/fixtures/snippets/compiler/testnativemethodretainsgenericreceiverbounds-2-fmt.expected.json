@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn unique[T Hashable & Clonable](values List[T]) Set[T] {\n\treturn values.to_set()\n}\n"
-  }
-}

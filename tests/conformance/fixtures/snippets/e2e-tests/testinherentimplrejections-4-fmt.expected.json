@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type B[T] {\n\tx T\n}\n\nfn B.f() Int {\n\treturn 1\n}\n"
-  }
-}

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn wrong(values Map[String, Int]) Void {\n\tmapped := values.map_keys((k, v) => v.to_float())\n}\n"
-  }
-}

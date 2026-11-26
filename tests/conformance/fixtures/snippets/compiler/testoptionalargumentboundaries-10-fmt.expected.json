@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn f[T](second T, first T?) Void => return\n\nfn call() Void => f(first: 4, second: \"wrong\")\n"
-  }
-}

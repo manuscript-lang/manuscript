@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type HttpHeaders {\n\tvalue String\n}\n\nfn lookup(fields HttpHeaders) Void {\n\tfields.values(\"content-type\")\n}\n"
-  }
-}

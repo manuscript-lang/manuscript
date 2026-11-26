@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import (\n\tstdout from \"@std/io/io.ms\",\n\tnanoseconds, sleep from \"@std/time.ms\",\n)\n\nfn main() Void {\n\tvoid stdout().write(\"ready\\n\")\n\tsleep(nanoseconds(60000000000)).wait()\n}\n"
-  }
-}

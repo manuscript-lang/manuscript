@@ -1,0 +1,8 @@
+// conform: tags=diagnostics,faults,formatter,modules,stdlib-faults,stdlib-http,stdlib-net,tier-io
+// conform: phase=check,parse
+// conform: origin=pkg/tooling/capture_lint_test.go:10 TestCaptureLintHandlerMutations
+import (
+	panic from "@std/core.ms",
+	HttpResponse from "@std/net/http.ms",
+)
+// expect-exit: 0

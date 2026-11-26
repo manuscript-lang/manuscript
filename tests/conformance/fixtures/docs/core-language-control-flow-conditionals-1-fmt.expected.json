@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn status(active Bool) String {\n\tif active {\n\t\treturn \"Active\"\n\t} else {\n\t\treturn \"Inactive\"\n\t}\n}\n"
-  }
-}

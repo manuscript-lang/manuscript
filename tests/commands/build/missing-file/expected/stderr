@@ -1,0 +1,2 @@
+<DIR>/nope.ms:1:1: resolution: file not found: nope.ms; check the path, pass a .ms file or a project ms.toml, and run from the directory that contains it
+1 error; fix them and re-run

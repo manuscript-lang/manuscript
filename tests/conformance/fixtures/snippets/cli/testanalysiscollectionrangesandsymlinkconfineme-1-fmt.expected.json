@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "// header\nimport List, ListEntry from \"@std/collections/collections.ms\"\n\nfn update(items ListEntry[Int]) Int {\n\treturn 0\n}\n"
-  }
-}

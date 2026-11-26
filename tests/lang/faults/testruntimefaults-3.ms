@@ -1,0 +1,12 @@
+// conform: tags=formatter,testing,tier-core
+// conform: phase=test,parse
+// conform: origin=tests/e2e/e2e_test.go:69 TestRuntimeFaults
+fn sum(value Int) Int {
+	return value + 1
+}
+
+test "fault" {
+	_impossible := sum(value: 9223372036854775807)
+}
+// expect-exit: 1
+// expect-tests: passed=0 failed=1

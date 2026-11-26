@@ -1,0 +1,334 @@
+// conform: tags=closures,control-flow,formatter,interfaces,lists,match,modules,mutation,optional,parser,records,stdlib-cleanup,stdlib-errors,stdlib-testing,testing,tier-stdlib,try-result,scope-cleanup
+// conform: phase=parse
+// conform: origin=tests/e2e/testdata/accept/successful-result-int-bounds.ms
+import (
+	Closeable from "@std/core.ms",
+	expect_contains, expect_equal, expect_fault from "@std/test/test.ms",
+)
+
+fn checked(n Int) Int!Error {
+	if n < 0 {
+		return error(Error("negative"))
+	}
+	return ok(n + 1)
+}
+
+fn wrapped(n Int) Int!Error {
+	value := checked(n)?
+	return ok(value)
+}
+
+fn total(positive Bool) Int {
+	var sum = 0
+	var i = -2
+
+	while i < 1000 {
+		if found := wrapped(i) {
+			if positive {
+				sum += found
+			} else {
+				sum -= found
+			}
+		} else {
+			sum -= 1
+		}
+
+		i += 1
+	}
+
+	return sum
+}
+
+fn prefix() Int {
+	var sum = 9223372036854775807
+	var i = 0
+
+	while i < 2 {
+		if found := wrapped(i) {
+			sum += found
+			sum -= found
+		}
+
+		i += 1
+	}
+
+	return sum
+}
+
+fn peer() Int {
+	var sum = 9223372036854775807
+	var value = 0
+	var i = 0
+
+	while i < 2 {
+		if found := checked(value) {
+			sum += found
+		}
+		value += 1
+		i += 1
+	}
+
+	return sum
+}
+
+fn hidden(n Int) Int!Error {
+	if n < 0 {
+		return error(
+			Error(
+				match present(n) {
+					_value => {
+						return ok(9223372036854775807)
+					} null => "negative"
+				}
+			)
+		)
+	}
+	return ok(n + 1)
+}
+
+fn hidden_success() Int {
+	var sum = 1
+	var i = -1
+
+	while i < 1 {
+		if found := hidden(i) {
+			sum += found
+		}
+		i += 1
+	}
+
+	return sum
+}
+
+type BoundedResultCleanup {
+	visits List[Int]
+}
+
+fn move BoundedResultCleanup.close() Void! {
+	self.visits.append(7)
+}
+
+fn cleanup(move visits List[Int]) Int {
+	_resource := BoundedResultCleanup(visits)
+	return total(true)
+}
+
+fn argument(value Int, var visits List[Int]) Int {
+	visits.append(value)
+	return value
+}
+
+fn ordered(var visits List[Int]) Int {
+	var sum = 0
+	var i = -1
+
+	while i < 2 {
+		if found := wrapped(argument(i, visits)) {
+			sum += found
+		}
+		i += 1
+	}
+
+	return sum
+}
+
+test "bounded successful Results preserve both branch budgets" {
+	total(true) | expect_equal(500498)?
+	total(false) | expect_equal(-500502)?
+}
+
+test "Result payload bounds retain intermediate overflow" {
+	(expect_fault(() => _ignored := prefix())?) | expect_contains("Int overflow")?
+	(expect_fault(() => _ignored := peer())?) | expect_contains("Int overflow")?
+}
+
+test "Result helper overflow still occurs in the original call" {
+	(
+		(expect_fault(() => _ignored := checked(9223372036854775807))?)
+		| expect_contains("Int overflow")?
+	)
+}
+
+test "hidden successful returns in error construction keep checks" {
+	(
+		(expect_fault(() => _ignored := hidden_success())?)
+		| expect_contains("Int overflow")?
+	)
+}
+
+test "Result bounds preserve argument effects and cleanup" {
+	var visits List[Int] = []
+	ordered(visits) | expect_equal(3)?
+	visits | expect_equal([-1, 0, 1])?
+	cleanup(visits) | expect_equal(500498)?
+}
+
+fn present[T](hold value T) &T? {
+	return value
+}
+// expect-format: rewritten
+// expect-formatted: import (
+// expect-formatted: \tCloseable from "@std/core.ms",
+// expect-formatted: \texpect_contains, expect_equal, expect_fault from "@std/test/test.ms",
+// expect-formatted: )
+// expect-formatted:
+// expect-formatted: fn checked(n Int) Int! {
+// expect-formatted: \tif n < 0 {
+// expect-formatted: \t\treturn error(Error("negative"))
+// expect-formatted: \t}
+// expect-formatted: \treturn ok(n + 1)
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn wrapped(n Int) Int! {
+// expect-formatted: \tvalue := checked(n)?
+// expect-formatted: \treturn ok(value)
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn total(positive Bool) Int {
+// expect-formatted: \tvar sum = 0
+// expect-formatted: \tvar i = -2
+// expect-formatted:
+// expect-formatted: \twhile i < 1000 {
+// expect-formatted: \t\tif found := wrapped(i) {
+// expect-formatted: \t\t\tif positive {
+// expect-formatted: \t\t\t\tsum += found
+// expect-formatted: \t\t\t} else {
+// expect-formatted: \t\t\t\tsum -= found
+// expect-formatted: \t\t\t}
+// expect-formatted: \t\t} else {
+// expect-formatted: \t\t\tsum -= 1
+// expect-formatted: \t\t}
+// expect-formatted:
+// expect-formatted: \t\ti += 1
+// expect-formatted: \t}
+// expect-formatted:
+// expect-formatted: \treturn sum
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn prefix() Int {
+// expect-formatted: \tvar sum = 9223372036854775807
+// expect-formatted: \tvar i = 0
+// expect-formatted:
+// expect-formatted: \twhile i < 2 {
+// expect-formatted: \t\tif found := wrapped(i) {
+// expect-formatted: \t\t\tsum += found
+// expect-formatted: \t\t\tsum -= found
+// expect-formatted: \t\t}
+// expect-formatted:
+// expect-formatted: \t\ti += 1
+// expect-formatted: \t}
+// expect-formatted:
+// expect-formatted: \treturn sum
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn peer() Int {
+// expect-formatted: \tvar sum = 9223372036854775807
+// expect-formatted: \tvar value = 0
+// expect-formatted: \tvar i = 0
+// expect-formatted:
+// expect-formatted: \twhile i < 2 {
+// expect-formatted: \t\tif found := checked(value) {
+// expect-formatted: \t\t\tsum += found
+// expect-formatted: \t\t}
+// expect-formatted: \t\tvalue += 1
+// expect-formatted: \t\ti += 1
+// expect-formatted: \t}
+// expect-formatted:
+// expect-formatted: \treturn sum
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn hidden(n Int) Int! {
+// expect-formatted: \tif n < 0 {
+// expect-formatted: \t\treturn error(
+// expect-formatted: \t\t\tError(
+// expect-formatted: \t\t\t\tmatch present(n) {
+// expect-formatted: \t\t\t\t\t_value => {
+// expect-formatted: \t\t\t\t\t\treturn ok(9223372036854775807)
+// expect-formatted: \t\t\t\t\t} null => "negative"
+// expect-formatted: \t\t\t\t}
+// expect-formatted: \t\t\t)
+// expect-formatted: \t\t)
+// expect-formatted: \t}
+// expect-formatted: \treturn ok(n + 1)
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn hidden_success() Int {
+// expect-formatted: \tvar sum = 1
+// expect-formatted: \tvar i = -1
+// expect-formatted:
+// expect-formatted: \twhile i < 1 {
+// expect-formatted: \t\tif found := hidden(i) {
+// expect-formatted: \t\t\tsum += found
+// expect-formatted: \t\t}
+// expect-formatted: \t\ti += 1
+// expect-formatted: \t}
+// expect-formatted:
+// expect-formatted: \treturn sum
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: type BoundedResultCleanup {
+// expect-formatted: \tvisits List[Int]
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn move BoundedResultCleanup.close() Void! {
+// expect-formatted: \tself.visits.append(7)
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn cleanup(move visits List[Int]) Int {
+// expect-formatted: \t_resource := BoundedResultCleanup(visits)
+// expect-formatted: \treturn total(true)
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn argument(value Int, var visits List[Int]) Int {
+// expect-formatted: \tvisits.append(value)
+// expect-formatted: \treturn value
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn ordered(var visits List[Int]) Int {
+// expect-formatted: \tvar sum = 0
+// expect-formatted: \tvar i = -1
+// expect-formatted:
+// expect-formatted: \twhile i < 2 {
+// expect-formatted: \t\tif found := wrapped(argument(i, visits)) {
+// expect-formatted: \t\t\tsum += found
+// expect-formatted: \t\t}
+// expect-formatted: \t\ti += 1
+// expect-formatted: \t}
+// expect-formatted:
+// expect-formatted: \treturn sum
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: test "bounded successful Results preserve both branch budgets" {
+// expect-formatted: \ttotal(true) | expect_equal(500498)?
+// expect-formatted: \ttotal(false) | expect_equal(-500502)?
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: test "Result payload bounds retain intermediate overflow" {
+// expect-formatted: \t(expect_fault(() => _ignored := prefix())?) | expect_contains("Int overflow")?
+// expect-formatted: \t(expect_fault(() => _ignored := peer())?) | expect_contains("Int overflow")?
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: test "Result helper overflow still occurs in the original call" {
+// expect-formatted: \t(
+// expect-formatted: \t\t(expect_fault(() => _ignored := checked(9223372036854775807))?)
+// expect-formatted: \t\t| expect_contains("Int overflow")?
+// expect-formatted: \t)
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: test "hidden successful returns in error construction keep checks" {
+// expect-formatted: \t(
+// expect-formatted: \t\t(expect_fault(() => _ignored := hidden_success())?)
+// expect-formatted: \t\t| expect_contains("Int overflow")?
+// expect-formatted: \t)
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: test "Result bounds preserve argument effects and cleanup" {
+// expect-formatted: \tvar visits List[Int] = []
+// expect-formatted: \tordered(visits) | expect_equal(3)?
+// expect-formatted: \tvisits | expect_equal([-1, 0, 1])?
+// expect-formatted: \tcleanup(visits) | expect_equal(500498)?
+// expect-formatted: }
+// expect-formatted:
+// expect-formatted: fn present[T](hold value T) &T? {
+// expect-formatted: \treturn value
+// expect-formatted: }

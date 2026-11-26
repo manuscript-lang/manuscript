@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import (\n\tList  // collection\n\t,\n\trange\n) from \"@std/collections/collections.ms\"\n"
-  }
-}

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "interface Payments {\n\tfn charge(amount Money) Result[Receipt, PaymentError]\n}\n"
-  }
-}

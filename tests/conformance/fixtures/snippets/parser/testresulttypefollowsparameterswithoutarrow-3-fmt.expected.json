@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 2026.11.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn f() Int {\n\tg := fn(x) Int => x + 1\n\th := x => x + 1\n\treturn g(1) + h(2)\n}\n"
-  }
-}

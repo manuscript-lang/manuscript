@@ -1,0 +1,4 @@
+// conform: tags=projects,types,diagnostics,tier-core
+// conform: phase=check
+// conform: entry=main.ms
+// expect-error: MS3001 5:14 expected Box, found Box (in the initializer of 'x'); these are two different types both named Box: the expected one is declared in a.ms, the found one is declared in b.ms

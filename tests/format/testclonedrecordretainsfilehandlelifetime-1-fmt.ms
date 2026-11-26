@@ -1,0 +1,63 @@
+// conform: tags=aliasing,control-flow,faults,formatter,match,modules,optional,parser,records,stdlib-io,strings,tier-core
+// conform: phase=parse
+// conform: origin=tests/e2e/mutation_test.go:49 TestClonedRecordRetainsFileHandleLifetime
+import open_read from "@std/io/io.ms"
+import File from "@std/io/io.ms"
+
+type Holder {
+    file File
+    label String
+}
+
+export fn main() Int {
+    opened := open_read("data.txt")
+    if opened.is_error() {
+        return 4
+    }
+
+    file := opened.get()
+    read := file.read(1)
+    if read.is_error() {
+        return 7
+    }
+
+    chunk := read.get()
+
+    match chunk {
+        data => {
+            if data.decode_utf8() != "d" {
+                return 5
+            }
+        }
+        null => {
+            return 6
+        }
+    }
+
+    original := Holder(file: file, label: "original")
+    var copy = original.clone()
+    copy.label = "copy"
+    if original.label != "original" {
+        return 1
+    }
+
+    copy.file.close()
+
+    reread := original.file.read(1)
+    if reread.is_ok() {
+        return 3
+    }
+
+    cause := reread.err()
+
+    match cause {
+        Error("I/O: resource is closed", kind: "EBADF") => {
+            return 0
+        }
+        _ => {
+            return 2
+        }
+    }
+}
+// expect-error: MS1000 54:15-54:40 expected a name, found text "I/O: resource is closed"
+// expect-format-exit: 1
