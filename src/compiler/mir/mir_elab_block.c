@@ -155,13 +155,21 @@ static bool emit_insts(ElEm *em, uint32_t block, const MirBlockData *old, ElStat
     }
     em_birth(em, *cur, params[i]);
   }
-  for (size_t i = first; i < old->insts.len; i++) {
+  size_t last_end = old->insts.len; /* the last scope end of an exit: what follows it is the same in every exit */
+  for (size_t i = old->insts.len; i-- > first && last_end == old->insts.len;) {
+    last_end = old->insts.ptr[i].op == MOP_ScopeEnd ? i : last_end;
+  }
+  ElTail tail;
+  const bool shares = last_end < old->insts.len && el_exit_tail(em, old, last_end, &tail);
+  for (size_t i = first; i < old->insts.len && !em->exited; i++) {
     MirInst inst = old->insts.ptr[i];
     bool done = false;
+    em->tail = shares && i == last_end ? &tail : NULL;
     if (!marker(em, cur, state, &inst, &done) || (!done && !plain(em, *cur, state, &inst, returned))) {
       return false;
     }
   }
+  em->tail = NULL;
   return true;
 }
 
@@ -183,7 +191,13 @@ bool el_emit_block(ElEm *em, uint32_t block, const ElState *entry, const ElFpara
   uint32_t cur = block;
   /* A value the block defines becomes pending once its instruction is emitted. */
   const MirValue defined = old.term.kind == MT_RET ? old.term.value : MIR_NONE;
+  em->exited = false;
   bool ok = emit_insts(em, block, &old, &state, defined, &cur);
+  if (ok && em->exited) { /* the rest of the block is in the shared chain */
+    func->blocks.ptr[cur].term_loc = old.term_loc;
+    mir_inst_list_free(&old.insts);
+    return true;
+  }
   if (ok && returned != MIR_NONE) {
     ok = !mh_has(&em->flagged, returned) || el_fail(em->cx, "a drop-flagged owner is returned directly");
   }

@@ -380,12 +380,6 @@ static bool em_cleanup_one(ElEm *em, uint32_t *at, MirValue value, ElSt kind, Mi
   return true;
 }
 
-typedef struct ByPosition {
-  MirValue v;
-  ElSt s;
-  uint32_t pos;
-} ByPosition;
-
 static int64_t latest_first(uint8_t *env, const uint8_t *x, const uint8_t *y) {
   (void)env;
   ByPosition a, b;
@@ -402,18 +396,50 @@ static bool cleanup_scope(ElEm *em, uint32_t *at, ElState *state, int64_t scope,
     return true;
   }
   const MirIdList *list = &cx->owners[scope];
-  ByPosition *owners = MS_ARENA_NEW_ARRAY(cx->ma, ByPosition, list->len + 1);
+  /* The owners are listed in the order they were made, so they come out of the state oldest first and the sort only
+   * reverses them; one buffer serves every exit. */
+  if (em->nowners < list->len) {
+    em->nowners = (uint32_t)list->len * 2;
+    em->owners = MS_ARENA_NEW_ARRAY_UNINIT(cx->ma, ByPosition, em->nowners);
+  }
+  ByPosition *owners = em->owners;
   uint32_t count = 0;
+  bool ascending = true;
   for (size_t i = 0; i < list->len; i++) {
     ByPosition owner = {list->ptr[i], 0, 0};
     if (el_get(state, owner.v, &owner.s) && el_position_of(state, owner.v, &owner.pos)) {
+      ascending = ascending && (count == 0 || owners[count - 1].pos < owner.pos);
       owners[count++] = owner;
     }
   }
-  if (count > 1) {
+  if (ascending) {
+    for (uint32_t i = 0; i < count / 2; i++) {
+      const ByPosition swap = owners[i];
+      owners[i] = owners[count - 1 - i];
+      owners[count - 1 - i] = swap;
+    }
+  } else if (count > 1) {
     ms_sort((uint8_t *)owners, count, sizeof *owners, latest_first, NULL);
   }
+  /* The oldest owners that are plain drops are dropped by a chain the exits share, when this is such an exit. */
+  uint32_t shared = 0;
+  while (em->tail != NULL && shared < count && owners[count - 1 - shared].s == EL_LIVE &&
+         cx->tag_kind[owners[count - 1 - shared].v] == 0 && !mh_has(&em->flagged, owners[count - 1 - shared].v)) {
+    shared++;
+  }
+  if (shared < 2) {
+    shared = 0;
+  }
   for (uint32_t i = 0; i < count; i++) {
+    if (i == count - shared && shared > 0 && *outcome == MIR_NONE) {
+      MirValue *values = MS_ARENA_NEW_ARRAY(cx->ma, MirValue, (size_t)shared + 1);
+      for (uint32_t k = 0; k < shared; k++) {
+        values[k] = owners[count - shared + k].v;
+      }
+      if (el_share_drops(em, *at, values, shared)) {
+        return true;
+      }
+    }
     el_remove(em->cx, state, owners[i].v);
     if (owners[i].v == kept) {
       continue;

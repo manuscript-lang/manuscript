@@ -458,7 +458,17 @@ static bool walk_block(ElCx *cx, uint32_t block, ElState *state) {
     }
   }
   const MirBlockData *data = &cx->f->blocks.ptr[block];
+  /* A block that returns leaves its state behind: nothing reads the owners the last scope end releases, so an exit does
+   * not pay for releasing them (a function of n calls has n exits of n owners). */
+  size_t last_end = data->insts.len;
+  for (size_t index = data->insts.len; index-- > 0 && last_end == data->insts.len;) {
+    last_end = data->insts.ptr[index].op == MOP_ScopeEnd ? index : last_end;
+  }
+  const bool leaves = data->term.kind == MT_RET && data->term.value == MIR_NONE;
   for (size_t index = 0; index < data->insts.len; index++) {
+    if (leaves && index == last_end) {
+      continue;
+    }
     if (!el_apply(cx, state, &data->insts.ptr[index])) {
       return false;
     }

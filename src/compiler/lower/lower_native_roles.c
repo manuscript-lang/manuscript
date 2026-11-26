@@ -58,8 +58,12 @@ static MirRole probe_role(const MirModule *module, MsSpan name, MirTy first) {
   return data->args[0] == MIR_INT ? MR_MAP_PROBE_INT : data->args[0] == MIR_STR ? MR_MAP_PROBE_STR : MR_NONE;
 }
 
-/* The role of runtime function `name` whose first operand has type `first`. */
+/* The role of runtime function `name` whose first operand has type `first`. A call that posts a fault keeps its own
+ * location: LLVM would merge two blocks that differ only in the line, and the trace would name the first. */
 MirRole fn_native_role(const MirModule *module, MsSpan name, MirTy first) {
+  if (ms_span_is_text(name, "msrt_panic")) {
+    return MR_POSTS_FAULT;
+  }
   const MirRole probe = probe_role(module, name, first);
   return probe != MR_NONE ? probe : string_role(name);
 }

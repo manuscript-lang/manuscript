@@ -112,6 +112,23 @@ void el_tags(ElCx *cx);
 void el_prune_undominated_drops(ElCx *cx);
 void el_tags_free(ElCx *cx); /* frees the owner lists */
 
+/* What an unwind exit does after its last scope ends: the resume call, the undefined result, the return. Exits with the
+ * same tail share their drops (mir_elab_chain.c). */
+typedef struct ElTail {
+  MirImm resume;      /* the `msrt_unwinding_resume` call */
+  bool has_undef;     /* a function with a result returns an `undef` */
+  MirImm undef_imm;
+  MirTy undef_ty;
+  MirLoc loc;         /* where the return is */
+} ElTail;
+
+/* One owner of a scope at its end: its value, move state and definition position. */
+typedef struct ByPosition {
+  MirValue v;
+  ElSt s;
+  uint32_t pos;
+} ByPosition;
+
 /* Emits the function's cleanup. `flagged` owners carry drop flags. */
 typedef struct ElEm {
   ElCx *cx;
@@ -122,6 +139,13 @@ typedef struct ElEm {
   MirHash flags;   /* the current flag value of each flagged owner (reset per block) */
   MirValue pending; /* the value the block returns, still to be returned after its scope ends */
   bool counts_depth;
+  const ElTail *tail; /* set while the last scope end of an unwind exit is elaborated: its drops may be shared */
+  bool exited;        /* the block now ends in a branch into a shared drop chain: the rest of it is not emitted */
+  ElTail root_tail;   /* the tail the chain's root block was made for */
+  MirBlock root;      /* the chain's root block, MIR_NONE until one exists */
+  MirHash chain;      /* (block << 32 | owner) -> the block that drops the owner, then continues in `block` */
+  ByPosition *owners; /* the owners of the scope being ended, in one buffer for every exit */
+  uint32_t nowners;
 } ElEm;
 
 /* The flag parameters of one block: (key, parameter) pairs. */
@@ -153,6 +177,14 @@ bool em_flag_of(const MirHash *map, MirValue key, MirValue *out);
 
 /* Closes or drops what a scope still holds at its end (mir_elab_close.c). */
 bool em_exit(ElEm *em, uint32_t *cur, ElState *state, int64_t scope);
+
+/* The tail an unwind exit has after the scope end at `at` of `old`, when it has the shape every exit has (the
+ * resume call, an optional undefined result, a return of it); false for any other block. */
+bool el_exit_tail(const ElEm *em, const MirBlockData *old, size_t at, ElTail *tail);
+
+/* Ends block `at` with a branch into the shared chain that drops `owners` (latest first) and then runs `em->tail`.
+ * False, and nothing emitted, when the chain was made for another tail. */
+bool el_share_drops(ElEm *em, uint32_t at, const MirValue *owners, uint32_t count);
 
 /* Edge, flag and slot-refill code (mir_elab_edge.c, mir_elab_flags.c). */
 bool em_edges(ElEm *em, uint32_t cur, const ElState *state, MirTerm *term, const ElFparams *fparams);

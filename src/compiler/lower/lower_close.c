@@ -31,7 +31,7 @@ static void post_fault(MirBuilder *b) {
   const MirTy one[1] = {MIR_STR};
   const MirImm text = {.tag = MI_STR, .a = (uint32_t)ms_names_intern(&b->module->strings, ms_span_of_text(NO_ERROR_MESSAGE))};
   const MirValue message = mir_b_emit(b, MOP_StrLit, NULL, 0, text, MIR_STR);
-  const uint32_t post = mir_extern_get(b->module, ms_span_of_text("msrt_panic"), one, 1, MIR_VOID, false, MR_NONE);
+  const uint32_t post = mir_extern_get(b->module, ms_span_of_text("msrt_panic"), one, 1, MIR_VOID, false, MR_POSTS_FAULT);
   (void)mir_b_emit(b, MOP_CallRt, &message, 1, mir_imm_ext(post), MIR_VOID);
 }
 
