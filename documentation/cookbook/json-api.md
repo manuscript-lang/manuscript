@@ -96,12 +96,6 @@ test "reject a body of the wrong shape" {
 ```
 
 ```text
-RUN api_test.ms::greet by name
-PASS api_test.ms::greet by name
-RUN api_test.ms::sum a list
-PASS api_test.ms::sum a list
-RUN api_test.ms::reject a body of the wrong shape
-PASS api_test.ms::reject a body of the wrong shape
 3 tests, 0 failed
 ```
 

@@ -40,6 +40,8 @@ static void write_tbaa(MsStrBuild *out) {
                      EMIT_TBAA_ROOT, EMIT_TBAA_SCALAR, EMIT_TBAA_ROOT, EMIT_TBAA_SCALAR_TAG, EMIT_TBAA_SCALAR,
                      EMIT_TBAA_SCALAR, EMIT_TBAA_HEADER, EMIT_TBAA_ROOT, EMIT_TBAA_HEADER_TAG, EMIT_TBAA_HEADER,
                      EMIT_TBAA_HEADER, EMIT_METADATA_EMPTY);
+  ms_strbuild_printf(out, "!%d = !{!\"branch_weights\", i32 1, i32 64}\n!%d = !{!\"branch_weights\", i32 64, i32 1}\n",
+                     EMIT_PROF_FIRST_COLD, EMIT_PROF_SECOND_COLD);
 }
 
 /* The file name the compile unit shows: the base name of the first function's file. */

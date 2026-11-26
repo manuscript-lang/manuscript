@@ -121,6 +121,15 @@ bool emit_terminator(EmitCx *cx, const MirTerm *term, uint32_t from) {
     edge_label(cx, out, term, from, 0);
     ms_strbuild_append_text(out, ", label ");
     edge_label(cx, out, term, from, 1);
+    {
+      /* A branch to a block laid out of line (a grow, a cleanup) is unlikely, so LLVM places and allocates for the
+       * other way. */
+      const bool first_cold = cx->func->blocks.ptr[term->a.block].cold;
+      const bool second_cold = cx->func->blocks.ptr[term->b.block].cold;
+      if (first_cold != second_cold) {
+        ms_strbuild_printf(out, ", !prof !%d", first_cold ? EMIT_PROF_FIRST_COLD : EMIT_PROF_SECOND_COLD);
+      }
+    }
     ms_strbuild_append_byte(out, '\n');
     return true;
   case MT_SWITCH:
