@@ -1,0 +1,24 @@
+Usage: ms search [<name or words>... | <path>] [--limit n] [--json]
+
+Find a symbol, in the project or the standard library. Matching ignores case
+and tolerates partial names, small typos, missing underscores, and plain words
+(read file lines). Exact names rank first.
+  A project match prints its definition, type, description, and uses.
+  A standard-library match prints its signature and a path for details.
+  A lone module or declaration path shows its page, in bounded size:
+    ms search                 Standard modules, each with a few names
+    ms search json            One module: a line per declaration
+    ms search prelude.List    A declaration with its members
+    ms search prelude.List.sorted
+                                     One member's signature and doc
+Run it from the project directory, or any folder under its ms.toml.
+
+Options:
+  --limit <n>  Maximum matches (default 5, at most 10)
+  --json       Always search, and emit versioned JSON
+  -h, --help   Show this help
+
+Examples:
+  ms search parse_config
+  ms search read file lines
+  ms search json.parse

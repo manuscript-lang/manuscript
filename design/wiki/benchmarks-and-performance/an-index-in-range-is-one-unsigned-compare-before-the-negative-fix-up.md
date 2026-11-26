@@ -4,4 +4,4 @@ Verified (2026-11-25): a checked `list.get/set/fill/addr` computed `index < 0 ? 
 
 `workers` first got 8.5% slower: `a[i] = v` is lowered by `checked_index` (lower_native_list.c), a second copy of the wrap that kept the select form, so a get and a set of one index no longer matched. `checked_index` has the same fast/slow shape now: `workers` 1,205 M to 1,129 M (-6.4% against before either change). Keep the two expansions the same shape; LLVM merges a get and a set only when their checks are alike.
 
-Apply when: changing how `list.get`-style ops expand; a single comparison on the hot path is the target, and a select on the index defeats it. Verify with `ms emit --opt` (verifies every pass) and conform: fixture `list-index-counts-from-the-end.ms` covers negative, in-range and both out-of-range ends for get and set.
+Apply when: changing how `list.get`-style ops expand; a single comparison on the hot path is the target, and a select on the index defeats it. Verify with `ms build --emit mir --opt` (verifies every pass) and conform: fixture `list-index-counts-from-the-end.ms` covers negative, in-range and both out-of-range ends for get and set.

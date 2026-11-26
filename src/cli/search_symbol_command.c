@@ -1,4 +1,4 @@
-/* cli/search_symbol_command.c: `ms search_symbol`. */
+/* cli/search_symbol_command.c: `ms search`. */
 #include "cli/search_symbol_command.h"
 
 #include <stdio.h>
@@ -179,7 +179,7 @@ static void print_text(MsArena *arena, const DescribedList *described, size_t pr
     if (m->project) {
       print_uses(arena, &out, &m->uses);
     } else {
-      ms_strbuild_append(&out, ms_message_format(arena, "  details: ms search_symbol %S\n", m->name, (MsSpan){0}));
+      ms_strbuild_append(&out, ms_message_format(arena, "  details: ms search %S\n", m->name, (MsSpan){0}));
     }
   }
   size_t shown = 0;
@@ -282,12 +282,12 @@ int ms_search_symbol_command(int argc, char **argv) {
       }
       int64_t n = 0;
       if (value.len == 0 || !ms_invocation_parse_int(value, &n) || n < 1) {
-        status = ms_usage_error(&arena, ms_span_of_text("ms search_symbol: --limit needs a positive number, e.g. ms search_symbol Config --limit 3"));
+        status = ms_usage_error(&arena, ms_span_of_text("ms search: --limit needs a positive number, e.g. ms search Config --limit 3"));
       } else {
         limit = (size_t)n < MAX_LIMIT ? (size_t)n : MAX_LIMIT;
       }
     } else if (arg.len > 0 && arg.ptr[0] == '-') {
-      status = ms_usage_error(&arena, ms_message_format(&arena, "unknown option %S for ms search_symbol; run 'ms help search_symbol' for its options", arg, (MsSpan){0}));
+      status = ms_usage_error(&arena, ms_message_format(&arena, "unknown option %S for ms search; run 'ms help search' for its options", arg, (MsSpan){0}));
     } else {
       ms_spans_push(&arena, &names, arg);
     }

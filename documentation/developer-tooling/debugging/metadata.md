@@ -5,14 +5,14 @@ weight = 118
 
 # Inspect checked source
 
-Use `ms inspect` when you want a script or agent to work with declarations, types and call sites from checked code. For reading the same program visually, use an [interactive code map](../implementation.md#interactive-code-map).
+Use `ms map --view inspect` when you want a script or agent to work with declarations, types and call sites from checked code. For reading the same program visually, use an [interactive code map](../implementation.md#interactive-code-map).
 
 ## Save a snapshot
 
 With `hello.ms` from [Understanding effects](../source/effects.md), run:
 
 ```sh
-ms inspect hello.ms -o inspection.json
+ms map --view inspect hello.ms -o inspection.json
 ```
 
 The command succeeds silently and writes a format-2 JSON document. It checks source without running the program or linking an executable. The `entities` array contains this declaration (selected fields shown):

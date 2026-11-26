@@ -166,11 +166,11 @@ static int path_option(Parser *p, MsSpan flag, bool inline_value, MsSpan inline_
   }
   const bool profile = ms_span_is_text(p->command, "profile");
   if (out_dir && !profile) {
-    return usage(p, "--out-dir is valid only for ms profile, not ms %S; use -o for commands that write a file",
-                 p->command, (MsSpan){0});
+    return usage(p, "--out-dir is valid only for ms run --profile, not ms %S; use -o for commands that write a file",
+                 ms_command_shown(p->command), (MsSpan){0});
   }
   if (!out_dir && profile) {
-    return usage(p, "%S is not valid for ms profile; use --out-dir for the bundle directory", flag, (MsSpan){0});
+    return usage(p, "%S is not valid for ms run --profile; use --out-dir for the bundle directory", flag, (MsSpan){0});
   }
   p->out->output = value;
   return 0;
@@ -187,7 +187,7 @@ static int tool_option(Parser *p, MsSpan flag, bool inline_value, MsSpan inline_
   if (ms_span_is_text(flag, "--format")) {
     if (!required_value(p, inline_value, inline_text, &value)) {
       if (review) {
-        return usage(p, "%S requires a value; run 'ms help review' for examples", flag, (MsSpan){0});
+        return usage(p, "%S requires a value; run 'ms help map' for examples", flag, (MsSpan){0});
       }
       return usage(p, "--format requires a name, e.g. --format mermaid", (MsSpan){0}, (MsSpan){0});
     }
@@ -196,7 +196,7 @@ static int tool_option(Parser *p, MsSpan flag, bool inline_value, MsSpan inline_
   }
   if (!required_value(p, inline_value, inline_text, &value)) {
     return usage(p, "%S requires a value; run 'ms help %S' for examples", flag,
-                 ms_span_of_text(ms_span_is_text(flag, "--top") ? "profile" : review ? "review" : "diagram"));
+                 ms_span_of_text(ms_span_is_text(flag, "--top") ? "run" : "map"));
   }
   if (ms_span_is_text(flag, "--explain")) {
     p->out->explain = value;
@@ -236,19 +236,19 @@ static int other_argument(Parser *p, MsSpan arg) {
   if (arg.len == 0 || arg.ptr[0] != '-') {
     if (ms_span_is_text(p->command, "test")) {
       if (arg.len == 0) {
-        return usage(p, "ms %S: an input argument is empty; pass a .ms file, directory, or ms.toml", p->command,
+        return usage(p, "ms %S: an input argument is empty; pass a .ms file, directory, or ms.toml", ms_command_shown(p->command),
                      (MsSpan){0});
       }
       ms_span_list_push(&p->out->targets, arg);
       return 0;
     }
     return ms_usage_error(p->arena, ms_message_format(p->arena, "unexpected extra argument %S (ms %S takes one file; %s)", arg,
-                                                      p->command,
+                                                      ms_command_shown(p->command),
                                                       program_args ? "arguments for the program go after --"
                                                                    : "remove the extra argument"));
   }
   return ms_usage_error(p->arena, ms_message_format(p->arena, "unknown option %S for ms %S; run 'ms help %S' for its options%s",
-                                                    arg, p->command, p->command,
+                                                    arg, ms_command_shown(p->command), ms_command_help_page(p->command),
                                                     program_args ? " (arguments for the program go after --)" : ""));
 }
 
@@ -361,4 +361,22 @@ void ms_invocation_free(MsInvocation *invocation) {
   ms_span_list_free(&invocation->targets);
   ms_span_list_free(&invocation->link);
   ms_span_list_free(&invocation->arguments);
+}
+
+MsSpan ms_command_shown(MsSpan command) {
+  if (ms_span_is_text(command, "emit")) return ms_span_of_text("build --emit");
+  if (ms_span_is_text(command, "profile")) return ms_span_of_text("run --profile");
+  if (ms_span_is_text(command, "diagram")) return ms_span_of_text("map");
+  if (ms_span_is_text(command, "review")) return ms_span_of_text("map --view review");
+  if (ms_span_is_text(command, "inspect")) return ms_span_of_text("map --view inspect");
+  return command;
+}
+
+MsSpan ms_command_help_page(MsSpan command) {
+  if (ms_span_is_text(command, "emit")) return ms_span_of_text("build");
+  if (ms_span_is_text(command, "profile")) return ms_span_of_text("run");
+  if (ms_span_is_text(command, "diagram") || ms_span_is_text(command, "review") || ms_span_is_text(command, "inspect")) {
+    return ms_span_of_text("map");
+  }
+  return command;
 }

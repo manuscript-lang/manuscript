@@ -11,7 +11,7 @@ Alt text is required and the path must start with `/images/`; the book build fai
 Regenerate the code-map screenshots from the sample project in `website/screenshots/codemap/` (`change.patch` turns its `before` state into the checked-in source):
 
 ```sh
-ms diagram website/screenshots/codemap/ms.toml --format html --diff website/screenshots/codemap/change.patch -o map.html
+ms map website/screenshots/codemap/ms.toml --format html --diff website/screenshots/codemap/change.patch -o map.html
 node website/screenshots/capture.cjs map.html run_command code-map Behavior Calls
 ```
 

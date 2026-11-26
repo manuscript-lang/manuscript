@@ -17,10 +17,12 @@ cd store
 ms check ms.toml
 ```
 
-The check prints:
+The check runs three steps and prints:
 
 ```text
-Checked ms.toml (2 modules)
+types  passed
+fmt    passed
+lint   passed
 ```
 
 `init` creates `ms.toml`, `src/main.ms` and `test.ms`. It also creates a `.gitignore` that excludes the local build cache and a `.gitattributes` that keeps source and manifests on LF line endings in Windows checkouts. Run the following examples from `store`.
@@ -88,7 +90,7 @@ This example uses `get()` because the file and its UTF-8 contents are known at b
 | --- | --- |
 | `ms check <ms.toml>` | Check all source modules and discovered tests; validate entry when present |
 | `ms build <ms.toml>` | Check, lower to MIR, generate native object code, and link the executable; requires entry |
-| `ms lint <ms.toml>` | Check and lint reachable modules; libraries include all source modules and discovered tests |
+| `ms check --only lint <ms.toml>` | Check and lint reachable modules; libraries include all source modules and discovered tests |
 | `ms test <ms.toml>` | Execute tests from entry and discovered test files; libraries include all source modules too |
 
 `ms check ms.toml` checks every `.ms` file below `project.source`, including modules the entry does not import, plus `test.ms` and `*_test.ms` anywhere below the project root. It never runs `main` or tests and needs no native toolchain. Text output reports the number of modules checked.
@@ -191,7 +193,7 @@ entry = "src/main.ms"
 - A `{ path = "..." }` dependency names another member and is imported like a package: `import greet from "@util/greet.ms"`. It is never written to `ms.lock`, a member's own dependency names are private to it, and a cycle between members is an error. A member may declare `extern`, since it is your own code.
 - A member follows the same effect rule as a fetched package: it declares `effects` under `[project]`, and the importing member allows them under `[effects]`.
 - One `ms.lock` beside the root `ms.toml` pins every url dependency of every member. Members that name the same repository and version share one copy; two members may use one name for different packages. `ms install` installs every member; `ms add` and `ms remove` act on the member whose directory you are in.
-- Run `ms run`, `ms build` and the other commands from a member, or pass its `ms.toml`. At a root with no `[project]`, `ms check`, `ms lint`, `ms fmt`, `ms verify` and `ms test` run on every member; a command that makes one program asks you to name a member. A root may also hold its own `[project]`, and then it is a member too.
+- Run `ms run`, `ms build` and the other commands from a member, or pass its `ms.toml`. At a root with no `[project]`, `ms check`, `ms check --only lint`, `ms fmt`, `ms check --test` and `ms test` run on every member; a command that makes one program asks you to name a member. A root may also hold its own `[project]`, and then it is a member too.
 
 ## Resolving an import
 

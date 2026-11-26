@@ -3,10 +3,10 @@
 // starts with
 //   // removed: <the old spelling>
 //   // use: <text the error must contain, naming the new spelling>
-//   // fix: <text the file must contain after `ms check --fix`>, or `none: <why>`
+//   // fix: <text the file must contain after `ms check --only types --fix`>, or `none: <why>`
 // and the check fails unless `ms check` rejects the snippet with an error that contains
 // the
-// `use` text, and `ms check --fix` rewrites the snippet so the text appears and `ms check`
+// `use` text, and `ms check --only types --fix` rewrites the snippet so the text appears and `ms check`
 // passes. `none:` is for a removal no mechanical edit can carry. Add a snippet in the
 // same change that removes or renames a spelling. MS names the ms to run (default
 // .artifacts/build/ci/src/cli/ms). Usage: ms run tools/removed-check.ms
@@ -69,7 +69,11 @@ fn main() Int {
 			continue
 		}
 
-		out := run(ms.clone(), ["check", path], RunOptions(timeout: seconds(60))).wait().get()
+		out := run(
+			ms.clone(),
+			["check", "--only", "types", path],
+			RunOptions(timeout: seconds(60)),
+		).wait().get()
 		text := out.stderr.decode_utf8() or ""
 
 		if out.exit_code == 0 {
@@ -91,14 +95,14 @@ fn main() Int {
 
 			applied := run(
 				ms.clone(),
-				["check", "--fix", copy.clone()],
+				["check", "--only", "types", "--fix", copy.clone()],
 				RunOptions(timeout: seconds(60)),
 			).wait().get()
 			result := read_file(copy).wait().get().decode_utf8() or ""
 
 			if applied.exit_code != 0 or not result.contains(fixed) {
 				print(
-					f"{f.path}: 'ms check --fix' does not rewrite '{old}' to '{fixed}'"
+					f"{f.path}: 'ms check --only types --fix' does not rewrite '{old}' to '{fixed}'"
 				)
 				failing += 1
 			}

@@ -1,2 +1,2 @@
-usage: ms help [command]
+usage: ms help [command | code]
 Run 'ms --help' to list commands.

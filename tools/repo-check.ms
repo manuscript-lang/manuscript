@@ -6,8 +6,8 @@
 
 // Repository invariants that no compiler or test run enforces (`make repo-check`):
 //   - every tracked .ms source is formatted (`ms fmt --check`),
-//   - nested matches stay out of .ms sources and Markdown code fences (`ms lint --syntax`, MSL107),
-//   - every .ms source passes `ms lint --deny-warnings`, except the benchmarks and the
+//   - nested matches stay out of .ms sources and Markdown code fences (`ms check --only lint --syntax`, MSL107),
+//   - every .ms source passes `ms check --only lint --deny-warnings`, except the benchmarks and the
 //     deliberate probes and demos named in `unlinted`,
 //   - .msversion is a calendar version and the VS Code extension carries it,
 //   - ci.yml runs on every pull request without path filters and on merge_group.
@@ -403,10 +403,14 @@ fn main() Int {
 	)
 
 	linted := sources(files.clone(), [".ms"]).filter(path => not unlinted(path.clone()))
-	failing += run_in_batches(ms.clone(), ["lint", "--deny-warnings"], linted)
 	failing += run_in_batches(
 		ms.clone(),
-		["lint", "--syntax"],
+		["check", "--only", "lint", "--deny-warnings"],
+		linted,
+	)
+	failing += run_in_batches(
+		ms.clone(),
+		["check", "--only", "lint", "--syntax"],
 		sources(files, [".ms", ".md"]),
 	)
 

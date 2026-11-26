@@ -24,7 +24,7 @@ weight = 1
 2. `compiler/project` reads `ms.toml` and `[aliases]`, resolves imports to canonical, root-confined paths (including editor overlays), follows imports, detects cycles and returns the modules in dependency order.
 3. `compiler/syntax` parses strictly, or with recovery for editor analysis. Standard declarations (`src/stdlib/*.ms`, embedded at build time) use the same parser.
 4. `compiler/check` loads standard declarations on first use. It resolves declarations, nominal types, bounds, implementations, control flow, captures, cleanup and effects; `compiler/own` adds ownership. The result keeps what lowering, docs and editors need.
-5. Check, lint, inspect, diagram and review stop after checking. Formatting uses only the syntax layer.
+5. `check`, `map` and `search` stop after checking. Formatting uses only the syntax layer.
 6. `compiler/lower` turns checked HIR into MIR; `compiler/mir` and `compiler/opt` elaborate ownership, optimize and verify it. See [lowering](compiler/lowering/_index.md).
 7. `compiler/emit` writes LLVM IR text and `compiler/link` links the object with the runtime archive. Supported platforms use the pinned, cached `lld`, with these C-library inputs: stubs of glibc 2.28 on Linux (musl with `--static`), generated SDK stubs on macOS, and the mingw import libraries on Windows.
 
@@ -37,7 +37,7 @@ An include crosses layers only downward (`src/layers.txt`, enforced by `ms_lint`
 | `src/base`, `src/abi` | Safe wrappers, arena, strings, files, JSON; layouts, symbol names and fault kinds the compiler and runtime share |
 | `src/runtime` | The runtime: `core` (allocation, lists, maps, strings, faults, cancellation), `io`, `sys`, `std` (one file group per native standard module), `entry` |
 | `src/compiler` | `syntax`, `project`, `check`, `own`, `lower`, `mir`, `opt`, `emit`, `link`, `natives` (generated native signatures) |
-| `src/tooling` | Lint, inspect, review, diagram, `search_symbol`, docgen input, guide pages |
+| `src/tooling` | Lint, inspect, review, diagram, `ms search`, docgen input, guide pages |
 | `src/lsp`, `src/cli` | The language server behind `ms lsp`; the `ms` binary and its commands |
 | `src/lint` | `ms_lint`: banned calls and layering |
 | `src/third_party` | Vendored libraries pinned by `c-libs.lock` |

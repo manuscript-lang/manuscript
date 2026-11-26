@@ -14,4 +14,4 @@ Regex capture methods are verb-first like the find family: `capture`, `capture_a
 
 Apply when: adding or moving a stdlib function, or when two modules could both own an operation.
 Evidence: commit 9a2dc4e6, [process](../../../src/stdlib/os/process.ms), [fs](../../../src/stdlib/os/fs.ms), [crypto](../../../src/stdlib/crypto/crypto.ms), [sse](../../../src/stdlib/net/sse.ms).
-Verify: `ms search_symbol <old name>` finds no declaration; `make docs-check` passes and every moved symbol has an updated fixture.
+Verify: `ms search <old name>` finds no declaration; `make docs-check` passes and every moved symbol has an updated fixture.

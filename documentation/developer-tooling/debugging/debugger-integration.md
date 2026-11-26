@@ -5,7 +5,7 @@ weight = 120
 
 # Profiling and native debugging
 
-Use `ms profile` to find where a program spends CPU time. Build an unoptimized executable when you want to stop at a source line and follow execution with a native debugger. Start with the same input that reproduces the behavior you are investigating.
+Use `ms run --profile` to find where a program spends CPU time. Build an unoptimized executable when you want to stop at a source line and follow execution with a native debugger. Start with the same input that reproduces the behavior you are investigating.
 
 ## Prepare a repeatable workload
 
@@ -37,12 +37,12 @@ ms run words.ms -- 2
 12
 ```
 
-For your own application, use its real entry point and representative data. `ms profile` runs `main`, not test or benchmark blocks.
+For your own application, use its real entry point and representative data. `ms run --profile` runs `main`, not test or benchmark blocks.
 
 ## Capture a profile {#profiling-with-ms-profile}
 
 ```sh
-ms profile words.ms --out-dir capture --top 10 -- 1000000
+ms run --profile words.ms --out-dir capture --top 10 -- 1000000
 ```
 
 The program prints `6000000`, followed by a summary of sampled functions and the bundle location. `capture` must be a new directory; choose another name for the next run. The default build is optimized `Release`, so you profile the code you would ship. Arguments after `--` reach the program, and the command returns the program's exit status.
@@ -74,7 +74,7 @@ The bundle keeps the executable and data for further investigation:
 CPU samples show where time goes, not who asks for memory. Add `--allocs` to also sample allocations:
 
 ```sh
-ms profile words.ms --out-dir capture --allocs
+ms run --profile words.ms --out-dir capture --allocs
 ```
 
 The report then lists the functions that allocate most, in allocations and bytes, and the bundle adds `allocs.txt`, `allocs.folded` (stacks weighted by allocation count) and `allocs.folded.bytes` (weighted by bytes). A sample is a stack walk on every 128th allocation (set `MS_PROFILE_ALLOC_PERIOD` to change it; `1` counts every allocation), so counts are scaled estimates. Only the program's main thread is sampled.

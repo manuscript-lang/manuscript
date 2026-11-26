@@ -1,4 +1,4 @@
-/* cli/search_project.h: the project half of `ms search_symbol`: the declarations of the project in the working
+/* cli/search_project.h: the project half of `ms search`: the declarations of the project in the working
  * directory whose names match, with their type, documentation, effects and uses. */
 #ifndef MS_CLI_SEARCH_PROJECT_H
 #define MS_CLI_SEARCH_PROJECT_H

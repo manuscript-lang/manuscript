@@ -1,4 +1,4 @@
-/* cli/review_command.c: `ms review`. */
+/* cli/review_command.c: `ms map --view review`. */
 #include "cli/files.h"
 #include "cli/review_command.h"
 
@@ -158,14 +158,14 @@ int ms_review_diff_inputs(MsArena *arena, const MsCheckedInput *head, const MsIn
   if (ms_span_equal(invocation->diff, ms_span_of_text("-"))) {
     (void)read_stdin(arena, &text);
   } else if (!read_text(arena, invocation->diff, &text)) {
-    (void)fprintf(stderr, "ms review: cannot read the diff: cannot open %.*s\n", (int)invocation->diff.len,
+    (void)fprintf(stderr, "ms map --view review: cannot read the diff: cannot open %.*s\n", (int)invocation->diff.len,
                   (const char *)invocation->diff.ptr);
     return 2;
   }
   MsDiffFiles files = {0};
   MsSpan error = {0};
   if (!ms_diff_parse(arena, text, &files, &error)) {
-    (void)fprintf(stderr, "ms review: %.*s; pass a unified diff such as git diff --no-renames main...\n", (int)error.len,
+    (void)fprintf(stderr, "ms map --view review: %.*s; pass a unified diff such as git diff --no-renames main...\n", (int)error.len,
                   (const char *)error.ptr);
     return 2;
   }
@@ -181,7 +181,7 @@ int ms_review_diff_inputs(MsArena *arena, const MsCheckedInput *head, const MsIn
   }
   OverlayList overlay = {0};
   if (!review_input(arena, &files, root, input, &overlay, &error)) {
-    (void)fprintf(stderr, "ms review: diff does not match the tree: %.*s; run it from the checkout the diff was made against\n",
+    (void)fprintf(stderr, "ms map --view review: diff does not match the tree: %.*s; run it from the checkout the diff was made against\n",
                   (int)error.len, (const char *)error.ptr);
     return 2;
   }
@@ -220,7 +220,7 @@ static int review(MsArena *arena, MsCheckedInput *checked, const MsInvocation *i
     if (ok) {
       status = ms_cli_write_output(invocation->output, ms_strbuild_span(&text));
     } else {
-      (void)fprintf(stderr, "ms review: %.*s\n", (int)error.len, (const char *)error.ptr);
+      (void)fprintf(stderr, "ms map --view review: %.*s\n", (int)error.len, (const char *)error.ptr);
       status = 2;
     }
   } else if (status == 0) {

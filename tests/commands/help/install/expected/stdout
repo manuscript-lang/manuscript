@@ -1,0 +1,13 @@
+Usage: ms install [--update @name]... [ms.toml]
+
+Download the packages under [dependencies] with git and pin them in ms.lock.
+A version requirement picks the highest tag that satisfies every requirement of that
+repository in the whole graph, one copy for each compatible range (a new major is a
+separate copy). A lock entry that still satisfies them is kept, and it is downloaded
+at exactly its commit and fails if the content hash differs. Packages are cached read-only outside the project
+(MS_PACKAGE_CACHE overrides the location). Every other command works offline from
+the lock and the cache.
+
+Options:
+  --update @name  Pick that dependency's version again and rewrite its lock entry
+  -h, --help      Show this help

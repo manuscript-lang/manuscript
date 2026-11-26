@@ -1,0 +1,6 @@
+check
+--only
+lint
+--syntax
+guide.md
+fragment.ms

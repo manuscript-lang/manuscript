@@ -38,10 +38,10 @@ hello from a single file
 
 ## Check before you ship
 
-`ms verify` runs the checker, the format check, lint and the tests and returns one result:
+`ms check --test` runs the checker, the format check, lint and the tests and returns one result:
 
 ```sh
-ms verify
+ms check --test
 ```
 
 The format check fails on any file `ms fmt` would change, so run `ms fmt` first.

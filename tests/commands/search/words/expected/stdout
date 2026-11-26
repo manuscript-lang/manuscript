@@ -1,0 +1,4 @@
+json.parse  fn  std:@std/data/json.ms
+  fn parse[T Data = JsonValue](text String, options JsonOptions = JsonOptions()) Result[T, Error] { ... }
+  // Parses one JSON value and applies the supplied input, depth, and value limits.
+  details: ms search json.parse

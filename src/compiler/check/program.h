@@ -71,7 +71,7 @@ MS_LIST_DEFINE(MsModuleList, ms_module_list, MsModuleInfo)
  * is reported once, and the uses of the name are not more mistakes. */
 bool ms_check_imported_from_missing(const struct MsCheckProgram *program, uint32_t module, MsName name);
 
-/* A local the checker declared, in declaration order: what `ms inspect` lists. */
+/* A local the checker declared, in declaration order: what `ms map --view inspect` lists. */
 typedef struct MsLocalRecord {
   uint32_t module;
   MsName name;

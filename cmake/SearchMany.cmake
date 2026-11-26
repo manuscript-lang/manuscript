@@ -1,4 +1,4 @@
-# `ms search_symbol` over a folder of many .ms files searches all of them, in batches that share one standard-library
+# `ms search` over a folder of many .ms files searches all of them, in batches that share one standard-library
 # check:
 # `cmake -DMS_C=<ms> -DWORK=<scratch dir> -P cmake/SearchMany.cmake`.
 cmake_minimum_required(VERSION 3.25)
@@ -13,10 +13,10 @@ endforeach()
 
 function(search query out_text out_error)
   separate_arguments(words NATIVE_COMMAND "${query}")
-  execute_process(COMMAND "${MS_C}" search_symbol ${words} WORKING_DIRECTORY "${WORK}" RESULT_VARIABLE status
+  execute_process(COMMAND "${MS_C}" search ${words} WORKING_DIRECTORY "${WORK}" RESULT_VARIABLE status
     OUTPUT_VARIABLE text ERROR_VARIABLE error)
   if(NOT status EQUAL 0)
-    message(FATAL_ERROR "search_symbol ${query} exited ${status}:\n${error}")
+    message(FATAL_ERROR "search ${query} exited ${status}:\n${error}")
   endif()
   set(${out_text} "${text}" PARENT_SCOPE)
   set(${out_error} "${error}" PARENT_SCOPE)

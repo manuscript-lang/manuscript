@@ -1,4 +1,4 @@
-/* Owns the page and search half of guide.h: bounded standard-library pages and the fuzzy lookup behind `ms search_symbol`. */
+/* Owns the page and search half of guide.h: bounded standard-library pages and the fuzzy lookup behind `ms search`. */
 #include "base/message.h"
 #include "base/utf8.h"
 #include "base/sort.h"
@@ -235,8 +235,8 @@ static MsSpan index_lines(MsArena *arena, const MsGuide *guide, size_t width) {
 
 MsSpan ms_guide_index(MsArena *arena, const MsGuide *guide) {
   const MsSpan header = ms_span_of_text(
-      "Standard modules (prelude needs no import).\n`ms search_symbol <module>` lists one, `ms search_symbol "
-      "<module>.<Name>` shows a declaration, `ms search_symbol <words>` searches.\n\n");
+      "Standard modules (prelude needs no import).\n`ms search <module>` lists one, `ms search "
+      "<module>.<Name>` shows a declaration, `ms search <words>` searches.\n\n");
   size_t width = 84;
   for (;;) {
     const MsSpan body = index_lines(arena, guide, width);
@@ -260,7 +260,7 @@ static MsSpan module_page(MsArena *arena, const MsApiModule *m) {
   for (size_t i = 0; i < m->decls.len; i++) {
     const MsApiDecl *d = &m->decls.ptr[i];
     if (i == MODULE_LINES) {
-      ms_strbuild_append(&b, ms_message_format(arena, "... %z more; narrow with `ms search_symbol <words>`\n", m->decls.len - MODULE_LINES));
+      ms_strbuild_append(&b, ms_message_format(arena, "... %z more; narrow with `ms search <words>`\n", m->decls.len - MODULE_LINES));
       break;
     }
     if (ms_span_is_text(d->kind, "fn") && d->declaration.len > 0) {
@@ -278,7 +278,7 @@ static MsSpan module_page(MsArena *arena, const MsApiModule *m) {
     }
     ms_strbuild_append_byte(&b, '\n');
   }
-  ms_strbuild_append(&b, ms_message_format(arena, "Details: ms search_symbol %S.<Name>\n", short_name(m->path), (MsSpan){0}));
+  ms_strbuild_append(&b, ms_message_format(arena, "Details: ms search %S.<Name>\n", short_name(m->path), (MsSpan){0}));
   return clip_text(arena, ms_message_take_builder(arena, &b), PAGE_BUDGET);
 }
 
@@ -312,13 +312,13 @@ static MsSpan declaration_page(MsArena *arena, const MsApiModule *m, const MsApi
   for (size_t i = 0; i < d->members.len; i++) {
     const MsSpan line = ms_message_format(arena, "  %S\n", one_line(arena, d->members.ptr[i].signature, LINE_WIDTH));
     if (ms_strbuild_length(&b) + line.len > PAGE_BUDGET - 160) {
-      ms_strbuild_append(&b, ms_message_format(arena, "  ... %z more; use `ms search_symbol %S.%S.<member>`\n",
+      ms_strbuild_append(&b, ms_message_format(arena, "  ... %z more; use `ms search %S.%S.<member>`\n",
                                                d->members.len - i, short_name(m->path), bare(d->name)));
       break;
     }
     ms_strbuild_append(&b, line);
   }
-  ms_strbuild_append(&b, ms_message_format(arena, "Details: ms search_symbol %S.%S.<member>\n", short_name(m->path), bare(d->name)));
+  ms_strbuild_append(&b, ms_message_format(arena, "Details: ms search %S.%S.<member>\n", short_name(m->path), bare(d->name)));
   return ms_message_take_builder(arena, &b);
 }
 
@@ -343,7 +343,7 @@ static bool member_page(MsArena *arena, const MsApiModule *m, const MsApiDecl *d
   }
   if (count == 0) {
     ms_strbuild_free(&b);
-    *error = ms_message_format(arena, "%S has no member \"%S\"; see `ms search_symbol %S.%S`", d->name, name, short_name(m->path),
+    *error = ms_message_format(arena, "%S has no member \"%S\"; see `ms search %S.%S`", d->name, name, short_name(m->path),
                                bare(d->name));
     return false;
   }
@@ -404,7 +404,7 @@ bool ms_guide_page(MsArena *arena, const MsGuide *guide, MsSpan path, MsSpan *pa
     found = ms_span_equal(bare(module->decls.ptr[i].name), parts[1]) ? &module->decls.ptr[i] : NULL;
   }
   if (found == NULL) {
-    *error = ms_message_format(arena, "%S has no declaration \"%S\"; see `ms search_symbol %S` (or `ms search_symbol %S`)",
+    *error = ms_message_format(arena, "%S has no declaration \"%S\"; see `ms search %S` (or `ms search %S`)",
                                short_name(module->path), parts[1], short_name(module->path), parts[1]);
     return false;
   }

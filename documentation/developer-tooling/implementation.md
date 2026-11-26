@@ -13,21 +13,22 @@ Run project commands from the directory containing `ms.toml`. For a single-file 
 
 | Your task | Command | Result |
 | --- | --- | --- |
-| Check a change before running it | `ms check ms.toml` | Diagnostics, or a successful check summary |
+| Check a change before running it | `ms check ms.toml` | A status for the types, formatting and lint steps; `--only types` for the type check alone |
 | Apply consistent layout | `ms fmt ms.toml` | Formatted files; silent on success |
 | Check formatting in CI | `ms fmt ms.toml --check` | Names files needing changes; leaves source untouched |
-| Check code, formatting, lint and tests together | `ms verify ms.toml` | A status for each step; nonzero if a step fails |
-| Find an API | `ms search_symbol json` | A bounded page of matching declarations |
-| Understand a program visually | `ms diagram ms.toml --format html -o code-map.html` | An offline HTML file with checked source relationships |
+| Check code, formatting, lint and tests together | `ms check --test ms.toml` | A status for each step; nonzero if a step fails |
+| Profile a run | `ms run --profile ms.toml` | A bundle with folded stacks, a pprof profile and a top report |
+| Find an API | `ms search json` | A bounded page of matching declarations |
+| Understand a program visually | `ms map ms.toml --format html -o code-map.html` | An offline HTML file with checked source relationships |
 
 For a complete example with its output, start with the [first-program workflow](../learn/getting-started.md). The sections below explain command options and the structured results that automation reads.
 
-- Bare `ms` prints help. `ms version` and `ms --version` print the compiler version.
+- Bare `ms` prints help. `ms --version` prints the compiler version.
 - Command-line arguments must be valid UTF-8; invalid OS arguments return usage status 2.
 - Long options take `--output path` or `--output=path`; only the first `=` splits, so `--output=api=v1.md` writes `api=v1.md`. Required values cannot be empty.
 - Arguments after `--` are forwarded to the application unchanged.
 - Commands taking one source input also accept a project directory with `ms.toml`. Native commands select one application entrypoint.
-- `ms check <targets> --fix` and `ms lint <targets> --fix` apply available machine-applicable diagnostic fixes in place, then report what remains. They skip overlapping edits and cannot be combined with `--watch`. See the [diagnostic fix contract](source/diagnostics.md#json-diagnostics) for the supported repairs and JSON fields.
+- `ms check --only types <targets> --fix` and `ms check --only lint <targets> --fix` apply available machine-applicable diagnostic fixes in place, then report what remains. They skip overlapping edits and cannot be combined with `--watch`. See the [diagnostic fix contract](source/diagnostics.md#json-diagnostics) for the supported repairs and JSON fields.
 - A failed source read or write while applying `--fix` returns status 1 and appears in the diagnostics, including `--json`. Independent writable files are still fixed and rechecked.
 - Final stdout handling reports failed writes or flushes with status 1 when the command would otherwise succeed. It preserves existing nonzero statuses and does not add a failure for a broken pipe.
 
@@ -39,7 +40,7 @@ ms test test.ms --watch
 ```
 
 - `run` and `test` rebuild after each saved change to the manifest or a loaded local module, then restart. The old program gets an interrupt and five seconds for cleanup, and is stopped only after its replacement builds. A failed edit prints diagnostics and keeps watching.
-- `ms check <targets> --watch` and `ms lint <targets> --watch` rerun after each saved change and keep watching through errors and findings. `--json` cannot be combined with `--watch`.
+- `ms check --only types <targets> --watch` and `ms check --only lint <targets> --watch` rerun after each saved change and keep watching through errors and findings. `--json` cannot be combined with `--watch`.
 - Interrupting `ms` exits with status 130. See [cache boundaries](builds/incremental-compilation.md) for what a rebuild still compiles.
 
 Project lint covers every reachable local module. [Library projects](builds/project-configuration.md#library-projects-and-copied-dependencies) include all source modules and discovered tests.
@@ -49,7 +50,7 @@ Project lint covers every reachable local module. [Library projects](builds/proj
 Create a map of your project and open the resulting file in a browser:
 
 ```sh
-ms diagram ms.toml --format html -o code-map.html
+ms map ms.toml --format html -o code-map.html
 ```
 
 The command succeeds silently and writes `code-map.html`. The single HTML file includes the source and works offline. Start at a module or function, follow callers and callees, and click source identifiers to see their checked types. Switch between overview, calls, sequence, behavior, types and route views. Function signatures show parameter borrow modes and returned values, connecting ownership to the code you are reading.
@@ -58,7 +59,7 @@ For a review, add a unified diff to highlight changed declarations and filter th
 
 ```sh
 git diff --no-renames > change.patch
-ms diagram ms.toml --format html --diff change.patch -o review.html
+ms map ms.toml --format html --diff change.patch -o review.html
 ```
 
 These commands write `change.patch` and `review.html` without terminal output. Run them in a working tree that matches the diff's after state. The map shows relationships and control flow from the checked source; the sequence and behavior views are static, not runtime traces. Use [profiling](debugging/debugger-integration.md) to observe a running program and [tests](../learn/testing.md) to check its outcomes.
@@ -66,26 +67,26 @@ These commands write `change.patch` and `review.html` without terminal output. R
 ## Source inspection
 
 ```sh
-ms check ms.toml --json
-ms inspect ms.toml -o inspection.json
-ms emit ms.toml -o main.mir
-ms diagram ms.toml
-ms diagram ms.toml --format mermaid -o calls.mmd
+ms check --only types ms.toml --json
+ms map --view inspect ms.toml -o inspection.json
+ms build --emit mir ms.toml -o main.mir
+ms map ms.toml
+ms map ms.toml --format mermaid -o calls.mmd
 ```
 
-These need no linker. `emit` checks and lowers the program, then prints MIR; it does not emit an executable. `inspect` keeps symbols, local names, call sites, source hashes, statement spans, and declared effects. `diagram` presents checked program relationships as ASCII (default), Mermaid, or an [interactive HTML code map](#interactive-code-map). Review and diagram describe project declarations; standard-library calls remain boundary leaves and imports remain visible dependencies.
+These need no linker. `build --emit` checks and lowers the program, then prints MIR (or the LLVM IR with `--emit ir`); it does not emit an executable. `map --view inspect` keeps symbols, local names, call sites, source hashes, statement spans, and declared effects. `map` presents checked program relationships as ASCII (default), Mermaid, or an [interactive HTML code map](#interactive-code-map). `map --view review` and the call graph views describe project declarations; standard-library calls remain boundary leaves and imports remain visible dependencies.
 
 ```sh
-ms diagram ms.toml --view effects --entity save
-ms diagram ms.toml --view errors
-ms diagram ms.toml --view tasks --entity load
-ms diagram ms.toml --view overview
-ms diagram ms.toml --view modules
-ms diagram ms.toml --view types
-ms diagram ms.toml --view ownership --entity save
-ms diagram ms.toml --view flow --entity main --depth 2
-ms diagram ms.toml --view scope --entity save
-ms diagram ms.toml --view flow --entity save --diff change.patch
+ms map ms.toml --view effects --entity save
+ms map ms.toml --view errors
+ms map ms.toml --view tasks --entity load
+ms map ms.toml --view overview
+ms map ms.toml --view modules
+ms map ms.toml --view types
+ms map ms.toml --view ownership --entity save
+ms map ms.toml --view flow --entity main --depth 2
+ms map ms.toml --view scope --entity save
+ms map ms.toml --view flow --entity save --diff change.patch
 ```
 
 | `--view` | Shows |
@@ -103,7 +104,7 @@ ms diagram ms.toml --view flow --entity save --diff change.patch
 
 - `--entity name`, `file::name`, or a full entity ID `file#kind#name` roots the tree at one declaration (a project-relative path for `modules`). An exact entity ID takes precedence over declaration names and qualified names. A missing or ambiguous name fails with a selection remedy. A type and its methods share the same `file::name`; use the distinct IDs offered by the diagnostic, such as `--entity 'src/main.ms#type#Box'` and `--entity 'src/main.ms#impl#Box'`. Without `--entity`, roots are entities nothing relevant calls, plus roots for otherwise unreachable recursive groups. Tests are entry points too.
 - `--depth n` bounds expansion (default 3; 1 for `flow`, `scope`, `tasks` and `ownership`). Repeats print `(cycle)`. A view stops at 200 nodes and counts the rest.
-- `--diff <file|->` reads a unified diff like `ms review` and marks changed entities with `<- TIER #n` or `<- INTERNAL`, and changed flow lines with `<- changed`. ASCII and Mermaid overlays need `--view` or `--entity`; HTML includes the whole map.
+- `--diff <file|->` reads a unified diff like `ms map --view review` and marks changed entities with `<- TIER #n` or `<- INTERNAL`, and changed flow lines with `<- changed`. ASCII and Mermaid overlays need `--view` or `--entity`; HTML includes the whole map.
 - `--format html` includes all views in one page and accepts `--diff`; omit `--view` and `--entity`. Type hints are capped at 200,000 identifiers. Individual views bound their display (about 40 overview nodes, 60 call nodes and 14 sequence lifelines); the map shows omitted counts and lets you navigate to a different part of the program.
 - `--json` emits a versioned document with `view`, `entity` and `tree` (the default view is `calls`).
   - Each tree node has `label`, `kind`, `reference` (a stable entity ID or external call target when available), `file`, `line`, `omitted` and `children`. Source positions are one-based; line zero means no precise source position. The root's `omitted` counts direct nodes skipped by the output cap.
@@ -113,20 +114,20 @@ ms diagram ms.toml --view flow --entity save --diff change.patch
 ## Review report
 
 ```sh
-ms review ms.toml
-git diff --no-renames main... | ms review ms.toml --diff -
-ms review ms.toml --diff change.patch --format markdown
-ms review ms.toml --diff change.patch --explain 1
+ms map --view review ms.toml
+git diff --no-renames main... | ms map --view review ms.toml --diff -
+ms map --view review ms.toml --diff change.patch --format markdown
+ms map --view review ms.toml --diff change.patch --explain 1
 ```
 
-`ms review` prints where a reader should look. Every line is a fixed template filled with facts from the checked program, so equal inputs print equal bytes (no timestamps, absolute paths, or width dependence). An empty section prints `null`.
+`ms map --view review` prints where a reader should look. Every line is a fixed template filled with facts from the checked program, so equal inputs print equal bytes (no timestamps, absolute paths, or width dependence). An empty section prints `null`.
 
 - Without `--diff`: the project map of public surface, entry points with effects, error types in signatures, resource scopes, and imports.
 - With `--diff`: compares the checked program before and after. Pass a unified diff from a file or stdin (`git diff --no-renames` or `diff -u`); `ms` does not run git. The working tree must be the diff's after state. A diff that does not match is rejected with status 2. Renames are unsupported.
 - `--effect <name|pattern>` (with `--diff`) keeps only findings that newly reach or newly permit a matching effect (`std.net.*`, `*.write`). A finding that adds an `allow_effect` line prints `permits: + NAME` and ranks above `reaches: + NAME`, because a widened permission lets later code reach more without another review row.
 - `--explain <n|id>` (with `--diff`) prints one finding: id, tier, location, score terms, evidence, direct callers, and the diagram command for its flow. `n` is the number under LOOK HERE FIRST; a full id or unambiguous entity name also works. Removed entities and declarations without a callable body have no current flow.
 - `--format ascii|markdown` picks the rendering. Text tables show five rows per section unless `--all`; `--json` includes every row and finding. Report format 2 includes `base_checked` (`null` for a project map) and a `number` on each finding (`null` for INTERNAL).
-- `--explain <n|id> --json` emits `finding`, structured `callers`, and a `diagram` request with `view` and `entity`, or `null` when no current flow exists. Pass that entity ID directly to `ms diagram --entity`.
+- `--explain <n|id> --json` emits `finding`, structured `callers`, and a `diagram` request with `view` and `entity`, or `null` when no current flow exists. Pass that entity ID directly to `ms map --entity`.
 - If the before state does not check, the report says so and lists only touched entities. If the current tree fails checking, it prints diagnostics and exits 1.
 
 Entities match by file, kind, and name, so formatting and in-file moves are not changes. Tiers:
@@ -146,9 +147,9 @@ The report compares tracked static properties; it does not run tests. An INTERNA
 For an agent, follow a finding's stable ID through the same workflow:
 
 ```sh
-ms review ms.toml --diff change.patch --json
-ms review ms.toml --diff change.patch --explain 1 --json
-ms diagram ms.toml --view flow --entity 'src/main.ms#fn#save' --diff change.patch --json
+ms map --view review ms.toml --diff change.patch --json
+ms map --view review ms.toml --diff change.patch --explain 1 --json
+ms map ms.toml --view flow --entity 'src/main.ms#fn#save' --diff change.patch --json
 ```
 
 Replace the example ID with `diagram.entity` from the explanation. Each command needs the diff again, so save a piped diff to a file before following up.
@@ -159,14 +160,14 @@ These commands answer questions the compiler commands do not, and print only wha
 
 | Command | Behavior |
 | --- | --- |
-| `ms search_symbol [<name or words>... \| <path>]` | Fuzzy, case-insensitive lookup over project and standard-library symbols (`--limit n`, default 5, max 10 total matches; `--json`). Project matches come first and print `file:line:column`, type, description, and up to five uses; standard matches fill remaining places and print signature and path. A lone module or declaration path (`json`, `prelude.List`, `prelude.List.sorted`) prints that page, capped near 3.5 KB; no argument lists modules |
-| `ms explain <code...> [--json]` | Explain diagnostic families, severity and usual repairs |
+| `ms search [<name or words>... \| <path>]` | Fuzzy, case-insensitive lookup over project and standard-library symbols (`--limit n`, default 5, max 10 total matches; `--json`). Project matches come first and print `file:line:column`, type, description, and up to five uses; standard matches fill remaining places and print signature and path. A lone module or declaration path (`json`, `prelude.List`, `prelude.List.sorted`) prints that page, capped near 3.5 KB; no argument lists modules |
+| `ms help <code...> [--json]` | Explain diagnostic families, severity and usual repairs |
 
-Pair them with `ms check`, `ms fmt --check`, `ms lint`, and `ms test`, which print compact diagnostics (`--json` for complete documents).
+Pair them with `ms check`, `ms fmt --check`, `ms check --only lint`, and `ms test`, which print compact diagnostics (`--json` for complete documents).
 
 ## Selecting independent analysis inputs
 
-`check` and `lint` accept multiple `.ms` files, directories, and `ms.toml` projects. `ms check src utilities.ms --json` checks each input independently; declarations are not combined and no `main` or test runs. Native commands take one entrypoint.
+`ms check --only types` and `--only lint` accept multiple `.ms` files, directories, and `ms.toml` projects. `ms check --only types src utilities.ms --json` checks each input independently; declarations are not combined and no `main` or test runs. Native commands take one entrypoint.
 
 - A directory with `ms.toml` selects that project.
 - A directory without one recursively selects `.ms` files, skipping hidden, `vendor`, and `node_modules` directories, directory symlinks, and nested projects. Select nested projects explicitly; explicitly selecting an excluded path is allowed. File symlinks must stay inside the directory.
@@ -180,7 +181,7 @@ Targets, imported diagnostics, and documented modules are deduplicated and order
 
 ## Machine-readable native results
 
-`ms build <input> --json` and `ms profile <input> --json` write one `format: 1` document to stdout. Usage errors return 2 on stderr with no JSON. Stderr stays stderr; profile captures application stdout untruncated.
+`ms build <input> --json` and `ms run --profile <input> --json` write one `format: 1` document to stdout. Usage errors return 2 on stderr with no JSON. Stderr stays stderr; profile captures application stdout untruncated.
 
 | Field | Meaning |
 | --- | --- |
@@ -219,13 +220,13 @@ A program that ends in a runtime fault (exit status 134, or 139 for `stack_overf
 - `position` and `trace` (`function`, `file`, `line`, innermost first, `repeated` when frames collapsed), and `trace_truncated`.
 - `cleanups_ran` (the runtime runs every cleanup before it reports), `cleanup_faults`, and `exit_code`.
 
-`ms verify [target] [--json] [--no-test] [--deny-warnings]` runs `check`, `fmt --check`, `lint`, and `test` on one target (default `ms.toml`) and exits 1 when any step fails. Lint warnings do not fail the `lint` step unless `--deny-warnings` is passed.
+`ms check [target] [--json] [--test] [--deny-warnings]` with no `--only` runs the type check, `fmt --check` and the lint rules, and with `--test` the tests, on one target (default `ms.toml`) and exits 1 when any step fails. Lint warnings do not fail the `lint` step unless `--deny-warnings` is passed. `--only types`, `--only lint` or `--only fmt` runs one step with that step's own options (`--fix`, `--watch`, `--std`, several inputs) and its own output.
 
 - `--json` writes `target`, `ok`, and a `steps` array in that order. Each step has `name`, `status` (`passed`, `failed`, `skipped`), `exit_code`, `duration_ns`, and `result`, the command's own `--json` document unchanged. A step that cannot produce one carries `error`; a skipped step carries `reason`.
-- `lint` and `test` are skipped when `check` fails; `fmt` always runs; `--no-test` skips the native test build.
+- `lint` and `test` are skipped when `types` fails; `fmt` always runs; the native test build runs only with `--test`.
 - Without `--json`, each failed step prints its first eight findings to stderr.
 
-`ms inspect`, `diagram`, and `review` accept `--json` for check failures: unchecked source writes the `check --json` `diagnostics` document and exits 1. Successful diagram and review JSON use the schemas described above.
+`ms map` (every view) accepts `--json` for check failures: unchecked source writes the `check --json` `diagnostics` document and exits 1. Successful call graph and review JSON use the schemas described above.
 
 Formatting results contain `files` and `diagnostics`, both arrays even when empty. Each file has `path` and `status`: `clean`, `needs_formatting`, or `error`. Files are deduplicated and ordered by displayed path. Drift is `MSF001`; selection and I/O errors are `MSF002`; parse and manifest diagnostics keep their codes. The command writes no source, returns 1 on any drift or error, and still reports other files. An empty selection succeeds.
 
@@ -265,7 +266,7 @@ The language server provides incremental sync with validated UTF-16 ranges, diag
 
 ## Linting and formatting
 
-Each lint rule is a **warning** or an **error**. `lint` returns 1 when a source file fails checking or has an error finding, and 0 otherwise: warnings are printed (with a count) but do not fail the command. `--deny-warnings` makes warnings fail too, for CI. `--json` findings carry `severity` (`warning` or `error`); the language server reports warnings and errors with the matching LSP severity. `ms explain <code>` prints a rule's severity. Run `ms check` for correctness errors.
+Each lint rule is a **warning** or an **error**. `ms check --only lint` returns 1 when a source file fails checking or has an error finding, and 0 otherwise: warnings are printed (with a count) but do not fail the command. `--deny-warnings` makes warnings fail too, for CI. `--json` findings carry `severity` (`warning` or `error`); the language server reports warnings and errors with the matching LSP severity. `ms help <code>` prints a rule's severity. Run `ms check --only types` for correctness errors.
 
 | Code | Severity | Finding |
 | --- | --- | --- |
@@ -284,17 +285,17 @@ Each lint rule is a **warning** or an **error**. `lint` returns 1 when a source 
 | MSL115 | warning | A promise dropped as soon as it is made, which cancels its work. Bind it and call `wait()`, or pass it to `wait_all` |
 | MSL116 | warning | A function reaches an effect no `// ms: allow_effect` line permits. A function is pure unless a line above it, or in the file's header comment, permits what it reaches (`std.fs.read`, `std.fs.*`, `*.read`, `*`). A function's own lines can only tighten the header. `// ms: effect NAME` declares an effect and hides the body from callers. `main`, `test` and `fixture` are unrestricted. Converting a record to an interface, naming a function as a value and writing a closure charge the enclosing function. The message names the call path |
 | MSL117 | warning | An integer literal interpolated into text, such as the `{4}` of `f"\\d{4}"`, which interpolates the number 4 instead of writing a regex quantifier. Drop the `f` so braces are plain, or write `\{4\}` |
-| MSL118 | error | A `length()` of a string, list, map or set compared with zero, such as `xs.length() == 0`. Write `xs.is_empty()`, or `not xs.is_empty()` for `!= 0` and `> 0` in a condition. `ms lint --fix` rewrites it |
-| MSL120 | error | `map.get(key).get_or(default)` on a map. Write `map.get_or(key, default)`. `ms lint --fix` rewrites it |
-| MSL121 | error | `var x = a` followed by `if c { x = b }`, where `a` is a literal or name and `c` does not read `x`. Write `x := if c { b } else { a }`. `ms lint --fix` rewrites it |
-| MSL122 | error | `var i = 0` and `while i < n { ... }` whose last statement is `i += 1`, with `i` unused afterwards and no `continue`. Write `for i in 0..n { ... }`. `ms lint --fix` rewrites it |
+| MSL118 | error | A `length()` of a string, list, map or set compared with zero, such as `xs.length() == 0`. Write `xs.is_empty()`, or `not xs.is_empty()` for `!= 0` and `> 0` in a condition. `ms check --only lint --fix` rewrites it |
+| MSL120 | error | `map.get(key).get_or(default)` on a map. Write `map.get_or(key, default)`. `ms check --only lint --fix` rewrites it |
+| MSL121 | error | `var x = a` followed by `if c { x = b }`, where `a` is a literal or name and `c` does not read `x`. Write `x := if c { b } else { a }`. `ms check --only lint --fix` rewrites it |
+| MSL122 | error | `var i = 0` and `while i < n { ... }` whose last statement is `i += 1`, with `i` unused afterwards and no `continue`. Write `for i in 0..n { ... }`. `ms check --only lint --fix` rewrites it |
 | MSL123 | warning | `for i in 0..xs.length() { ... }` where the body only reads `xs[i]`. Write `for item in xs { ... }` |
 | MSL124 | warning | A fresh list or total filled by a loop whose body is one `append` or `+=`. Write `map`, `filter` or `sum` |
 | MSL125 | warning | `for x in xs { out.append(x) }` (or `x.clone()`). Write `out.extend(xs)` |
 | MSL126 | error | `x := e` directly followed by `return x`. Write `return e` |
 | MSL127 | error | `m[k.clone()] = m.get(k).get() - v`. Write `m[k] -= v` |
 | MSL128 | error | A final `return ok()` in a `Void!` function, or `return` in a `Void` one, after other statements. The end of the body already returns it; delete the line |
-| MSL129 | error | A statement `result.get_or(null)` on a `Void!`. Write `void result`. `ms lint --fix` rewrites it |
+| MSL129 | error | A statement `result.get_or(null)` on a `Void!`. Write `void result`. `ms check --only lint --fix` rewrites it |
 | MSL130 | warning | A statement `result.get()` on a Result faults when the call fails. Write `call()?` where the function returns a Result (`main` can return `Void!`), or `void call()` to ignore the outcome |
 | MSL131 | warning | `print(call())` where the call returns a Result prints the wrapper (`ok(2)`), not the value. Write `call()?` in a function that returns a Result, or `if value := call() { ... }` |
 | MSL132 | warning | `xs.slice(a, b).get_or(fallback)` returns the fallback for any bad range, including an end past the length, with no error. Write `xs.slice(a, b)?`, or clamp the end with `min(end, xs.length())` first |
@@ -337,8 +338,8 @@ Expression layout uses a soft limit of 88 columns:
 
 Native builds keep frame pointers and DWARF line tables, so faults report source frames and external tools such as `perf` can attribute samples; see [profiling and native debugging](debugging/debugger-integration.md).
 
-`ms profile <file.ms|ms.toml> --out-dir <new-directory>` builds the application, runs it with the sampling profiler, and writes `program`, `profile.folded`, `profile.pb` (pprof), `top.txt`, and `manifest.json`. Existing directories are rejected. Profiling adds overhead, so measure an unprofiled executable when comparing speed.
+`ms run --profile <file.ms|ms.toml> --out-dir <new-directory>` builds the application, runs it with the sampling profiler, and writes `program`, `profile.folded`, `profile.pb` (pprof), `top.txt`, and `manifest.json`. Existing directories are rejected. Profiling adds overhead, so measure an unprofiled executable when comparing speed.
 
 ```sh
-ms profile main.ms --out-dir samples --top 10
+ms run --profile main.ms --out-dir samples --top 10
 ```

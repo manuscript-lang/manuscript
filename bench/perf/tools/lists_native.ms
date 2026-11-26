@@ -82,10 +82,17 @@ fn run(opts Map[String, String], runs Int) Result[String, Error] {
 			),
 		)?
 		_emit := must(
-			"ms emit",
+			"ms build --emit mir",
 			capture(
 				cli.clone(),
-				["emit", program.clone(), "-o", f"{out}/{label}.mir"],
+				[
+					"build",
+					"--emit",
+					"mir",
+					program.clone(),
+					"-o",
+					f"{out}/{label}.mir",
+				],
 			),
 		)?
 		_warm := must(label, capture(binary.clone(), []))?

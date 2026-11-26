@@ -6,7 +6,7 @@ Decision: the owner said stdlib effect tags must follow logical pieces of functi
 
 Rule: tag an exported function with the `std.` capability a caller would be surprised by: files (`fs.read/write/delete`), network (`net.connect/listen`), processes, environment, clock and sleep, randomness, console, system facts. Add every capability the function exposes (`ulid` reads random bits and the clock). Methods on handles stay untagged: the capability was charged where the handle was opened. Pure parsing, formatting, math, collections, concurrency scheduling and test assertions have no tag. `// ms: effect` on a function hides its body, so a wrapper that declares one must list everything it uses.
 
-Apply when: adding or changing an exported stdlib function that reaches the host, or a new capability. Audit method: for each module list exported functions with no tag that reach host externs through the call graph (`ms inspect` calls and entities), then judge each by what it does, not by the extern name.
+Apply when: adding or changing an exported stdlib function that reaches the host, or a new capability. Audit method: for each module list exported functions with no tag that reach host externs through the call graph (`ms map --view inspect` calls and entities), then judge each by what it does, not by the extern name.
 
-Evidence: the `// ms: allow_effect` comments in `src/stdlib/*.ms` are the list; `ms lint` fails on names outside the vocabulary (`src/tooling/lint_effects.c`); [proposal](../../proposals/function-effects.md).
-Verify: `ctest --preset ci` and `ms lint` on a helper that reaches the host.
+Evidence: the `// ms: allow_effect` comments in `src/stdlib/*.ms` are the list; `ms check --only lint` fails on names outside the vocabulary (`src/tooling/lint_effects.c`); [proposal](../../proposals/function-effects.md).
+Verify: `ctest --preset ci` and `ms check --only lint` on a helper that reaches the host.

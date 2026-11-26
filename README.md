@@ -6,7 +6,7 @@
 
 [Get started](documentation/learn/getting-started.md) · [Why Manuscript](documentation/learn/why-manuscript.md) · [Guide](documentation/guide/_index.md) · [Performance](bench/perf/README.md) · [Vision](VISION.md)
 
-<img src="website/static/images/screencast.gif" width="720" alt="A screencast of Manuscript: failure as values, ownership errors, promises, ms verify, the call graph and a native build, each with a short caption.">
+<img src="website/static/images/screencast.gif" width="720" alt="A screencast of Manuscript: failure as values, ownership errors, promises, ms check --test, the call graph and a native build, each with a short caption.">
 
 </div>
 
@@ -87,7 +87,7 @@ fn audit(total Int) Void! {
 }
 ```
 
-Declare an effect once, and `ms lint` flags every caller that did not allow it, naming the call chain that brings it in. Effects are comments, so the language gains no extra syntax.
+Declare an effect once, and `ms check --only lint` flags every caller that did not allow it, naming the call chain that brings it in. Effects are comments, so the language gains no extra syntax.
 
 ## Errors that name the fix
 
@@ -98,7 +98,7 @@ which writes any value and a newline; for write errors or bytes import stdout fr
 "@std/io/io.ms" and call stdout().write("text\n")
 ```
 
-Every diagnostic gives the cause and the remedy, `ms check --fix` applies the mechanical ones, and `--json` is there for agents. Failure is a value (`T!`), and `Error` is one pointer wide, so a fallible function uses no more stack than an infallible one.
+Every diagnostic gives the cause and the remedy, `ms check --only types --fix` applies the mechanical ones, and `--json` is there for agents. Failure is a value (`T!`), and `Error` is one pointer wide, so a fallible function uses no more stack than an infallible one.
 
 ## Batteries included
 
@@ -121,18 +121,18 @@ HTTP, WebSocket and TLS, JSON, YAML, TOML, CSV and XML, crypto, big and decimal 
 ## Review without reading every line
 
 ```sh
-ms diagram ms.toml --format html -o code-map.html
-git diff main... | ms review ms.toml --diff -
+ms map ms.toml --format html -o code-map.html
+git diff main... | ms map --view review ms.toml --diff -
 ```
 
-The code map shows source, types, calls and ownership side by side, with the declarations a change touched highlighted. `ms review` ranks what deserves your attention first: changed contracts, error flow and resource scopes. See [working with an agent](documentation/guide/working-with-an-agent.md).
+The code map shows source, types, calls and ownership side by side, with the declarations a change touched highlighted. `ms map --view review` ranks what deserves your attention first: changed contracts, error flow and resource scopes. See [working with an agent](documentation/guide/working-with-an-agent.md).
 
 ## Test, fuzz, benchmark, profile
 
 ```sh
 ms test ms.toml --fuzz 30s
 ms bench ms.toml
-ms profile ms.toml
+ms run --profile ms.toml
 ```
 
 Property tests double as a fuzzer, benchmarks time each change, and the profiler gives source attribution, pprof and folded stacks.

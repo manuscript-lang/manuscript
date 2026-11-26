@@ -1,3 +1,5 @@
 check
+--only
+types
 main.ms
 --fix

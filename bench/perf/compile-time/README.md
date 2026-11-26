@@ -12,7 +12,7 @@ Machine: 4 cores, Linux. ms built from current checkout (`make build`, release, 
 | go build (cold cache) | 10.2 s (21.5 s CPU) |
 | go build, 1 file touched | 0.23 s |
 | ms check (parse + check) | 1.8 s |
-| ms emit (+ lower/MIR) | 2.9 s |
+| ms build --emit mir (+ lower/MIR) | 2.9 s |
 | ms build --build-type Debug (Cranelift) | 10.5 s |
 | ms build, Cranelift release (MS_BACKEND=cranelift) | 12.3 s |
 | ms build, Release (LLVM) | 293 s (user 279 s: one thread) |
@@ -82,7 +82,7 @@ The Rust program is one crate with 40 modules of 25 files, the closest match for
 | --- | --- |
 | go build (cold) | 10.52 s |
 | ms check | 1.60 s |
-| ms emit | 2.40 s |
+| ms build --emit mir | 2.40 s |
 | ms build Debug (Cranelift) | 4.82 s |
 | ms build Cranelift release | 7.20 s |
 | ms build Release (LLVM) | 43.81 s |

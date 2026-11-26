@@ -1,0 +1,44 @@
+Usage: ms check [target...] [--only types|lint|fmt] [--json] [--deny-warnings] [--test]
+
+Check a program without running it. With no --only, run three steps on one target and report them together:
+types (parse, resolve imports, type-check), fmt (is the source formatted), and lint (hygiene and semantic rules).
+The target defaults to ms.toml. Lint is skipped when types fail; fmt always runs. Exit status is 1 when any step fails.
+With --json the document holds one entry per step with its status, exit code, and that step's own --json result.
+
+Options:
+  --only <step>    Run one step with its own options and output: types, lint or fmt (fmt is ms fmt --check)
+  --json           Emit versioned JSON instead of terminal messages
+  --test           With no --only, also run the tests (one target; it builds a native executable)
+  --deny-warnings  Treat lint warnings as errors (CI)
+  -h, --help       Show this help without executing the command
+
+With no --only, one target is allowed and only --json, --deny-warnings and --test apply. The rest need --only.
+
+ms check --only types <file.ms|directory|ms.toml>... [--json [--with-text [--each]]] [--watch] [--fix] [--std]
+  Parse, resolve imports, and type-check independent inputs without executing source.
+  A project directory selects ms.toml and checks all source modules, discovered tests, and its entry signature.
+  Standalone directories discover .ms files recursively, skipping hidden/vendor/node_modules directories, directory symlinks, and nested projects.
+  Each input retains its own import root; pass nested projects explicitly. Use -- before flag-like filenames.
+  --json       Emit versioned JSON diagnostics instead of terminal messages
+  --with-text  With --json, also carry the terminal output as text.stdout and text.stderr
+  --each       With --json --with-text, report every input as its own result, `{"results": [{"target", "exit_code", "document"}]}`, from one standard-library load
+  --std        Check every bundled standard-library body, not only those the program reaches
+  --watch      Recheck after each saved change to an input or loaded module (no --json)
+  --fix        Apply machine-applicable fixes (the `fix` field of --json diagnostics) in place, then report what remains (no --watch)
+
+ms check --only lint <file.ms|directory|ms.toml>... [--json] [--watch] [--fix] [--deny-warnings] [--syntax]
+  Check source hygiene and semantic lint rules in independent inputs and their imports.
+  A project lints all its source modules and test files, imported or not. Discovery skips hidden/vendor/node_modules directories,
+  directory symlinks, and nested projects.
+  Each rule is a warning or an error (`severity` in --json; `ms help MSL110` shows it). Warnings are reported
+  without failing; exit status is 1 when any input fails checking or has an error finding, or any finding with --deny-warnings.
+  --syntax  Run only the rules that need a parse (nested matches) on each file, and on the code fences of a .md file;
+            code that does not type-check is still linted, code that does not parse is skipped
+
+Examples:
+  ms check
+  ms check ms.toml --json
+  ms check --test --deny-warnings
+  ms check --only types main.ms --watch
+  ms check --only types src utilities.ms --json
+  ms check --only lint ms.toml --fix

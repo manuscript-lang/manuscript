@@ -1,4 +1,4 @@
-/* cli/help_command.h: `ms help`, `ms version`, and the help and unknown-command answers every command shares.
+/* cli/help_command.h: `ms help`, `ms --version`, and the help and unknown-command answers every command shares.
  *rs. */
 #ifndef MS_CLI_HELP_COMMAND_H
 #define MS_CLI_HELP_COMMAND_H
@@ -20,9 +20,9 @@ void ms_help_unknown_command(MsSpan name);
  * value. */
 bool ms_help_requested(int argc, char **argv);
 
-/* `ms help [command]` and `ms version`/`ms --version`, with the arguments after the command name. Return the exit
+/* `ms help [command | code]` and `ms --version`, with the arguments after the command name. Return the exit
  * status. */
 int ms_help_command(int argc, char **argv);
-int ms_version_command(const char *name, int argc, char **argv);
+int ms_version_command(int argc, char **argv);
 
 #endif

@@ -113,16 +113,18 @@ ms test ms.toml
 For this generated project, the commands report:
 
 ```text
-Checked ms.toml (2 modules)
+types  passed
+fmt    passed
+lint   passed
 1 tests, 0 failed
 ```
 
-`fmt` succeeds silently. `check` finds errors without running, `fmt` formats, and `test` runs the generated test block. `ms verify ms.toml` checks source, checks formatting without rewriting files, lints, and runs tests; `ms --help` lists all commands. See [project configuration](../developer-tooling/builds/project-configuration.md) when you need to change the entry point or add dependencies.
+`fmt` succeeds silently. `check` finds type errors, unformatted source and lint findings without running, `fmt` formats, and `test` runs the generated test block. `ms check --test ms.toml` checks source, checks formatting without rewriting files, lints, and runs tests; `ms --help` lists all commands. See [project configuration](../developer-tooling/builds/project-configuration.md) when you need to change the entry point or add dependencies.
 
 ## 6. Explore your program
 
 ```sh
-ms diagram ms.toml --format html -o code-map.html
+ms map ms.toml --format html -o code-map.html
 ```
 
 The command succeeds silently and writes `code-map.html`. Open it in a browser to follow calls, read the source and inspect checked types. The interactive file works offline and grows with your project. See [the interactive code map](../developer-tooling/implementation.md#interactive-code-map) for navigation and change overlays.
