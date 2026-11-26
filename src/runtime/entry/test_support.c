@@ -5,10 +5,12 @@
 
 #include <stdatomic.h>
 #include <stdlib.h>
+#include <string.h>
 #include <uv.h>
 
 #include "abi/fault.h"
 #include "base/alloc.h"
+#include "base/fatal.h"
 #include "base/file.h"
 #include "base/desc.h"
 #include "runtime/core/fault_kept.h"
@@ -110,6 +112,22 @@ void msrt_test_failure(const MsString *message, const MsMap *details) {
   ms_fault_record_write(MS_FAULT_KIND_TEST_FAILURE, reason, site != NULL, where);
   MsString owned = key;
   ms_string_release(&owned);
+}
+
+/* Readable bytes, then as many unreadable: a multiple of every page size the platforms use (4, 16 and 64 KiB). */
+enum { EDGE_PAGE = 64 * 1024 };
+
+void msrt_test_edge_string(const MsString *text, MsString *out) {
+  const MsSpan bytes = ms_string_span(text);
+  uint8_t *const region = bytes.len > EDGE_PAGE ? NULL : ms_sys_map_anon(2 * EDGE_PAGE);
+  if (region == NULL || !ms_sys_commit(region, EDGE_PAGE) || !ms_sys_guard(region + EDGE_PAGE, EDGE_PAGE)) {
+    ms_fatal(MS_FATAL_OUT_OF_MEMORY, "msrt_test_edge_string: no guard page");
+  }
+  uint8_t *const start = region + EDGE_PAGE - bytes.len;
+  if (bytes.len > 0) {
+    memcpy(start, bytes.ptr, bytes.len);
+  }
+  *out = ms_string_view(ms_span_of(start, bytes.len));
 }
 
 void msrt_test_capture_fault(int64_t id, MsString *out) {
