@@ -19,9 +19,9 @@ licenses: build
 licenses-check: repo-check
 
 # Each of these runs tools/<name>.ms with the built ms; the tool's header comment says what it checks.
-TOOLS := doctor view-matrix scaling-check leak-check cancel-sweep perf-counts resource-matrix close-matrix copy-check memcpy-check removed-check
+TOOLS := doctor view-matrix scaling-check leak-check cancel-sweep perf-counts resource-matrix close-matrix copy-check memcpy-check removed-check stress-sched
 
-.PHONY: build conform conform-release verify verify-full repo-check licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check bench-check perf perf-list perf-check stdlib-bench poison-check ownership-fuzz count-check vscode-package vscode-install $(TOOLS)
+.PHONY: build conform conform-release verify verify-full repo-check licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check bench-check perf perf-list perf-check stdlib-bench poison-check ownership-fuzz bench-gate count-check vscode-package vscode-install $(TOOLS)
 
 # Configures and builds the `ci` preset (src/README.md); `ms` lands in $(MS).
 build:
@@ -53,6 +53,11 @@ $(TOOLS): build
 # prints garbage in every build.
 poison-check: build
 	MS_POISON_SLOTS=1 cmake --build --preset ci --target conform
+
+# The allocation and copy counts of the guard programs against bench/perf/guards/baseline.json; fails when one rose more than
+# 3%. Nightly on main.
+bench-gate: build
+	cd bench/perf/guards && "$(MS)" bench ms.toml --baseline baseline.json --fail-over 3
 
 # Random ownership programs; SEED and COUNT pick the run. Nightly on main.
 ownership-fuzz: build
