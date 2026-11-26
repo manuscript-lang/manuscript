@@ -44,70 +44,6 @@ static bool narrowed_local(const LowerFn *fn, uint32_t local, MirTy ty) {
   return scan.found;
 }
 
-/* Whether a `var` is ever given a value that is not a borrowing call's result (`found = own.clone()`, `found += "!"`): it then
- * owns what it holds, so a view bound at its declaration is copied there. */
-typedef struct OwnedStores {
-  const LowerFn *fn;
-  uint32_t local;
-  bool found;
-} OwnedStores;
-
-static void note_owned_store(void *ctx, const MsStmt *stmt) {
-  OwnedStores *scan = ctx;
-  if (stmt->kind != MS_S_ASSIGN || scan->found || stmt->u.assign.member_target) {
-    return;
-  }
-  const MsRef *ref = ms_facts_ref(scan->fn->facts, stmt->u.assign.target != NULL ? stmt->u.assign.target->id : stmt->id);
-  if (ref == NULL || ref->kind != MS_REF_LOCAL || ref->local != scan->local) {
-    return;
-  }
-  const MsExpr *stored = stmt->u.assign.value;
-  const MsCall *called = stored != NULL && stored->kind == MS_E_CALL && !stmt->u.assign.has_compound ? ms_facts_call(scan->fn->facts, stored->id) : NULL;
-  scan->found = called == NULL || (called->callee.kind != MS_REF_FUNCTION && called->callee.kind != MS_REF_METHOD) ||
-                !ms_own_result_is_borrowed(scan->fn->cx->program, called->callee.decl.module, called->callee.decl.node);
-}
-
-static bool var_stores_owned(const LowerFn *fn, uint32_t local) {
-  OwnedStores scan = {.fn = fn, .local = local};
-  const MsVisitor visitor = {.ctx = &scan, .stmt = note_owned_store};
-  if (fn->func != NULL) {
-    ms_walk_block(&visitor, fn->func->body);
-  } else if (fn->lambda != NULL) {
-    ms_walk_block(&visitor, fn->lambda->expr->u.lambda.body);
-  }
-  return scan.found;
-}
-
-/* Whether the local is assigned after `after` in the function's text: a name that took the local's value by a last-use move
- * must not read a later assignment. */
-typedef struct LaterStores {
-  const LowerFn *fn;
-  uint32_t local;
-  MsPos after;
-  bool found;
-} LaterStores;
-
-static void note_later_store(void *ctx, const MsStmt *stmt) {
-  LaterStores *scan = ctx;
-  if (stmt->kind != MS_S_ASSIGN || scan->found || stmt->u.assign.member_target) {
-    return;
-  }
-  const MsRef *ref = ms_facts_ref(scan->fn->facts, stmt->u.assign.target != NULL ? stmt->u.assign.target->id : stmt->id);
-  const bool later = stmt->pos.line > scan->after.line || (stmt->pos.line == scan->after.line && stmt->pos.column > scan->after.column);
-  scan->found = ref != NULL && ref->kind == MS_REF_LOCAL && ref->local == scan->local && later;
-}
-
-static bool stored_after(const LowerFn *fn, uint32_t local, MsPos after) {
-  LaterStores scan = {.fn = fn, .local = local, .after = after};
-  const MsVisitor visitor = {.ctx = &scan, .stmt = note_later_store};
-  if (fn->func != NULL) {
-    ms_walk_block(&visitor, fn->func->body);
-  } else if (fn->lambda != NULL) {
-    ms_walk_block(&visitor, fn->lambda->expr->u.lambda.body);
-  }
-  return scan.found;
-}
-
 static MirValue take_value(LowerFn *fn, const MsExpr *expr) {
   const MirValue value = fn_expr(fn, expr, LW_MOVE);
   return value;
@@ -293,7 +229,7 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
                         (called->callee.kind == MS_REF_FUNCTION || called->callee.kind == MS_REF_METHOD) &&
                         ms_own_result_is_borrowed(fn->cx->program, called->callee.decl.module, called->callee.decl.node) &&
                         !call_reads_temporary(fn->facts, stmt->u.bind.value) &&
-                        !var_stores_owned(fn, ms_facts_ref(fn->facts, pattern->id)->local);
+                        !fn_var_stores_owned(fn, ms_facts_ref(fn->facts, pattern->id)->local);
   const bool from_call = (!stmt->u.bind.is_mutable || view_var) && kind == MS_E_CALL;
   /* A function bound to a name may take the type that lets its omittable parameters be left out. */
   const MsTy bound_ty = ms_facts_type(fn->facts, pattern->id);
@@ -363,7 +299,7 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   if (!stmt->u.bind.is_mutable && alias_ref != NULL && alias_ref->kind == MS_REF_LOCAL && local < fn->nvars && fn->vars[local] == 0 &&
       mir_needs_drop(fn->cx->module, ty) && fn_owned_local(fn, stmt->u.bind.value, &alias_of) && var_owns(fn, alias_of) &&
       mir_b_use_var(&fn->b, alias_of) == value && !fn_closer_for(fn, closer, ms_facts_type(fn->facts, pattern->id)) &&
-      !stored_after(fn, alias_ref->local, stmt->pos)) {
+      !fn_stored_after(fn, alias_ref->local, stmt->pos)) {
     fn->vars[local] = alias_of + 1;
     return !fn->failed;
   }
