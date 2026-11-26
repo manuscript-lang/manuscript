@@ -285,7 +285,7 @@ fn field(line, key String) String {
 // The license file a lock line vendors: the entry of `paths=` that names one.
 fn license_path(name, line String) String {
 	for entry in field(line.clone(), "paths").split(",") {
-		base := entry.split("/").last() or ""
+		base := entry.split("/").last().clone() or ""
 		for stem in ["LICENSE", "LICENCE", "COPYING"] {
 			if base.starts_with(
 				stem
@@ -305,7 +305,7 @@ fn notices_under(files List[String]) List[String] {
 				f"{root}/"
 			) { continue }
 
-			base := path.split("/").last() or ""
+			base := path.split("/").last().clone() or ""
 			if notice_names.contains(base) {
 				found.append(path.clone())
 			}

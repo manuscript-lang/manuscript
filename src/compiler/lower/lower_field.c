@@ -156,6 +156,53 @@ bool fn_field_address(LowerFn *fn, const MsExpr *place, MirValue *addr) {
   return true;
 }
 
+/* The address of the field `place` names inside an element of a list or map held in place (`items[i].n`, `m[k].inner.n`),
+ * for a store where the record lies: the element stays in its container, so nothing is copied or put back. False, with
+ * nothing emitted, when `place` is not a field path below such an element or some record on it lays its field out
+ * differently in a cell of its own. */
+bool fn_element_field_address(LowerFn *fn, const MsExpr *place, MirValue *addr) {
+  const MsExpr *chain[FIELD_PATH_MAX];
+  uint32_t length = 0;
+  const MsExpr *base = place;
+  while (base->kind == MS_E_MEMBER) {
+    const MsRef *ref = ms_facts_ref(fn->facts, base->id);
+    if (ref == NULL || ref->kind != MS_REF_FIELD || length == FIELD_PATH_MAX) {
+      return false;
+    }
+    chain[length++] = base;
+    base = base->u.member.left;
+  }
+  MsExpr *container = NULL;
+  MsExpr *key = NULL;
+  if (length == 0 || !ms_expr_index(base, &container, &key) || !fn_place_changeable(fn, container)) {
+    return false;
+  }
+  MirTy record_ty = fn_type(fn, ms_facts_type(fn->facts, base->id));
+  for (uint32_t index = length; index-- > 0;) { /* outermost field first: judge every layout before emitting anything */
+    const MirTyData *data = mir_ty_data(fn->cx->module, record_ty);
+    const MsRef *ref = ms_facts_ref(fn->facts, chain[index]->id);
+    if (data->kind != MK_TYPE || !field_cell_exact(fn->cx->module, data->id, ref->index)) {
+      return false;
+    }
+    record_ty = fn_type(fn, ms_facts_type(fn->facts, chain[index]->id));
+  }
+  MirTy element_ty = MIR_VOID;
+  MirValue at = MIR_NONE;
+  if (!fn_place_address(fn, base, &at, &element_ty)) {
+    return false;
+  }
+  record_ty = element_ty;
+  for (uint32_t index = length; index-- > 0;) {
+    const MirTyData *data = mir_ty_data(fn->cx->module, record_ty);
+    const MsRef *ref = ms_facts_ref(fn->facts, chain[index]->id);
+    const MirImm imm = {.tag = MI_FIELD, .a = data->id, .b = ref->index};
+    at = mir_b_emit(&fn->b, MOP_PtrField, &at, 1, imm, MIR_PTR);
+    record_ty = fn_type(fn, ms_facts_type(fn->facts, chain[index]->id));
+  }
+  *addr = at;
+  return true;
+}
+
 /* Stores `field`, the changed value of the field `fn_take_field` took, back: the old ones share its storage, so they
  * are not dropped. */
 bool fn_put_field(LowerFn *fn, const MsExpr *place, MirValue record, MirValue field) {

@@ -90,7 +90,7 @@ export fn select(root String, filter Filter) List[Fixture] {
 			}
 		}
 	}
-	found = found.sorted_by_key(fx => fx.id)
+	found = found.sorted_by_key(fx => fx.id.clone())
 	if filter.shard_count == 1 { return found }
 
 	mine := (0..found.length()).filter(

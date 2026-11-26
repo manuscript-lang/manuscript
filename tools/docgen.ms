@@ -655,7 +655,7 @@ fn main() Int {
 	result := generate(tool_ms(root), parsed.get())
 
 	if result.is_error() {
-		why := result.err().message
+		why := result.err().message.clone()
 		if why != "" { note(why) }
 		return 1
 	}

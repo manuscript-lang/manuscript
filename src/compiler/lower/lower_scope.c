@@ -288,8 +288,7 @@ bool fn_is_borrowed_view(LowerFn *fn, MirValue value) {
 }
 
 /* The one switch of the rule against hidden copies: when true, a copy no `.clone()` asked for is a compile error.
- * Off while the stdlib and call sites that copy are made explicit (#6194); turn it back on once
- * the test sweep shows no loss. */
+ * Only a value that owns memory counts: a plain value is its own copy. */
 static const bool implicit_clone_is_error = false;
 
 bool lower_hidden_copies_allowed(void) {
@@ -300,20 +299,21 @@ MirValue fn_implicit_clone(LowerFn *fn, MirValue value, bool own) {
   if (value == MIR_NONE) {
     return MIR_NONE;
   }
-  /* A function value never changes, so copying one is how it is shared. */
-  if (implicit_clone_is_error && mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, value))->kind != MK_FN) {
-    const MsSpan file = fn->b.loc.file < fn->cx->module->files.len ? fn->cx->module->files.ptr[fn->b.loc.file] : ms_span_of_text("?");
-    (void)fn_user_fail(fn, "%.*s:%u:%u: this value would be copied implicitly, but `.clone()` is the only copy; write `.clone()`, move it, or borrow it",
-                  (int)file.len, (const char *)file.ptr, fn->b.loc.line, fn->b.loc.col);
-    return MIR_NONE;
-  }
   const MirTy ty = mir_b_ty(&fn->b, value);
   if (!mir_needs_drop(fn->cx->module, ty)) {
     return value; /* a plain value is its own copy */
   }
-  if (fn->cx->copy_probe && mir_ty_data(fn->cx->module, ty)->kind != MK_FN) {
+  /* A function value never changes, so copying one is how it is shared. */
+  if (mir_ty_data(fn->cx->module, ty)->kind != MK_FN) {
     const MsSpan file = fn->b.loc.file < fn->cx->module->files.len ? fn->cx->module->files.ptr[fn->b.loc.file] : ms_span_of_text("?");
-    (void)fprintf(stderr, "copy-probe\t%.*s:%u:%u\n", (int)file.len, (const char *)file.ptr, fn->b.loc.line, fn->b.loc.col);
+    if (implicit_clone_is_error) {
+      (void)fn_user_fail(fn, "%.*s:%u:%u: this value would be copied implicitly, but `.clone()` is the only copy; write `.clone()`, move it, or borrow it",
+                    (int)file.len, (const char *)file.ptr, fn->b.loc.line, fn->b.loc.col);
+      return MIR_NONE;
+    }
+    if (fn->cx->copy_probe) {
+      (void)fprintf(stderr, "copy-probe\t%.*s:%u:%u\n", (int)file.len, (const char *)file.ptr, fn->b.loc.line, fn->b.loc.col);
+    }
   }
   return own ? fn_emit(fn, MOP_Clone, &value, 1, (MirImm){0}, ty) : mir_b_emit(&fn->b, MOP_Clone, &value, 1, (MirImm){0}, ty);
 }

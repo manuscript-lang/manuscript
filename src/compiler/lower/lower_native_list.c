@@ -49,6 +49,13 @@ static MirValue list_element_slot(LowerFn *fn, const MsExpr *place) {
   if (place != NULL && place->kind == MS_E_MEMBER && fn_field_address(fn, place, &field)) {
     return field;
   }
+  if (place != NULL && place->kind == MS_E_MEMBER && fn_element_field_address(fn, place, &field)) {
+    return field; /* a field of an element of a list or map held in place */
+  }
+  MirTy entry_ty;
+  if (place != NULL && ms_expr_index(place, &container, &key) && !fn_is_list(fn, container) && fn_place_address(fn, place, &field, &entry_ty)) {
+    return field; /* an entry of a map held in place (`m[k].append(x)`) */
+  }
   if (place == NULL || !ms_expr_index(place, &container, &key) || !fn_is_list(fn, container) || !lists_in_place(fn, container)) {
     return MIR_NONE;
   }
