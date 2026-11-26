@@ -193,8 +193,11 @@ bool clx_emit_module(const MirModule *module, const MirData *data, const MirGlue
   mod.layouts = &layouts;
   /* MS_CL_THREADS overrides the library's one worker per core (1 compiles on the calling thread). */
   const char *threads = getenv("MS_CL_THREADS");
-  const char *const keys[] = {"threads"};
-  mod.cl = cl_new(NULL, threads != NULL ? 1 : 0, keys, &threads);
+  /* The library defaults to opt_level none, which keeps division by a constant as idiv and dead overflow tests; speed
+   * folds and strength-reduces them (up to 2x faster Debug code) for about 15% more codegen time (#7168). */
+  const char *const keys[] = {"opt_level", "threads"};
+  const char *vals[] = {"speed", threads};
+  mod.cl = cl_new(NULL, threads != NULL ? 2 : 1, keys, vals);
   if (mod.cl == NULL) {
     ms_strbuild_append_text(why, "Cranelift: ");
     ms_strbuild_append_text(why, cl_error(NULL));
