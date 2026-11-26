@@ -621,9 +621,9 @@ fn host_zone() Zone {
 	}
 
 	if spec.starts_with("tz:") {
-		var text = spec.view(3, spec.length())
+		var text = spec.view(3, spec.length()).clone()
 		if text.starts_with(":") {
-			text = text.view(1, text.length())
+			text = text.view(1, text.length()).clone()
 		}
 		if zone := named(text) { return zone }
 

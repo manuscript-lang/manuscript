@@ -181,8 +181,8 @@ type Reader {
 	at, max_depth Int
 }
 
-fn hold Reader.peek(offset Int = 0) &String {
-	return self.chars.get_or(self.at + offset, "")
+fn Reader.peek(offset Int = 0) String {
+	return self.chars.get_or(self.at + offset, "").clone()
 }
 
 fn Reader.looking_at(literal String) Bool {
@@ -323,7 +323,7 @@ fn var Reader.declaration_attribute() XmlAttribute! {
 	self.expect("=")?
 	self.skip_space()
 
-	quote := self.peek().clone()
+	quote := self.peek()
 	if quote != "\"" and quote != "'" {
 		return error(self.invalid("expected a quoted value"))
 	}
@@ -409,7 +409,7 @@ fn var Reader.declaration() Void! {
 
 // Skips a quoted literal; its contents never delimit markup.
 fn var Reader.quoted(public_id Bool = false) Void! {
-	quote := self.peek().clone()
+	quote := self.peek()
 	if quote != "\"" and quote != "'" {
 		return error(self.invalid("expected a quoted literal"))
 	}
@@ -599,7 +599,7 @@ fn var Reader.element(depth Int) XmlNode! {
 		self.expect("=")?
 		self.skip_space()
 
-		quote := self.peek().clone()
+		quote := self.peek()
 		if quote != "\"" and quote != "'" {
 			return error(self.invalid("expected a quoted attribute value"))
 		}

@@ -110,7 +110,7 @@ export fn parse_ini(text String) Map[String, Map[String, String]]! {
 				"]"
 			) { return error(config_error(number, "unterminated section header")) }
 
-			current = entry.view(1, entry.length() - 1).trim()
+			current = entry.view(1, entry.length() - 1).trim().clone()
 			sections.add_default(current.clone(), Map[String, String]())
 			continue
 		}

@@ -317,7 +317,7 @@ fn disposition_params(text String) Map[String, String] {
 				at += 1
 			}
 
-			value = value.trim()
+			value = value.trim().clone()
 		}
 
 		key := name.trim().lower()

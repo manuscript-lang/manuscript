@@ -268,6 +268,9 @@ static void note_keep(Borrows *pass, const MsExpr *kept);
 /* Whether `value` is a call of a declared function or method that answers a view. */
 static bool declared_view_call(const Borrows *pass, const MsExpr *value) {
   const MsCall *called = value != NULL && value->kind == MS_E_CALL ? ms_facts_call(pass->facts, value->id) : NULL;
+  if (called != NULL && called->callee.kind == MS_REF_NATIVE) {
+    return ms_own_declared_ref_result(pass->program, &called->callee); /* a native declares `&T` like any function */
+  }
   return called != NULL && (called->callee.kind == MS_REF_FUNCTION || called->callee.kind == MS_REF_METHOD) &&
          ms_own_result_is_borrowed(pass->program, called->callee.decl.module, called->callee.decl.node);
 }
@@ -730,9 +733,9 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
   } else if (stmt->kind == MS_S_ASSIGN) {
     note_change(pass, stmt->u.assign.target, true, false);
     uint32_t root = 0;
-    if (!stmt->u.assign.member_target && !stmt->u.assign.has_compound && declared_view_call(pass, stmt->u.assign.value) &&
-        local_of(pass->facts, stmt->id, &root) && !holds_view(pass, root)) {
-      note_keep(pass, stmt->u.assign.value); /* an owning `var` would keep the view: clone it */
+    if (!stmt->u.assign.has_compound && declared_view_call(pass, stmt->u.assign.value) &&
+        (stmt->u.assign.member_target || (local_of(pass->facts, stmt->id, &root) && !holds_view(pass, root)))) {
+      note_keep(pass, stmt->u.assign.value); /* a field, or an owning `var`, would keep the view: clone it */
     }
     if (!stmt->u.assign.member_target && local_of(pass->facts, stmt->id, &root)) {
       const uint32_t length = (uint32_t)ms_names_span(pass->program->names, stmt->u.assign.name).len;

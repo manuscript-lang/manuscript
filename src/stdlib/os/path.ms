@@ -583,7 +583,7 @@ fn extension_in(windows Bool, text String) String {
 	base := if slash_at == null {
 		trimmed.clone()
 	} else {
-		trimmed.view((slash_at or 0) + 1, trimmed.length())
+		trimmed.view((slash_at or 0) + 1, trimmed.length()).clone()
 	}
 	return extension_of_base(base)
 }
