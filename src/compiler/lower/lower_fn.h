@@ -636,6 +636,7 @@ MirValue fn_take_payload(LowerFn *fn, MirValue value, MirTy *ty);
 MirValue fn_take_from_temporary(LowerFn *fn, const MsExpr *call, MirValue value);
 /* Whether a read of `expr` leaves the binding: the checker's move, or an owner's last read. */
 bool fn_leaves_binding(const LowerFn *fn, const MsExpr *expr);
+bool fn_names_borrowed_param(LowerFn *fn, const MsExpr *expr);
 bool fn_probe_parts(const LowerFn *fn, const MsStmt *stmt, MsExpr **left, MsExpr **index);
 bool fn_probe_begin(LowerFn *fn, const MsStmt *stmt, MirValue *cond, MirValue *address, MirTy *ty);
 bool fn_lend_writeback(LowerFn *fn, struct VarSlot *lent);
@@ -644,7 +645,7 @@ void fn_probe_end(LowerFn *fn, bool falls_out);
 void fn_writebacks_put(LowerFn *fn, uint32_t keep);
 /* `match` over an alternative (lower_match.c). */
 MirValue fn_match(LowerFn *fn, const MsExpr *expr, LowerWant want);
-bool fn_match_names_places(const MsExpr *expr);
+bool fn_match_names_places(const LowerFn *fn, const MsExpr *expr);
 
 /* The value of a variable, and a new one for local `local` of the function. */
 MirVar fn_local(LowerFn *fn, uint32_t local, MirTy ty);

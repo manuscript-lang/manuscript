@@ -339,7 +339,7 @@ static bool dispatch_literals(LowerFn *fn, const Match *match, const MsExpr *exp
 
 /* Whether every arm of a `match` or `if` either leaves the function or yields a name or a field read in place, and one
  * yields: read as a borrow, the result views whichever place the arm names, a payload an arm binds included. */
-bool fn_match_names_places(const MsExpr *expr) {
+bool fn_match_names_places(const LowerFn *fn, const MsExpr *expr) {
   bool yields = false;
   for (uint32_t index = 0; index < expr->u.match.arms.len; index++) {
     const MsArm *arm = expr->u.match.arms.ptr[index];
@@ -351,8 +351,8 @@ bool fn_match_names_places(const MsExpr *expr) {
       continue;
     }
     const MsExprKind kind = (MsExprKind)arm->value->kind;
-    if (arm->body.len != 0 || (kind != MS_E_NAME && kind != MS_E_MEMBER)) {
-      return false;
+    if (arm->body.len != 0 || (kind != MS_E_NAME && kind != MS_E_MEMBER) || ms_facts_use(fn->facts, arm->value->id) == MS_USE_MOVE) {
+      return false; /* a name the arm gives up is moved out, not viewed */
     }
     yields = true;
   }
@@ -413,7 +413,7 @@ MirValue fn_match(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   const MsTy result = ms_facts_type(fn->facts, expr->id);
   const MirTy result_ty = result == MS_TY_NONE ? MIR_VOID : fn_type(fn, result);
   match.has_result = result_ty != MIR_VOID;
-  match.borrows = want == LW_BORROW && match.has_result && fn_match_names_places(expr);
+  match.borrows = want == LW_BORROW && match.has_result && fn_match_names_places(fn, expr);
   match.result = match.has_result ? mir_b_declare_var(&fn->b, result_ty, match.borrows ? MM_BORROW : MM_MOVE) : 0;
   match.join = mir_b_new_block(&fn->b);
   for (uint32_t index = 0; index < narms; index++) {

@@ -30,7 +30,7 @@ fn actual(cause ValidationError) Int {
 }
 
 fn optional_result(value Int!String?) Int {
-	return (value or panic("called Optional.get() on null")).get_or(-1)
+	return (value or panic("called Optional.get() on null")).clone().get_or(-1)
 }
 
 test "optional Result arguments supply constructor type context" {

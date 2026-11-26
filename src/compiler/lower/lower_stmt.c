@@ -220,7 +220,7 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   const bool or_never = kind == MS_E_BINARY && bound->op == MS_B_OR && fn_call_never(fn, bound->u.bin.right) &&
                         ms_ty_is(&fn->cx->program->types, ms_facts_type(fn->facts, bound->u.bin.left->id), MS_BUILTIN_Optional);
   bool borrow = !stmt->u.bind.is_mutable && !of_temporary &&
-                (kind == MS_E_NAME || kind == MS_E_MEMBER || or_never || (kind == MS_E_MATCH && fn_match_names_places(stmt->u.bind.value)) || ms_expr_index(stmt->u.bind.value, &index_container, &index_key)) &&
+                (kind == MS_E_NAME || kind == MS_E_MEMBER || or_never || (kind == MS_E_MATCH && fn_match_names_places(fn, stmt->u.bind.value)) || ms_expr_index(stmt->u.bind.value, &index_container, &index_key)) &&
                 ms_facts_use(fn->facts, stmt->u.bind.value->id) != MS_USE_MOVE;
   /* A `var` bound to a declared function's view result holds the view: it owns nothing, so a later assignment only
    * replaces the reference. */
@@ -701,7 +701,7 @@ MirValue fn_default_result(LowerFn *fn) {
  * payload. A moved name, a fresh value and another lender's result are already owned. */
 static MirValue view_return(LowerFn *fn, const MsExpr *expr) {
   const bool place = expr->kind == MS_E_NAME || expr->kind == MS_E_MEMBER || expr->kind == MS_E_INDEX;
-  if (place && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE) {
+  if (place && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE && !fn_names_borrowed_param(fn, expr)) {
     return take_value(fn, expr);
   }
   const MirValue value = fn_expr(fn, expr, LW_BORROW);

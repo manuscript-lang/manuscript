@@ -782,6 +782,16 @@ static bool native_answers_view(const LowerFn *fn, const MsExpr *expr, MirValue 
   return callee != NULL && callee->result != NULL && callee->result->is_ref;
 }
 
+/* Whether `expr` names a parameter taken by borrow: it is the caller's, never the callee's to give away. A `var`
+ * parameter the body owns while it runs (it is refilled before the caller sees it) may hand its value on. */
+bool fn_names_borrowed_param(LowerFn *fn, const MsExpr *expr) {
+  const MsRef *ref = ms_facts_ref(fn->facts, expr->id);
+  const uint32_t param_at = ref != NULL ? ref->local + (fn->lambda != NULL ? 1u : 0u) : 0; /* a closure's first parameter is its environment */
+  MirVar param_var = 0;
+  return ref != NULL && ref->kind == MS_REF_PARAM && param_at < fn->b.func.nparams &&
+         fn->b.func.params[param_at].mode != MM_MOVE && !(expr->kind == MS_E_NAME && fn_owned_local(fn, expr, &param_var));
+}
+
 /* A name or field read where the consumer takes ownership: the value stays with its binding unless the use moves
  * it, so the consumer gets a copy. */
 static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, LowerWant want) {
@@ -820,12 +830,7 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
   }
   /* A parameter taken by borrow is never the callee's to give away. */
   const MsRef *ref = ms_facts_ref(fn->facts, expr->id);
-  const uint32_t param_at = ref != NULL ? ref->local + (fn->lambda != NULL ? 1u : 0u) : 0; /* a closure's first parameter is its environment */
-  MirVar param_var = 0;
-  /* A `var` parameter the body owns while it runs (it is refilled before the caller sees it) may hand its value on. */
-  const bool borrowed_param = ref != NULL && ref->kind == MS_REF_PARAM && param_at < fn->b.func.nparams &&
-                              fn->b.func.params[param_at].mode != MM_MOVE &&
-                              !(expr->kind == MS_E_NAME && fn_owned_local(fn, expr, &param_var));
+  const bool borrowed_param = fn_names_borrowed_param(fn, expr);
   /* A field of a `var` binding stays in the record the binding puts back whole, so reading it as a move would free it
    * twice; it is copied. */
   MirVar root_var;
