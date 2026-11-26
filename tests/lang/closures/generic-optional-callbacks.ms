@@ -40,7 +40,7 @@ fn same_optional(left Int?, right Int?) Bool {
 fn optional_default(value Int? = 7) Int => value or (-1)
 
 fn bound_missing[T Clonable](cause Error, value T?) T!Error {
-	return ok_or(value, cause.clone())
+	return ok_or(value.clone(), cause.clone())
 }
 
 fn nested_bound_missing[T Clonable](cause Error, value T?) T!Error {
