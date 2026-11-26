@@ -10,7 +10,7 @@ test "defaulted closure converts to a required callable" {
 }
 
 test "escaping adapter keeps owning behavior" {
-	fn make(fallback String) fn(String) Bool {
+	fn make(move fallback String) fn(String) Bool {
 		choose := fn(value String = fallback) Bool => not value.is_empty()
 		required fn(String) Bool := choose
 		return required

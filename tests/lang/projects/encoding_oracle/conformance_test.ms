@@ -69,7 +69,7 @@ fn limit(token String) Int? {
 
 fn outcome(result Bytes!) String {
 	if result.is_error() { return f"err {result.err().kind}" }
-	return f"ok {hex(result.get_or("".to_bytes()))}"
+	return f"ok {hex(result.clone().get_or("".to_bytes()))}"
 }
 
 fn answer(f List[String]) String {

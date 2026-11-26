@@ -50,7 +50,7 @@ test "write_atomic replaces contents, keeps mode, and leaves no temporary file" 
 	write_atomic(path, "two".to_bytes()).wait()?
 	expect_equal(text_of(path)?, "two")?
 
-	names := (list(root, null)?).map(e => e.name)
+	names := (list(root, null)?).map(e => e.name.clone())
 	expect_equal(names.length(), 2)?
 }
 
@@ -133,7 +133,7 @@ test "write_atomic replaces a file whose name is near the name length limit" {
 	write_atomic(path, "two").wait()?
 	expect_equal(text_of(path)?, "two")?
 
-	names := (list(root, null)?).map(e => e.name)
+	names := (list(root, null)?).map(e => e.name.clone())
 	expect_equal(names.length(), 1)?
 }
 // expect-exit: 0
