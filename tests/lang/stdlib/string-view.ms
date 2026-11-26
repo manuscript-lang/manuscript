@@ -1,8 +1,9 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
 import (
-	edge_string from "@std/test/boundary.ms",
 	expect_equal from "@std/test/test.ms",
+
+	msrt_test_edge_string from "@std/internal/test.ms",
 )
 
 // Whether `[a, b)` (negative bounds count from the end) lies inside the text on scalar
@@ -89,7 +90,7 @@ test "slice and view to the end of a string read no byte past it" {
 	while i < 24 {
 		text = f"{text}é"
 
-		edge := edge_string(text)
+		edge := msrt_test_edge_string(text)
 		n := edge.length()
 		var from = 0
 
@@ -121,7 +122,7 @@ test "string operations read no byte past the end of a string" {
 	while i < 40 {
 		text = f"{text}{if i % 3 == 0 { "é" } else { "a" }}"
 
-		edge := edge_string(text)
+		edge := msrt_test_edge_string(text)
 		same := text.clone()
 		expect_equal(edge == same, true)?
 		expect_equal(edge < same, false)?

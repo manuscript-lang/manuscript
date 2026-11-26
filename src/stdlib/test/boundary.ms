@@ -5,13 +5,11 @@ import (
 	min_float,
 	min_int,
 	nan,
-	next_after from "@std/math/math.ms",
-
-	msrt_test_edge_string from "@std/internal/test.ms",
-)
+	next_after
+) from "@std/math/math.ms"
 
 /*
-Boundary values for numeric and string tests. Run a function over every value or pair these return and compare the result with an exact
+Boundary values for numeric tests. Run a function over every value or pair these return and compare the result with an exact
 reference such as `BigRat` or `BigInt`. This is how a missing overflow, sign or rounding case shows up.
 Example: `for x in int_boundaries(): expect_equal(wrapping_add(x, 0), x)?`.
 */
@@ -122,12 +120,4 @@ export fn float_boundaries() List[Float] {
 // need an exact rational value.
 export fn finite_float_boundaries() List[Float] {
 	return float_boundaries().filter(value => value.is_finite())
-}
-
-// Returns a borrowed copy of `text` whose last byte is the last byte of readable
-// memory; the next page is unreadable. Code that reads the byte after a string's end,
-// which no string provides, faults on it every time instead of rarely. Use it in tests
-// of string code, and call it a few times: each copy keeps its own mapping.
-export fn edge_string(text String) String {
-	return msrt_test_edge_string(text)
 }

@@ -450,9 +450,12 @@ fn internal_externs(sources Map[String, String]) List[String] {
 	var issues = List[String]()
 
 	for path in sources.keys() {
-		if not path.starts_with(
-			"src/stdlib/internal/"
-		) { continue }
+		if not path.starts_with("src/stdlib/internal/") { continue }
+
+		// The natives of the test support module serve the test runner and the tests
+		// themselves, which import them from here; no other standard-library file need
+		// name them.
+		if path == "src/stdlib/internal/test.ms" { continue }
 
 		for line in sources[path].split("\n") {
 			rest := without_words(line.trim(), ["export"])
