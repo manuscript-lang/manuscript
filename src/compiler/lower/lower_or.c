@@ -62,7 +62,9 @@ MirValue fn_lower_or_null(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   const MirTy result_ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
   /* A name this expression moves, or reads for the last time, gives its payload up as `if v := name { ... }` does. */
   const MsExpr *named = expr->u.bin.left;
-  const bool moving = (named->kind == MS_E_CALL && ms_facts_use(fn->facts, named->id) == MS_USE_MOVE) ||
+  /* `(f()?) or d` that an owner takes: the payload leaves the Result `?` unwraps, and the Optional it is gives it up. */
+  const bool unwrapped = want == LW_MOVE && named->kind == MS_E_UNARY && named->op == MS_U_TRY;
+  const bool moving = unwrapped || (named->kind == MS_E_CALL && ms_facts_use(fn->facts, named->id) == MS_USE_MOVE) ||
                       (named->kind == MS_E_NAME && (fn->narrow_take == expr || ms_facts_use(fn->facts, named->id) == MS_USE_MOVE ||
                                                    ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE ||
                                                    (fn->facts->last != NULL && fn->facts->last[named->id] != 0)));

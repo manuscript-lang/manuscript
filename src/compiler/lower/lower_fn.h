@@ -280,7 +280,10 @@ void fn_own(LowerFn *fn, uint32_t scope, MirValue value);
 MirValue fn_emit(LowerFn *fn, MirOp op, const MirValue *args, uint32_t nargs, MirImm imm, MirTy ty);
 /* A copy the source did not ask for (`.clone()` is the only explicit one): a borrowed value an owner takes. Every such
  * copy goes through here so the rule against hidden copies has one place to be enforced; `own` makes the scope own it. */
-MirValue fn_implicit_clone(LowerFn *fn, MirValue value, bool own);
+MirValue fn_implicit_clone_at(LowerFn *fn, MirValue value, bool own, const char *site, int line);
+/* The copy `?` makes of an error something else still owns: the relay cannot spell `.clone()`, so the language copies. */
+MirValue fn_relay_clone(LowerFn *fn, MirValue value);
+#define fn_implicit_clone(fn, value, own) fn_implicit_clone_at((fn), (value), (own), __FILE__, __LINE__)
 /* Makes the innermost scope own `result`, the result of the instruction just emitted, when it is owned. */
 void fn_own_result(LowerFn *fn, MirValue result);
 MirValue fn_view_as_plain(LowerFn *fn, MirValue result, MirTy plain);
