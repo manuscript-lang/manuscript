@@ -9,7 +9,7 @@
 enum { FIELD_PATH_MAX = 6 };
 
 /* The record fields from the owning root to `place`, outermost first (`holder.reader.names` is `reader`, `names`),
- * and the root's place. False when `place` is not a field path rooted in an owning local or parameter. */
+ * and the root's place. False when `place` is not a field path rooted in an owning local, parameter or element. */
 static bool field_path(LowerFn *fn, const MsExpr *place, const MsExpr **fields, uint32_t *count, const MsExpr **root) {
   const MsExpr *chain[FIELD_PATH_MAX];
   uint32_t length = 0;
@@ -24,7 +24,10 @@ static bool field_path(LowerFn *fn, const MsExpr *place, const MsExpr **fields, 
     MirVar var;
     MirValue slot;
     MirTy slot_ty;
-    if (fn_owned_local(fn, base, &var) || fn_closing_local(fn, base, &slot, &slot_ty) || fn_closing_param(fn, base, &slot, &var)) {
+    MsExpr *container = NULL;
+    MsExpr *key = NULL;
+    if (fn_owned_local(fn, base, &var) || fn_closing_local(fn, base, &slot, &slot_ty) || fn_closing_param(fn, base, &slot, &var) ||
+        (ms_expr_index(base, &container, &key) && fn_place_changeable(fn, base))) { /* an element leaves its cell as a local leaves its variable */
       *root = base;
       break;
     }
@@ -316,7 +319,7 @@ bool fn_store_field_in_place(LowerFn *fn, const MsExpr *place, MirValue address,
 
 /* An empty value of `ty` stored over the field at `address`: what a field moved out of its record leaves, so the
  * record's later drop releases nothing there. A slot starts zeroed, and the zero of every type drops as nothing. */
-static void field_hole(LowerFn *fn, MirValue address, MirTy ty) {
+void fn_field_hole(LowerFn *fn, MirValue address, MirTy ty) {
   const MirImm of_type = {.tag = MI_TY, .a = ty};
   const MirValue zero = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
   const MirValue empty = mir_b_emit(&fn->b, MOP_Take, &zero, 1, of_type, ty);
@@ -335,7 +338,7 @@ bool fn_read_field_in_place(LowerFn *fn, const MsExpr *expr, MirValue *value) {
   *value = fn_emit(fn, MOP_Load, &address, 1, (MirImm){.tag = MI_TY, .a = ty}, ty);
   if (fn->placing_member != expr && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE && mir_needs_drop(fn->cx->module, ty)) {
     *value = fn_emit(fn, MOP_MoveOut, value, 1, (MirImm){0}, ty);
-    field_hole(fn, address, ty);
+    fn_field_hole(fn, address, ty);
   }
   return true;
 }

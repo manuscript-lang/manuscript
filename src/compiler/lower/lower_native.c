@@ -478,7 +478,9 @@ bool fn_entry_read_parts(LowerFn *fn, const MsExpr *place, MsExpr **container, M
 bool fn_place_address(LowerFn *fn, const MsExpr *place, MirValue *addr, MirTy *ty) {
   MsExpr *container = NULL;
   MsExpr *key = NULL;
-  if (!fn_entry_read_parts(fn, place, &container, &key) || !fn_place_changeable(fn, container)) {
+  /* A container named through variables, fields and list elements lies where its owner holds it, `var` or not: the checker
+   * lets a callee change an entry only where the receiver is `var`. */
+  if (!fn_entry_read_parts(fn, place, &container, &key) || !(fn_place_changeable(fn, container) || lists_in_place(fn, container))) {
     return false;
   }
   MirValue holder = MIR_NONE;

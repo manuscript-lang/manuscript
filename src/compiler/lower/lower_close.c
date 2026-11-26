@@ -805,6 +805,15 @@ bool fn_take_place(LowerFn *fn, const MsExpr *base, MirValue *out) {
   if (base->kind != MS_E_MEMBER && !ms_expr_index(base, &index_left, &index_key)) {
     return fn_fail(fn, "assignment into this place is not lowered yet (expression kind %d at %u:%u)", (int)base->kind, base->pos.line, base->pos.column);
   }
+  MirValue element = MIR_NONE;
+  MirTy element_ty = MIR_VOID;
+  if (index_left != NULL && fn_place_address(fn, base, &element, &element_ty) && mir_needs_drop(fn->cx->module, element_ty)) {
+    /* An element of a place held in place leaves its cell for the change, which owns it; the hole it leaves drops as
+     * nothing, and `fn_put_place` fills it again. */
+    *out = mir_b_emit(&fn->b, MOP_Take, &element, 1, (MirImm){.tag = MI_TY, .a = element_ty}, element_ty);
+    fn_field_hole(fn, element, element_ty);
+    return true;
+  }
   const MirValue inner = fn_expr(fn, base, LW_BORROW);
   if (inner == MIR_NONE) {
     return false;
