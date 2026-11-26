@@ -71,7 +71,7 @@ fn sweep(ms, root String, files List[String]) List[String] {
 		if has_tests(source) {
 			if out := run(
 				ms.clone(),
-				["test", absolute.clone()],
+				["test", absolute.clone(), "--verbose"],
 				RunOptions(
 					timeout: seconds(600),
 					env: {"MS_UNDER_TEST": ms.clone()},
