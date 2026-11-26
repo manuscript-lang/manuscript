@@ -96,8 +96,23 @@ static const MsParams *bound_value_params(LowerFn *fn, const MsExpr *value) {
 /* `b := m.get(k)` over a resource: an Optional that views the entry in place, `none` when the key is absent, so the
  * binding borrows what the map keeps instead of copying it. MIR_NONE (nothing emitted) for any other call. */
 MirValue fn_map_get_view(LowerFn *fn, const MsExpr *call) {
-  if (ms_own_native_get(fn->cx->program, fn->facts, call) != MS_NATIVE_GET_MAP ||
-      !ms_check_holds_resource(fn->cx->program, ms_facts_type(fn->facts, call->id))) {
+  if (!ms_check_holds_resource(fn->cx->program, ms_facts_type(fn->facts, call->id))) {
+    return MIR_NONE;
+  }
+  return fn_map_entry_view(fn, call);
+}
+
+/* `m.get(k)` of any value type, read in place: an Optional that views the entry, `none` when the key is absent. MIR_NONE
+ * (nothing emitted) for any other call. */
+MirValue fn_map_entry_view(LowerFn *fn, const MsExpr *call) {
+  if (ms_own_native_get(fn->cx->program, fn->facts, call) != MS_NATIVE_GET_MAP) {
+    return MIR_NONE;
+  }
+  /* a value that is itself an Optional is stored as it is, and the answer wraps it once more: no view of the entry */
+  const MsTy map_ty = ms_facts_type(fn->facts, call->u.call.callee->u.member.left->id);
+  const MirTy answer_ty = fn_type(fn, ms_facts_type(fn->facts, call->id));
+  if (map_ty == MS_TY_NONE || ms_ty_arg_count(&fn->cx->program->types, map_ty) != 2 ||
+      mir_ty_data(fn->cx->module, answer_ty)->elem != fn_type(fn, ms_ty_args(&fn->cx->program->types, map_ty)[1])) {
     return MIR_NONE;
   }
   const MsExpr *receiver = call->u.call.callee->u.member.left;
@@ -200,8 +215,12 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   MsExpr *index_key = NULL;
   /* A field of a call's result (`name := make().field`) leaves the temporary that dies with the statement. */
   const bool of_temporary = kind == MS_E_MEMBER && stmt->u.bind.value->u.member.left->kind == MS_E_CALL;
+  /* `x or panic(..)` hands out the payload of `x` or never returns: the name views it, as it views a part of `x` */
+  const MsExpr *bound = stmt->u.bind.value;
+  const bool or_never = kind == MS_E_BINARY && bound->op == MS_B_OR && fn_call_never(fn, bound->u.bin.right) &&
+                        ms_ty_is(&fn->cx->program->types, ms_facts_type(fn->facts, bound->u.bin.left->id), MS_BUILTIN_Optional);
   bool borrow = !stmt->u.bind.is_mutable && !of_temporary &&
-                (kind == MS_E_NAME || kind == MS_E_MEMBER || ms_expr_index(stmt->u.bind.value, &index_container, &index_key)) &&
+                (kind == MS_E_NAME || kind == MS_E_MEMBER || or_never || ms_expr_index(stmt->u.bind.value, &index_container, &index_key)) &&
                 ms_facts_use(fn->facts, stmt->u.bind.value->id) != MS_USE_MOVE;
   /* A `var` bound to a declared function's view result holds the view: it owns nothing, so a later assignment only
    * replaces the reference. */
@@ -209,7 +228,8 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   const bool view_var = stmt->u.bind.is_mutable && called != NULL &&
                         (called->callee.kind == MS_REF_FUNCTION || called->callee.kind == MS_REF_METHOD) &&
                         ms_own_result_is_borrowed(fn->cx->program, called->callee.decl.module, called->callee.decl.node) &&
-                        !call_reads_temporary(fn->facts, stmt->u.bind.value);
+                        !call_reads_temporary(fn->facts, stmt->u.bind.value) &&
+                        !fn_var_stores_owned(fn, ms_facts_ref(fn->facts, pattern->id)->local);
   const bool from_call = (!stmt->u.bind.is_mutable || view_var) && kind == MS_E_CALL;
   /* A function bound to a name may take the type that lets its omittable parameters be left out. */
   const MsTy bound_ty = ms_facts_type(fn->facts, pattern->id);
@@ -271,6 +291,17 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
                  (!mir_needs_drop(fn->cx->module, ty) || fresh))) {
     return fn_bind_closing_in(fn, fn->bind_scope != 0 ? fn->bind_scope - 1 : fn_scope(fn), local,
                               ms_facts_type(fn->facts, pattern->id), value, stmt->u.bind.is_mutable);
+  }
+  /* `text := json` over the owning `var` `json` that is not assigned again: the name is the same owner under another name, so
+   * a loop reads the variable and the carry stays one owner. */
+  MirVar alias_of = 0;
+  const MsRef *alias_ref = kind == MS_E_NAME ? ms_facts_ref(fn->facts, stmt->u.bind.value->id) : NULL;
+  if (!stmt->u.bind.is_mutable && alias_ref != NULL && alias_ref->kind == MS_REF_LOCAL && local < fn->nvars && fn->vars[local] == 0 &&
+      mir_needs_drop(fn->cx->module, ty) && fn_owned_local(fn, stmt->u.bind.value, &alias_of) && var_owns(fn, alias_of) &&
+      mir_b_use_var(&fn->b, alias_of) == value && !fn_closer_for(fn, closer, ms_facts_type(fn->facts, pattern->id)) &&
+      !fn_stored_after(fn, alias_ref->local, stmt->pos)) {
+    fn->vars[local] = alias_of + 1;
+    return !fn->failed;
   }
   /* A record whose fields leave keeps the rest in a variable, released where the record was declared. */
   const bool fields_leave = !stmt->u.bind.is_mutable && fresh && fn_leaves_fields(fn, local, ty);

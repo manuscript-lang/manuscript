@@ -23,6 +23,11 @@ export enum RoundingMode {
 // ms: data
 export extern type Decimal
 
+// Returns an independent copy of this value.
+fn Decimal.clone() Decimal {
+	return self
+}
+
 // Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`;
 // trailing zeros do not matter.
 fn Decimal.compare(other Decimal) Int {

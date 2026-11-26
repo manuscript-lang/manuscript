@@ -38,10 +38,11 @@ fn main() Int {
 	// asks for.
 	void set_environment("MS_HEAP_FACTS", "off").get()
 
-	// The runtime keeps per-worker tables, so its block count grows with the worker
-	// count, which defaults to the core count (26 blocks at 1, 28 at 2, 32 at 4 for
-	// promise_wrapper_closure). Pin it so every machine reports the same counts.
-	void set_environment("MS_THREADS", "4").get()
+	// The runtime keeps per-worker tables, and a worker starts only when no isolate is
+	// idle, so with more than one isolate the block count depends on thread timing (30
+	// or 32 for promise_wrapper_closure on 4 cores). One isolate runs every promise on
+	// the main one: the same counts on every machine and every run.
+	void set_environment("MS_THREADS", "1").get()
 
 	root := working_directory().get()
 	var files = arguments().map(f => f.clone())

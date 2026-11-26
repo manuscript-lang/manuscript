@@ -276,6 +276,25 @@ static bool call_borrows(const PlaceReturns *counts, const MsExpr *value) {
   return !built_source(counts, call, value) && returns_places(counts->cx, call->callee.decl.module, callee, result, counts->depth + 1);
 }
 
+/* Whether a returned expression is a part of something the caller keeps: a parameter or local, a member, an element, a call
+ * that borrows, or `x or y` over two of them. */
+static bool returns_a_place(const PlaceReturns *counts, const MsExpr *value) {
+  if (value->kind == MS_E_NAME) { /* `none` and a case name are values, not places */
+    const MsRef *ref = ms_facts_ref(counts->facts, value->id);
+    return ref != NULL && (ref->kind == MS_REF_PARAM || ref->kind == MS_REF_LOCAL);
+  }
+  if (value->kind == MS_E_CALL) {
+    return call_borrows(counts, value);
+  }
+  if (value->kind == MS_E_BINARY && value->op == MS_B_OR &&
+      ms_ty_is(&counts->cx->program->types, ms_facts_type(counts->facts, value->u.bin.left->id), MS_BUILTIN_Optional)) {
+    const MsExpr *left = value->u.bin.left;
+    const bool held = left->kind == MS_E_CALL && ms_own_native_get(counts->cx->program, counts->facts, left) != MS_NATIVE_GET_NONE; /* `m.get(k)` answers a part of `m` */
+    return (held || returns_a_place(counts, left)) && returns_a_place(counts, value->u.bin.right);
+  }
+  return value->kind == MS_E_MEMBER || value->kind == MS_E_INDEX || value->kind == MS_E_APPLY;
+}
+
 static void count_place_returns(void *ctx, const MsStmt *stmt) {
   PlaceReturns *counts = ctx;
   if (stmt->kind != MS_S_RETURN || stmt->u.expr == NULL) {
@@ -303,14 +322,7 @@ static void count_place_returns(void *ctx, const MsStmt *stmt) {
       }
     }
   }
-  if (value->kind == MS_E_NAME) { /* `none` and a case name are values, not places */
-    const MsRef *ref = ms_facts_ref(counts->facts, value->id);
-    counts->places += ref != NULL && (ref->kind == MS_REF_PARAM || ref->kind == MS_REF_LOCAL) ? 1u : 0u;
-  } else if (value->kind == MS_E_CALL) {
-    counts->places += call_borrows(counts, value) ? 1u : 0u;
-  } else {
-    counts->places += value->kind == MS_E_MEMBER || value->kind == MS_E_INDEX || value->kind == MS_E_APPLY ? 1u : 0u;
-  }
+  counts->places += returns_a_place(counts, value) ? 1u : 0u;
 }
 
 static bool returns_places(Lower *cx, uint32_t module, const MsFunc *func, MsTy result, uint32_t depth) {
@@ -345,6 +357,28 @@ static bool body_closes(const Lower *cx, const LowerTarget *target) {
   return closes.found;
 }
 
+/* Whether a body returns `m.get(k) or d`: an instance whose value is an Optional stores it as it is, so the answer is no view of
+ * the entry and the result cannot borrow. */
+typedef struct EntryOr {
+  const Lower *cx;
+  const MsFacts *facts;
+  bool found;
+} EntryOr;
+
+static void note_entry_or(void *ctx, const MsStmt *stmt) {
+  EntryOr *scan = ctx;
+  const MsExpr *value = stmt->kind == MS_S_RETURN ? stmt->u.expr : NULL;
+  scan->found |= value != NULL && value->kind == MS_E_BINARY && value->op == MS_B_OR && value->u.bin.left->kind == MS_E_CALL &&
+                 ms_own_native_get(scan->cx->program, scan->facts, value->u.bin.left) == MS_NATIVE_GET_MAP;
+}
+
+static bool returns_entry_or(Lower *cx, const LowerTarget *target) {
+  EntryOr scan = {cx, &cx->program->modules.ptr[target->module].facts, false};
+  const MsVisitor visitor = {.ctx = &scan, .stmt = note_entry_or};
+  ms_walk_block(&visitor, target->func->body);
+  return scan.found;
+}
+
 static bool borrows_result(Lower *cx, const LowerTarget *target, MirTy ret, const MirParam *params, uint32_t count) {
   const MirTyData *ret_data = mir_ty_data(cx->module, ret);
   if (ret_data->kind == MK_OPT && mir_ty_opt_boxed(cx->module, ret_data->elem)) {
@@ -362,6 +396,9 @@ static bool borrows_result(Lower *cx, const LowerTarget *target, MirTy ret, cons
     if (params[index].mode == MM_MOVE) {
       return false; /* the body owns (and releases) a moved parameter: its part cannot outlive the call */
     }
+  }
+  if (ret_data->kind == MK_OPT && returns_entry_or(cx, target)) {
+    return false;
   }
   return returns_places(cx, target->module, target->func, ms_ty_result(&cx->program->types, target->ty), 0);
 }

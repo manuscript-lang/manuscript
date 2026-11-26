@@ -113,10 +113,19 @@ static void take_payload(LowerFn *fn, const Match *match, const MsArm *arm, uint
       (void)fn_bind_closing(fn, ref->local + at, payload, field, false); /* the arm closes it where it ends */
       continue;
     }
+    const uint32_t local = ref->local + at;
+    if (payload != MS_TY_NONE && fn_leaves_fields(fn, local, def->fields[at].ty) && fn->vars[local] == 0 &&
+        mir_needs_drop(module, def->fields[at].ty)) {
+      /* A field of the binding moves on at its last use: the variable keeps the rest, released with the arm's scope. */
+      fn->vars[local] = mir_b_declare_var(&fn->b, def->fields[at].ty, MM_MOVE) + 1;
+      mir_b_def_var(&fn->b, fn->vars[local] - 1, field);
+      (void)fn_scope_own_var_in(fn, fn_scope(fn), fn->vars[local] - 1, payload);
+      continue;
+    }
     if (mir_needs_drop(module, def->fields[at].ty)) {
       fn_own(fn, fn_scope(fn), field);
     }
-    mir_b_def_var(&fn->b, fn_local(fn, ref->local + at, def->fields[at].ty), field);
+    mir_b_def_var(&fn->b, fn_local(fn, local, def->fields[at].ty), field);
   }
   for (uint32_t index = def->nfields; closes_rest && index > 0; index--) { /* what the arm leaves out closes now, last field first */
     const uint32_t at = index - 1;

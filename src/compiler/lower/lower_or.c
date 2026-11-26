@@ -35,15 +35,19 @@ static MirValue lower_or_view(LowerFn *fn, const MsExpr *expr, MirValue left, Mi
   (void)fn_scope_begin(fn);
   const bool saved_temps = fn->temps;
   fn->temps = saved_temps || fn_expr_has_temporary(fn, expr->u.bin.right);
-  MirValue other = fn_expr(fn, expr->u.bin.right, LW_MOVE);
+  /* A name the caller keeps alive (a `hold` parameter, a local) is answered as a view of itself, not moved into the holder. */
+  const bool place = expr->u.bin.right->kind == MS_E_NAME;
+  MirValue other = fn_expr(fn, expr->u.bin.right, place ? LW_BORROW : LW_MOVE);
   fn->temps = saved_temps;
   if (other == MIR_NONE) {
     return MIR_NONE;
   }
-  (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &other, 1, (MirImm){0}, MIR_NONE);
-  const MirValue held = mir_b_emit(&fn->b, MOP_OptSome, &other, 1, (MirImm){0}, opt_ty);
+  if (!place) {
+    (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &other, 1, (MirImm){0}, MIR_NONE);
+  }
+  const MirValue held = mir_b_emit(&fn->b, place ? MOP_OptView : MOP_OptSome, &other, 1, (MirImm){0}, opt_ty);
   mir_b_def_var(&fn->b, either, held);
-  mir_b_def_var(&fn->b, holder, held);
+  mir_b_def_var(&fn->b, holder, place ? mir_b_emit(&fn->b, MOP_OptNone, NULL, 0, (MirImm){0}, opt_ty) : held);
   fn_scope_end(fn);
   mir_b_br(&fn->b, join, NULL, 0);
   mir_b_seal_block(&fn->b, join);
@@ -62,12 +66,20 @@ MirValue fn_lower_or_null(LowerFn *fn, const MsExpr *expr, LowerWant want) {
                       (named->kind == MS_E_NAME && (fn->narrow_take == expr || ms_facts_use(fn->facts, named->id) == MS_USE_MOVE ||
                                                    ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE ||
                                                    (fn->facts->last != NULL && fn->facts->last[named->id] != 0)));
-  const MirValue left = fn_expr(fn, named, moving ? LW_MOVE : LW_BORROW);
+  /* `m.get(k) or d` read in place views the entry `m` keeps, whatever its type, instead of copying it */
+  const bool entry_read = want == LW_BORROW && !moving && named->kind == MS_E_CALL &&
+                          ms_own_native_get(fn->cx->program, fn->facts, named) == MS_NATIVE_GET_MAP;
+  /* an Optional value (`Map[K, V?]`) is stored boxed: the entry is no view of the answer */
+  const MsTy answered = entry_read ? ms_facts_type(fn->facts, named->id) : MS_TY_NONE;
+  const bool plain_entry = entry_read && ms_ty_arg_count(&fn->cx->program->types, answered) == 1 &&
+                           !ms_ty_is(&fn->cx->program->types, ms_ty_args(&fn->cx->program->types, answered)[0], MS_BUILTIN_Optional);
+  const MirValue entry = plain_entry ? fn_map_entry_view(fn, named) : MIR_NONE;
+  const MirValue left = entry != MIR_NONE ? entry : fn_expr(fn, named, moving ? LW_MOVE : LW_BORROW);
   if (left == MIR_NONE || result_ty == MIR_VOID) {
     return MIR_NONE;
   }
   const MirTy opt_ty = mir_b_ty(&fn->b, left);
-  const bool fresh_left = fn_fresh_owner(fn, left) || (named->kind == MS_E_CALL && !call_views_argument(fn, named) && fn_owns_result(fn, left)); /* asked where `left` was made, before the branch */
+  const bool fresh_left = entry == MIR_NONE && (fn_fresh_owner(fn, left) || (named->kind == MS_E_CALL && !call_views_argument(fn, named) && fn_owns_result(fn, left))); /* asked where `left` was made, before the branch */
   const MirVar result = mir_b_declare_var(&fn->b, result_ty, MM_MOVE);
   const MirValue present = mir_b_emit(&fn->b, MOP_OptIsSome, &left, 1, (MirImm){0}, MIR_BOOL);
   const MirBlock some_block = mir_b_new_block(&fn->b);
@@ -82,7 +94,7 @@ MirValue fn_lower_or_null(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   const bool owns = (fresh_left && (named->kind != MS_E_NAME || moving)) || (named->kind == MS_E_CALL && moving) ||
                     (!place && named->kind != MS_E_CALL && fresh_left);
   /* `x or panic(..)` read in place: nothing else reaches the join, so the payload stays a view of `x` */
-  const bool view_only = !owns && fn->or_view == expr && ms_ty_is(&fn->cx->program->types, ms_facts_type(fn->facts, expr->u.bin.right->id), MS_BUILTIN_Never) &&
+  const bool view_only = !owns && (fn->or_view == expr || want == LW_BORROW) && ms_ty_is(&fn->cx->program->types, ms_facts_type(fn->facts, expr->u.bin.right->id), MS_BUILTIN_Never) &&
                          ms_facts_use(fn->facts, expr->id) != MS_USE_MOVE;
   /* Read in place (a receiver, an operand, a borrowed argument): the result is a view of `x`'s payload or of the default,
    * which a holder owned by the enclosing scope keeps alive, so nothing is copied. */

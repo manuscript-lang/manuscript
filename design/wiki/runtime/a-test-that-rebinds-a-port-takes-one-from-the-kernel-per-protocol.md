@@ -1,0 +1,3 @@
+# A rebind test takes its port from the kernel for the protocol it rebinds
+
+`net-close-releases-socket` failed about 1 run in 10 with "rebinds lost to a cancel during the bind: 300": it rebound a TCP listener on the port a UDP bind had got. The kernel may have given that number to an earlier TCP client as its source port; the connection sits in TIME_WAIT, and a listener cannot bind a port a TIME_WAIT socket holds. It was not a leaked socket (`/proc/net/tcp` showed no listener on the port). Take the TCP address from `listen("127.0.0.1:0")` and the datagram address from `bind_datagram`, each closed before use. Do not call a port-in-use failure a leak before looking at `/proc/net/tcp`.

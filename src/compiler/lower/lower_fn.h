@@ -428,6 +428,11 @@ bool fn_entry_read_parts(LowerFn *fn, const MsExpr *place, MsExpr **container, M
 bool fn_default_param_place(const LowerFn *fn, const MsExpr *place, uint32_t *at);
 /* `m.get(k)` over a resource as an Optional that views the entry; MIR_NONE (nothing emitted) for any other call. */
 MirValue fn_map_get_view(LowerFn *fn, const MsExpr *call);
+MirValue fn_map_entry_view(LowerFn *fn, const MsExpr *call);
+/* Whether a `var` is ever stored a value other than a borrowing call's result. */
+bool fn_var_stores_owned(const LowerFn *fn, uint32_t local);
+/* Whether the local is assigned after `after` in the function's text. */
+bool fn_stored_after(const LowerFn *fn, uint32_t local, MsPos after);
 /* Stores the owned `value` (held by no scope) into `place`. */
 bool fn_put_place(LowerFn *fn, const MsExpr *place, MirValue value);
 

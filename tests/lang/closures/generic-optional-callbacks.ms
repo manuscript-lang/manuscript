@@ -22,7 +22,7 @@ fn nested[T](value T, predicate fn(T) Bool) Bool {
 	return outer()
 }
 
-fn defaulted[T](fallback T, supplied T, equal fn(T, T) Bool) Bool {
+fn defaulted[T](move fallback T, supplied T, equal fn(T, T) Bool) Bool {
 	choose := fn(value T = fallback) Bool => equal(value, fallback)
 	omitted := choose()
 	supplied_result := choose(supplied)

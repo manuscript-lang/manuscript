@@ -135,7 +135,9 @@ fn Gen[T].filter(keep fn(T) Bool) Gen[T] {
 // Generates one value from this generator and one from `other`, and combines them
 // with `combine`.
 fn Gen[T].zip[B, C](other Gen[B], combine fn(T, B) C) Gen[C] {
-	return Gen[C](s => zip_draw(self, other, combine, s))
+	owner := self.clone()
+	partner := other.clone()
+	return Gen[C](s => zip_draw(owner, partner, combine, s))
 }
 
 // Generates integers from `low` through `high`, both included, shrinking toward the
@@ -198,12 +200,14 @@ fn float_draw(s Source, low, high Float) Drawn[Float] {
 
 // Always generates a copy of `value`, consuming no draws, so it never shrinks.
 export fn constant[T Clonable](value T) Gen[T] {
-	return Gen[T](s => Drawn(value.clone(), s.clone()))
+	own := value.clone()
+	return Gen[T](s => Drawn(own.clone(), s.clone()))
 }
 
 // Generates one of `values`, shrinking toward the first. `values` must not be empty.
 export fn element_of[T Clonable](values List[T]) Gen[T] {
-	return Gen[T](s => element_draw(values, s.clone()))
+	own := values.clone()
+	return Gen[T](s => element_draw(own, s.clone()))
 }
 
 fn element_draw[T Clonable](values List[T], s Source) Drawn[T] {
@@ -214,7 +218,8 @@ fn element_draw[T Clonable](values List[T], s Source) Drawn[T] {
 // Generates by picking one of `gens`, shrinking toward the first. `gens` must not be
 // empty.
 export fn one_of[T](gens List[Gen[T]]) Gen[T] {
-	return Gen[T](s => one_draw(gens, s.clone()))
+	own := gens.clone()
+	return Gen[T](s => one_draw(own, s.clone()))
 }
 
 fn one_draw[T](gens List[Gen[T]], s Source) Drawn[T] {
