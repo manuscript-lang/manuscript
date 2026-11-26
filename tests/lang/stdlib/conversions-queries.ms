@@ -57,7 +57,7 @@ test "conversions and collection queries are callable" {
 	ok_or(present, Error("absent")).get() | expect_equal(2)?
 	expect_equal(ok_or(missing, Error("absent")).err().message, "absent")?
 
-	failed Int!Error := error(Error("failed"))
+	failed Int! := error(Error("failed"))
 	(failed.to_optional() == null) | expect_true?
 
 	entries Map[String, Int] := {"b": 2, "a": 1}
@@ -107,7 +107,7 @@ test "conversions retain unconstrained payloads nesting and lazy counts" {
 	failure Counter!Pending := error(Pending([1, 2]))
 	(success_only(failure) == null) | expect_true?
 
-	success Counter!Error := ok(counter.clone())
+	success Counter! := ok(counter.clone())
 	extract := () => success.clone().to_optional()
 	var extracted = (extract() or panic("called Optional.get() on null")).clone()
 	extracted.calls = 7
@@ -131,8 +131,8 @@ test "conversions retain unconstrained payloads nesting and lazy counts" {
 	unit_value Void? := void
 	(ok_or(unit_value, Error("absent")).to_optional() != null) | expect_true?
 
-	nested_inner Int!Error := error(Error("nested"))
-	nested_result Int!Error? := nested_inner
+	nested_inner Int! := error(Error("nested"))
+	nested_result Int!? := nested_inner
 	(
 		(
 			ok_or(nested_result, Error("absent")).to_optional()
@@ -567,7 +567,7 @@ test "ok_or reports its explicit cause" {
 	find_port(null).err().message | expect_equal("missing")?
 	find_port(8080).get() | expect_equal(8080)?
 
-	named Int!Error := ok_or(absent, Error("port"))
+	named Int! := ok_or(absent, Error("port"))
 	named.err().message | expect_equal("port")?
 }
 // expect-exit: 0
