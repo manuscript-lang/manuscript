@@ -69,6 +69,13 @@ MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out, const VarSl
   }
   MsExpr *indexed = NULL;
   MsExpr *index_key = NULL;
+  MirTy entry_ty = MIR_VOID;
+  /* A field of an element, or an entry of a map, held in place: the callee changes it where it lies. */
+  if ((place->kind == MS_E_MEMBER && fn_element_field_address(fn, place, &element)) ||
+      (ms_expr_index(place, &indexed, &index_key) && !fn_is_list(fn, indexed) && fn_place_address(fn, place, &element, &entry_ty))) {
+    *out = (VarSlot){place, element, MIR_NONE, MIR_NONE, true, MIR_NONE, MIR_NONE, NULL};
+    return element;
+  }
   /* `xs[i]` with a name for `i` parses as a type application, so ask for the index form, not the node kind. */
   const bool is_place = place->kind == MS_E_NAME || place->kind == MS_E_MEMBER || ms_expr_index(place, &indexed, &index_key);
   MirValue record = MIR_NONE;

@@ -167,7 +167,7 @@ fn List[T].fold[A](move initial A, step fn(A, T) A) A {
 }
 
 // Combines the values from right to left with `step`, starting with `initial`.
-fn List[T].fold_right[A](initial A, step fn(A, T) A) A {
+fn List[T].fold_right[A](move initial A, step fn(A, T) A) A {
 	var acc = initial
 	var i = self.length() - 1
 
@@ -659,7 +659,7 @@ fn Map[T Clonable, U].map[W](transform fn(T, U) W) Map[T, W] {
 }
 
 // Combines the entries in insertion order with `step`, starting with `initial`.
-fn Map[T, U].fold[A](initial A, step fn(A, T, U) A) A {
+fn Map[T, U].fold[A](move initial A, step fn(A, T, U) A) A {
 	var acc = initial
 	for key in self.keys() {
 		acc = step(acc, key, self[key])
@@ -669,7 +669,7 @@ fn Map[T, U].fold[A](initial A, step fn(A, T, U) A) A {
 
 // Combines the entries in reverse insertion order with `step`, starting with
 // `initial`.
-fn Map[T, U].fold_right[A](initial A, step fn(A, T, U) A) A {
+fn Map[T, U].fold_right[A](move initial A, step fn(A, T, U) A) A {
 	var acc = initial
 	keys := self.keys()
 	var i = keys.length() - 1
@@ -922,7 +922,7 @@ fn Set[T].map[U Hashable](transform fn(T) U) Set[U] {
 }
 
 // Combines the elements in insertion order with `step`, starting with `initial`.
-fn Set[T].fold[A](initial A, step fn(A, T) A) A {
+fn Set[T].fold[A](move initial A, step fn(A, T) A) A {
 	var acc = initial
 	for value in self.values() {
 		acc = step(acc, value)
@@ -932,7 +932,7 @@ fn Set[T].fold[A](initial A, step fn(A, T) A) A {
 
 // Combines the elements in reverse insertion order with `step`, starting with
 // `initial`.
-fn Set[T].fold_right[A](initial A, step fn(A, T) A) A {
+fn Set[T].fold_right[A](move initial A, step fn(A, T) A) A {
 	var acc = initial
 	values := self.values()
 	var i = values.length() - 1

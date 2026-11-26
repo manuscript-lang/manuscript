@@ -1,5 +1,5 @@
-// Copy sweep (`make copy-check`): builds the programs and test fixtures of the corpus
-// with
+// Copy sweep (`make copy-check`): builds the programs and runs the test fixtures of the
+// corpus with
 // `MS_COPY_PROBE=1`, which makes the compiler print every copy of a value that owns memory
 // (a string, list, record, closure or runtime object) that no written `.clone()` asked
 // for. Such a value has one owner and a program duplicates it only through a written
@@ -52,9 +52,16 @@ fn main() Int {
 		var command = List[String]()
 
 		if source.contains("export fn main") {
-			command = ["build", absolute.clone(), "-o", binary.clone()]
+			command = [
+				"build",
+				absolute.clone(),
+				"-o",
+				binary.clone(),
+				"--build-type",
+				"Debug",
+			]
 		} else if source.contains("\ntest ") {
-			command = ["test", absolute.clone(), "--match", "no test is selected"]
+			command = ["test", absolute.clone()]
 		} else {
 			continue
 		}

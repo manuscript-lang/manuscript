@@ -56,8 +56,11 @@ static MirValue list_element_slot(LowerFn *fn, const MsExpr *place) {
   if (place != NULL && ms_expr_index(place, &container, &key) && !fn_is_list(fn, container) && fn_place_address(fn, place, &field, &entry_ty)) {
     return field; /* an entry of a map held in place (`m[k].append(x)`) */
   }
-  if (place == NULL || !ms_expr_index(place, &container, &key) || !fn_is_list(fn, container) || !lists_in_place(fn, container)) {
+  if (place == NULL || !ms_expr_index(place, &container, &key) || !fn_is_list(fn, container)) {
     return MIR_NONE;
+  }
+  if (!lists_in_place(fn, container)) { /* an element of a list in a map entry (`g[k][i].append(x)`) */
+    return fn_place_changeable(fn, container) && fn_place_address(fn, place, &field, &entry_ty) ? field : MIR_NONE;
   }
   const MirValue list = fn_expr(fn, container, LW_BORROW);
   const MirValue at = list == MIR_NONE ? MIR_NONE : fn_expr(fn, key, LW_BORROW);

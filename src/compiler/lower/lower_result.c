@@ -60,6 +60,13 @@ bool fn_returns_view(const LowerFn *fn) {
          fn->cx->module->alts.ptr[data->id].std == MSTD_RESULT;
 }
 
+/* Whether `expr` reads a name or field the function does not own and its use does not move: a parameter taken by
+ * borrow, a pattern name bound to a part of one. */
+static bool place_borrowed(const LowerFn *fn, const MsExpr *expr) {
+  const bool place = expr->kind == MS_E_NAME || expr->kind == MS_E_MEMBER;
+  return place && ms_facts_use(fn->facts, expr->id) != MS_USE_MOVE && !fn_leaves_binding(fn, expr);
+}
+
 /* `return ok(part)`, `return error(e)` or `return call()` in a function that returns a borrowing variant: the `ok`
  * payload is borrowed from where it is read, an error is owned, and a forwarded call hands its variant on. False when
  * the expression is none of these. */
@@ -71,14 +78,17 @@ bool fn_return_view(LowerFn *fn, const MsExpr *expr, MirValue *out) {
   if (call != NULL && call->callee.kind == MS_REF_CASE && call->arg_count == 1 && expr->u.call.args.len == 1) {
     const uint32_t which = call->callee.index == OK_CASE ? OK_CASE : ERR_CASE;
     const MsExpr *written = expr->u.call.args.ptr[0].value;
-    const MirValue payload = fn_expr(fn, written, which == OK_CASE ? LW_BORROW : LW_MOVE);
+    /* An error read from a place an argument holds stays that argument's (case 2); a built one moves in (case 1). */
+    const MirValue payload = fn_expr(fn, written, which == OK_CASE || place_borrowed(fn, written) ? LW_BORROW : LW_MOVE);
     if (payload == MIR_NONE) {
       *out = MIR_NONE;
       return true;
     }
     uint32_t alt = 0;
     (void)result_def(fn, fn->ret, &alt);
-    *out = build_case(fn, alt, which, payload, fn->ret);
+    const bool held = which == ERR_CASE && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, payload)) && !fn_fresh_owner(fn, payload) &&
+                      place_borrowed(fn, written);
+    *out = build_case(fn, alt, held ? ERR_CASE + 1 : which, payload, fn->ret);
     return true;
   }
   const MirValue handed = fn_expr(fn, expr, LW_BORROW);
@@ -258,6 +268,46 @@ MirValue fn_try_var_slot(LowerFn *fn, const MsExpr *expr, VarSlot *out) {
   return slot;
 }
 
+/* Returns `err` as the failure of the function (or of the call whose default omitted the `?`): its scope is unwound. */
+static bool relay_error(LowerFn *fn, MirValue err, uint32_t ret_alt, MirTy ret, bool borrows_out, const DefaultExit *leaves) {
+  const MirValue failed = build_case(fn, ret_alt, borrows_out ? ERR_CASE + 1 : ERR_CASE, err, ret);
+  const MirImm none = {0};
+  (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &failed, 1, none, MIR_NONE);
+  if (leaves != NULL) {
+    fn_scope_unwind(fn, leaves->keep);
+    mir_b_br(&fn->b, leaves->join, &failed, 1);
+    return true;
+  }
+  fn_scope_unwind(fn, 0);
+  mir_b_ret(&fn->b, failed);
+  return true;
+}
+
+/* The error of a failed call result in its borrowing variant: the `ok` payload borrows an argument, but an error built
+ * by the callee (case 1) is the variant's own, so a `?` takes it out and copies nothing. Case 2 is an error an
+ * argument holds, which the relay copies. Each case leaves the function on its own path, so the scope drops what
+ * each one left in the variant. */
+static bool return_variant_error(LowerFn *fn, MirValue variant, MirTy err_ty, uint32_t ret_alt, MirTy ret,
+                                 const DefaultExit *leaves) {
+  const uint32_t id = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, variant))->id;
+  const MirValue tag = mir_b_emit(&fn->b, MOP_AltTag, &variant, 1, (MirImm){0}, MIR_INT);
+  const MirValue built = mir_b_icmp(&fn->b, MCC_EQ, tag, mir_b_iconst(&fn->b, ERR_CASE));
+  const MirBlock owned_block = mir_b_new_block(&fn->b);
+  const MirBlock held_block = mir_b_new_block(&fn->b);
+  mir_b_br_if(&fn->b, built, owned_block, NULL, 0, held_block, NULL, 0);
+  mir_b_seal_block(&fn->b, owned_block);
+  mir_b_seal_block(&fn->b, held_block);
+  mir_b_switch_to(&fn->b, owned_block);
+  const MirImm taken = {.tag = MI_ALTFIELD, .a = id, .b = ERR_CASE, .c = 0};
+  if (!relay_error(fn, mir_b_emit(&fn->b, MOP_AltTake, &variant, 1, taken, err_ty), ret_alt, ret, false, leaves)) {
+    return false;
+  }
+  mir_b_switch_to(&fn->b, held_block);
+  const MirImm held = {.tag = MI_ALTFIELD, .a = id, .b = ERR_CASE + 1, .c = 0};
+  const MirValue borrowed = mir_b_emit(&fn->b, MOP_AltGet, &variant, 1, held, err_ty);
+  return relay_error(fn, fn_relay_clone(fn, borrowed), ret_alt, ret, false, leaves);
+}
+
 /* Leaves the function with the error of the failed Result `value`: its scope is unwound and the error is the function's. */
 bool fn_return_error(LowerFn *fn, MirValue value) {
   uint32_t alt = 0;
@@ -279,23 +329,17 @@ bool fn_return_error(LowerFn *fn, MirValue value) {
   /* The error moves out of an operand the function owns, which its scope then drops without it. */
   const bool drops = mir_needs_drop(fn->cx->module, err_ty);
   const bool owned = drops && fn_fresh_owner(fn, value);
-  MirValue err = mir_b_emit(&fn->b, owned ? MOP_AltTake : MOP_AltGet, &value, 1, err_imm, err_ty);
   /* A `&T!` function hands a borrowed error on as a borrow (case 2); any other relay of one copies it. */
   const bool borrows_out = drops && !owned && leaves == NULL && fn_returns_view(fn);
+  const MirValue variant = drops && !owned && !borrows_out ? fn_view_owner(fn, value) : MIR_NONE;
+  if (variant != MIR_NONE) {
+    return return_variant_error(fn, variant, err_ty, ret_alt, ret, leaves);
+  }
+  MirValue err = mir_b_emit(&fn->b, owned ? MOP_AltTake : MOP_AltGet, &value, 1, err_imm, err_ty);
   if (drops && !owned && !borrows_out) {
-    err = fn_implicit_clone(fn, err, false); /* a Result something else owns (a borrowed parameter) keeps its error: the relay copies it */
+    err = fn_relay_clone(fn, err); /* a Result something else owns (a borrowed parameter) keeps its error: the relay copies it */
   }
-  const MirValue failed = build_case(fn, ret_alt, borrows_out ? ERR_CASE + 1 : ERR_CASE, err, ret);
-  const MirImm none = {0};
-  (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &failed, 1, none, MIR_NONE);
-  if (leaves != NULL) {
-    fn_scope_unwind(fn, leaves->keep);
-    mir_b_br(&fn->b, leaves->join, &failed, 1);
-    return true;
-  }
-  fn_scope_unwind(fn, 0);
-  mir_b_ret(&fn->b, failed);
-  return true;
+  return relay_error(fn, err, ret_alt, ret, borrows_out, leaves);
 }
 
 MirValue fn_try(LowerFn *fn, const MsExpr *expr, LowerWant want) {
