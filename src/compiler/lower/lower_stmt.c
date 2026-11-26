@@ -815,11 +815,7 @@ static bool lower_if(LowerFn *fn, const MsStmt *stmt) {
     MirValue tested = fn_expr(fn, stmt->u.branch.cond, owns && !from_call ? LW_MOVE : LW_BORROW);
     if (scoped) {
       fn->temps = false;
-      if (!fn->terminated) {
-        fn_scope_end(fn);
-      } else {
-        fn->nopen--;
-      }
+      if (fn->terminated) { fn->nopen--; } else { fn_scope_end(fn); }
     }
     if (owns && from_call && tested != MIR_NONE && fn_is_borrowed_view(fn, tested)) {
       /* A call that answers a part of something else is a view, unless it answers a temporary the binding can take. */
