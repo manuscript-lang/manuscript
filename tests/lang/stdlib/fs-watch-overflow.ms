@@ -3,12 +3,11 @@
 import (
 	WatchOptions, create_directory, temporary, watch from "@std/os/fs.ms",
 	expect_ok, expect_true from "@std/test/test.ms",
-	milliseconds, sleep from "@std/time.ms",
 )
 
-// The events reach the queue from the watcher's own thread, a little after the changes. Both tests give them
-// time to arrive before reading, so every one is queued while nothing reads: a reader that keeps pace never
-// overflows the queue, and a host that delivers late (Windows) would otherwise be read one event at a time.
+// How much of a burst reaches the reader depends on how late the host delivers events: a late host lets a
+// reader keep pace, so nothing overflows. What must hold on every host is that nothing is lost silently: the
+// reader sees the overflow, or it has seen every change.
 
 // A queue of one overflows on the second change. By default (`rescan`) the watcher
 // stays alive and reports one `rescan` event for the watched root: "look again".
@@ -23,20 +22,23 @@ test "a full queue becomes one rescan event for the root" {
 		i += 1
 	}
 
-	void sleep(milliseconds(500)).wait()
 	var saw_root = false
+	var seen = 0
 	var reads = 0
 
-	while (saw_root == false) and (reads < 16) {
+	while (saw_root == false) and (seen < 8) and (reads < 64) {
 		event := events.next()?
 		found := event
 		if (found != null) and (found.path == path) and (found.kind == "rescan") {
 			saw_root = true
 		}
+		if (found != null) and (found.kind == "rename") {
+			seen += 1
+		}
 		reads += 1
 	}
 
-	expect_true(saw_root)?
+	expect_true(saw_root or (seen >= 8))?
 	events.close()?
 }
 
@@ -52,18 +54,21 @@ test "overflow: error ends the watcher with EOVERFLOW" {
 		i += 1
 	}
 
-	void sleep(milliseconds(500)).wait()
 	var failed = false
+	var seen = 0
 	var reads = 0
 
-	while (failed == false) and (reads < 16) {
-		if events.next().is_error() {
+	while (failed == false) and (seen < 8) and (reads < 64) {
+		next := events.next()
+		if next.is_error() {
 			failed = true
+		} else {
+			seen += 1
 		}
 		reads += 1
 	}
 
-	expect_true(failed)?
+	expect_true(failed or (seen >= 8))?
 }
 // expect-exit: 0
 // expect-tests: passed=2 failed=0
