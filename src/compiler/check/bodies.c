@@ -258,6 +258,18 @@ static void stmt_bind(Body *body, const MsStmt *stmt) {
   if (stmt->u.bind.ty == NULL && body_is_none_type(body, value)) {
     body_report_uninferred_none(body, stmt->u.bind.value->pos); /* a binding with no type has no target for none */
   }
+  const MsExpr *named = stmt->u.bind.value;
+  if (declared == MS_TY_NONE && named->kind == MS_E_MEMBER && !body->quiet && body_reports(body)) {
+    /* A generic method's own type arguments come from a call or from `method[Type]`: a bare value has neither. */
+    MsMethodMatchList found = {0};
+    ms_check_find_method(body->program, ms_facts_type(body->facts, named->u.member.left->id), named->u.member.name, &found);
+    const MsMethodEntry *entry = found.len != 0 ? found.ptr[0].entry : NULL;
+    if (entry != NULL && entry->variables.len > entry->shared) {
+      ms_check_report(body->program, body->module, named->pos, MS_CHECK_TYPE,
+                      ms_string_from_span(ms_span_of_text("a generic method value requires explicit specialization; write it with its type arguments, such as `result.map[Type]`, or call it with arguments")));
+    }
+    ms_method_match_list_free(&found);
+  }
   const MsTy kept = stmt->u.bind.is_mutable ? value : body_lifted_function(body, stmt->u.bind.value, value);
   bind_pattern_from(body, stmt->u.bind.pattern, declared != MS_TY_NONE ? declared : kept, stmt->u.bind.is_mutable,
                     stmt->u.bind.value);
