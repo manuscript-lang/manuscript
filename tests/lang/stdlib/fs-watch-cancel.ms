@@ -11,7 +11,7 @@ import (
 // every level of a new directory (Windows), so the queue is sized for it. Tells the
 // test the watch is registered, reads events until `last` shows up, tells the test
 // again, then waits for more inside the native watcher.
-fn follow(root, last String, move seen WriteStream[Int]) Void! {
+fn follow(root String, last String, move seen WriteStream[Int]) Void! {
 	var events = watch(root, recursive: true, options: WatchOptions(max_events: 4096))?
 	var out = seen
 	out.write(0)?
@@ -52,16 +52,7 @@ test "cancelling a recursive watch after a burst of events releases the watcher 
 		i += 1
 	}
 
-	arrived := reader.next()
-
-	if arrived.is_error() {  // TEMPORARY diagnostics for the Windows flake: name why the watcher ended
-		switch.cancel()
-
-		ended := work.wait()
-		why := if ended.is_error() { ended.err().message.clone() } else { "watcher returned ok" }
-		return error(Error(f"DIAG arrived={arrived.err().message} watcher={why}"))
-	}
-
+	_arrived := reader.next()?
 	switch.cancel()
 	expect_true(work.wait().is_error())?
 }
