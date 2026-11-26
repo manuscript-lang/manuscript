@@ -8,6 +8,14 @@ const documentSelector = [
   { scheme: 'manuscript-stdlib', language: 'manuscript' },
 ];
 
+// The command line of a task: `check` and `lint` are the two steps of `ms check`, and `fmt` only checks.
+function taskArgs(operation, project) {
+  if (operation === 'check') return ['check', '--only', 'types', project];
+  if (operation === 'lint') return ['check', '--only', 'lint', project];
+  if (operation === 'fmt') return ['fmt', project, '--check'];
+  return [operation, project];
+}
+
 async function activate(context) {
   const output = vscode.window.createOutputChannel('Manuscript', { log: true });
   const watcher = vscode.workspace.createFileSystemWatcher('{**/*.ms,**/ms.toml}');
@@ -80,7 +88,7 @@ async function activate(context) {
         const folder = vscode.workspace.getWorkspaceFolder(manifest);
         const definition = { type: 'manuscript', command: operation, project: manifest.fsPath };
         const task = new vscode.Task(definition, folder, `${operation}: ${path.basename(path.dirname(manifest.fsPath))}`, 'Manuscript',
-          new vscode.ProcessExecution(command, [operation, manifest.fsPath], { cwd: path.dirname(manifest.fsPath) }), ['$manuscript']);
+          new vscode.ProcessExecution(command, taskArgs(operation, manifest.fsPath), { cwd: path.dirname(manifest.fsPath) }), ['$manuscript']);
         if (operation === 'build') task.group = vscode.TaskGroup.Build;
         if (operation === 'test') task.group = vscode.TaskGroup.Test;
         tasks.push(task);
@@ -90,8 +98,7 @@ async function activate(context) {
     resolveTask(task) {
       const definition = task.definition;
       if (!['check', 'build', 'test', 'lint', 'fmt'].includes(definition.command) || !definition.project) return;
-      const args = [definition.command, definition.project]; if (definition.command === 'fmt') args.push('--check');
-      return new vscode.Task(definition, task.scope, task.name, 'Manuscript', new vscode.ProcessExecution(command, args), ['$manuscript']);
+      return new vscode.Task(definition, task.scope, task.name, 'Manuscript', new vscode.ProcessExecution(command, taskArgs(definition.command, definition.project)), ['$manuscript']);
     },
   }));
   context.subscriptions.push(vscode.commands.registerCommand('manuscript.profile', async () => {
@@ -103,7 +110,7 @@ async function activate(context) {
       const target = await targetFor(editor.document.uri.fsPath);
       const terminal = vscode.window.createTerminal({
         name: 'Manuscript sampling profile', shellPath: command,
-        shellArgs: ['profile', target, '--out-dir', destination.fsPath], cwd: path.dirname(target),
+        shellArgs: ['run', '--profile', target, '--out-dir', destination.fsPath], cwd: path.dirname(target),
       });
       terminal.show();
     } catch (error) { vscode.window.showErrorMessage(error.message); }

@@ -34,9 +34,9 @@ SCENES = [
                   steps=[("ms build par.ms -o par && time ./par", clock)]),
          ]),
     dict(title="*Declare* effects. *Compiler checks* them.",
-         sub="Mark db.write once; ms lint flags every caller that did not allow it.",
+         sub="Mark db.write once; ms check --only lint flags every caller that did not allow it.",
          src="effects.ms", hold=3200,
-         steps=[("ms lint effects.ms", first(1))], cut=";"),
+         steps=[("ms check --only lint effects.ms", first(1))], cut=";"),
     dict(title="Compiler errors that *name the fix*.",
          sub="Cause and remedy in every diagnostic. --json for agents.",
          src="fixme.ms", steps=[("ms check fixme.ms", first(1))]),
@@ -46,8 +46,8 @@ SCENES = [
          steps=[("ms test tb.ms && ms bench tb.ms",
                  lambda ls: [l for l in ls if l.startswith("1 tests")] + bench_line(ls))], cut=" ("),
     dict(title="Including a *native profiler*.",
-         sub="ms profile: source attribution, pprof, folded stacks. Nothing to install.",
-         src="prof.ms", steps=[("ms profile prof.ms", lambda ls: ls[2:4])]),
+         sub="ms run --profile: source attribution, pprof, folded stacks. Nothing to install.",
+         src="prof.ms", steps=[("ms run --profile prof.ms", lambda ls: ls[2:4])]),
     dict(title="*Token-lean* syntax, *benchmark-driven*.",
          sub="Fewer tokens to write and read, and we measure it.",
          points=["Compact syntax: less to generate, less to read.",
@@ -55,7 +55,7 @@ SCENES = [
                  "Pass rate, tokens, turns and cost guide every change."]),
     dict(title="Can't read all that agent code? *Map it.*",
          sub="Call graph here; --format html writes an offline interactive code map.",
-         src=None, steps=[("ms diagram par.ms --format ascii", first(6))]),
+         src=None, steps=[("ms map par.ms --format ascii", first(6))]),
 ]
 # Time relative to C compiled with bounds checks (1.0 = same), from bench/perf/results-2026-11-09.md at 48b25d38: ms us / c-bounds us per kernel.
 KERNELS = [("sieve", 28410 / 28204), ("nbody", 9024 / 8942), ("life", 4958 / 37967), ("matmul", 9098 / 10188),
@@ -221,7 +221,7 @@ def card_frame(kind, n, total, typed="", chips=0):
         d.text((290, 298), "$", font=HEAD, fill=C["ok"])
         d.text((345, 298), typed, font=HEAD, fill=C["fg"])
         d.text((W // 2, 410), URL, font=SUB, fill=C["dim"], anchor="mm")
-        names = ["verify", "test", "bench", "profile", "diagram", "build"]
+        names = ["check", "test", "bench", "run --profile", "map", "build"]
     x = W // 2 - sum(SUB.getlength(t) + 52 for t in names) // 2
     y = 500
     for i, t in enumerate(names):

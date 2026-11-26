@@ -1,0 +1,5 @@
+<DIR>/main.ms:1:8: warning MSL102: Import read_file is never used
+   |
+ 1 | import read_file from "@std/os/fs.ms"
+   |        ^
+1 warning; warnings do not fail ms check --only lint; pass --deny-warnings to fail on them

@@ -1,4 +1,4 @@
-# The interactive page `ms diagram --format html` fills with the fact model.
+# The interactive page `ms map --format html` fills with the fact model.
 set(page_c ${MS_GEN}/page.c)
 add_custom_command(
   OUTPUT ${page_c}

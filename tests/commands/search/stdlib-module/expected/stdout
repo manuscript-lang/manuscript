@@ -1,0 +1,46 @@
+@std/os/fs.ms: import Name from "@std/os/fs.ms"
+alternative CloneMode // Whether a copy asks the filesystem to clone file data (copy-on-write) instead of
+type CopyOptions // Policies for recursive copies, including replacement, symlinks, and optional limits.
+opaque type Directory // An open directory that yields one child per read and must be closed.
+type DirectoryEntry // The name and kind flags for one child returned by a directory listing.
+type FileEvent // One filesystem change and the affected path.
+opaque type FileHandle // An open file supporting sequential and positional I/O. It owns its descriptor:
+type FileInfo // File metadata, including portable fields and exact platform-specific numeric values.
+alternative FileKind // What kind of filesystem object an entry is.
+type FileSystemInfo // Capacity and free-space statistics for a filesystem. `block_size` is in bytes; the
+type GlobOptions // Include and exclude patterns and limits used by filesystem glob operations.
+native NativeDirectory // The runtime handle behind a `Directory`.
+native NativeFile // The runtime handle behind a `FileHandle`.
+native NativeTemporary // The runtime handle behind a `TemporaryDirectory`.
+native NativeWatcher // The runtime handle behind a `FileWatcher`.
+alternative OpenMode // How `open` treats the file.
+type OpenOptions // Settings of `open` beyond the mode.
+type PathEntry // A matched path together with its filesystem entry metadata.
+opaque type RawWatcher // The native watcher a watch operation returns; `watch` wraps it into a stream.
+alternative Seek // The position a `seek` offset counts from.
+opaque type TemporaryDirectory // A temporary directory whose contents are removed when it is closed.
+type WatchOptions // How `watch` observes a path: with native OS events by default, or by polling snapshots…
+fn access(path String, mode Int) Result[Void, Error] { ... }
+fn append_file(path String, data Writable) Promise[Void] { ... }
+fn canonicalize(path String) Result[String, Error] { ... }
+fn chmod(path String, mode Int, follow_links Bool = true) Result[Void, Error] { ... }
+fn chown(path String, uid Int, gid Int, follow_links Bool = true) Result[Void, Error] { ... }
+fn copy(source String, destination String, options CopyOptions = CopyOptions()) Result[Void, Error] { ... }
+fn 
+[... 397 bytes omitted ...]
+ll) Result[List[PathEntry], Error] { ... }
+fn list(path String, max_entries Int? = null) Result[List[DirectoryEntry], Error] { ... }
+fn move(source String, destination String) Result[Void, Error] { ... }
+fn open(path String, mode OpenMode = OpenMode.Read, options OpenOptions = OpenOptions()) Result[FileHandle, Error] { ... }
+fn open_directory(path String) Result[Directory, Error] { ... }
+fn read_file(path String, max_bytes Int? = null) Promise[Bytes] { ... }
+fn read_symlink(path String) Result[String, Error] { ... }
+fn remove(path String, recursive Bool = false) Result[Void, Error] { ... }
+fn rename(source String, destination String) Result[Void, Error] { ... }
+fn set_times(path String, accessed Timestamp, modified Timestamp, follow_links Bool = true) Result[Void, Error] { ... }
+fn stat(path String, follow_links Bool = true) Result[FileInfo, Error] { ... }
+fn stat_filesystem(path String) Result[FileSystemInfo, Error] { ... }
+fn temporary(prefix String) Result[TemporaryDirectory, Error] { ... }
+fn temporary_directory(prefix String) Result[String, Error] { ... }
+... 5 more; narrow with `ms search <words>`
+Details: ms search fs.<Name>

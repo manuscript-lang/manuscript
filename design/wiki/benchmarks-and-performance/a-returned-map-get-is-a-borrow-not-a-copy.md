@@ -4,4 +4,4 @@ A function that returns `m.get(k)` returns a borrow of the map entry (`opt.view`
 
 - A caller that holds the result cannot change the map until its last use; `.clone()` the result first (see `src/stdlib/data/toml.ms`, `lookup`).
 - `xs.first()` / `xs.last()` still return an owned `Optional`.
-- If a stdlib function documents "the result borrows from the receiver", check that the emitted MIR (`ms emit`) ends in `opt.view`, not `opt.some` of a `take`.
+- If a stdlib function documents "the result borrows from the receiver", check that the emitted MIR (`ms build --emit mir`) ends in `opt.view`, not `opt.some` of a `take`.

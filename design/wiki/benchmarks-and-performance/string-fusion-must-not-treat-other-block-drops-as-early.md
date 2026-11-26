@@ -6,4 +6,4 @@ Verified (2026-11-09, `c36-bank-ledger`): `strfuse` skipped any concat chain who
 
 Apply when: changing `src/compiler/opt/opt_strfuse.c` or any pass that moves a use later than the original operations.
 Evidence: [results](https://github.com/manuscript-lang/manuscript/blob/48b25d38/bench/perf/perf-bash-2026-11-09.md), test `a_leaf_dropped_on_a_sibling_path_still_fuses`.
-Verify: `MS_EMIT_OPT=1 ms emit` shows no `int_to_string` or lone `string_concat` left in an interpolation.
+Verify: `MS_EMIT_OPT=1 ms build --emit mir` shows no `int_to_string` or lone `string_concat` left in an interpolation.

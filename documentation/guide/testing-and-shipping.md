@@ -67,6 +67,6 @@ Save it as `totals.ms` and run `ms test totals.ms`.
 ms build ms.toml --build-type Release
 ```
 
-`ms verify` runs the checker, the formatter check, lint and the tests and returns one result, which is the command to run before you share a change.
+`ms check --test` runs the checker, the formatter check, lint and the tests and returns one result, which is the command to run before you share a change.
 
 **Next:** [Working with an agent](working-with-an-agent.md). **Exact rules:** [Testing](../learn/testing.md), [Build levels](../developer-tooling/builds/build-levels.md).

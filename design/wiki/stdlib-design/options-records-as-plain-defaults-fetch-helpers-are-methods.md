@@ -8,6 +8,6 @@ Decision (Chinmay, Addendum 5 of the stdlib idiom proposal): a function takes at
 
 Apply when: adding a parameter that is a record of settings, choosing between an interface and a record for a type with one implementation, naming the operation that waits for work to end, adding a second spelling of a constructor, naming a combinator over a record (prefer a method with the List name), naming an error type (derive it from the type whose operations return it, unique across sibling modules), or adding a type that sends and receives (make it a `Transport` behind `Channel`).
 Evidence: [fetch.ms](../../../src/stdlib/net/fetch.ms), [fetch fixture](../../../tests/lang/stdlib/fetch.ms), workers fixture.
-Verify: `ms test tests/lang/stdlib/fetch.ms tests/lang/stdlib/workers.ms`; `ms search_symbol read_json` finds no declaration.
+Verify: `ms test tests/lang/stdlib/fetch.ms tests/lang/stdlib/workers.ms`; `ms search read_json` finds no declaration.
 
 Absent is an optional, not a flag beside a string (owner, 2026-11-17, #4349): `Url.query` is `String?`, none for no query and `""` for `http://a/b?`. A first try added `has_query Bool` and was replaced the same day. The ordering rule puts the optional after the required fields, so `fragment` moved before `query` and positional `Url(...)` callers changed.

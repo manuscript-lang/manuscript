@@ -6,4 +6,4 @@
 
 Two conditions gate it: the optional is boxed (`mir_ty_opt_boxed`; an inline optional keeps the take and put-back path) and the field's address is known (`fn_field_address`, which needs `field_cell_exact`: a boxed optional is one pointer leaf, so it no longer blocks the fields after it). Guard: `tests/lang/stdlib/optional-field-chain-in-place.ms`.
 
-Method: callgrind showed `msrt_alloc` called 12.6M times against 6.6M expected nodes; `ms emit --opt` of `insert` showed the take, unbox, slot, re-box sequence.
+Method: callgrind showed `msrt_alloc` called 12.6M times against 6.6M expected nodes; `ms build --emit mir --opt` of `insert` showed the take, unbox, slot, re-box sequence.

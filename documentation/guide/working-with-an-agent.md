@@ -28,7 +28,7 @@ It writes `manuscript/SKILL.md` and its references into `.claude/skills` and `.a
 The agent writes `{totl}` in `invoice.ms` where it meant `{total}`. `ms check` names the problem, and applies the repair when it is mechanical:
 
 ```sh
-ms check invoice.ms --fix
+ms check --only types invoice.ms --fix
 ```
 
 ```text
@@ -40,8 +40,8 @@ Every diagnostic reads `<cause>; <fix>`, so it says what is wrong and what to wr
 
 Three commands cover the rest:
 
-- `ms search_symbol read file` finds a project or standard-library API and prints its signature, so the agent never needs the whole manual in context.
-- `ms verify` runs the checker, the formatter check, lint and tests, and returns one exit code. The agent loops until it is zero.
+- `ms search read file` finds a project or standard-library API and prints its signature, so the agent never needs the whole manual in context.
+- `ms check --test` runs the checker, the formatter check, lint and tests, and returns one exit code. The agent loops until it is zero.
 - `ms test --json` returns a failed test as data: kind, values, position and trace.
 
 ## You review the change
@@ -49,11 +49,11 @@ Three commands cover the rest:
 Instead of reading the diff top to bottom, start from what changed:
 
 ```sh
-ms diagram ms.toml --format html -o code-map.html
-git diff main | ms review ms.toml --diff -
+ms map ms.toml --format html -o code-map.html
+git diff main | ms map --view review ms.toml --diff -
 ```
 
-The code map is one offline file with source, types, calls and ownership side by side. `ms review --diff` compares the checked program before and after the diff and ranks what to look at first: changed contracts, error flow and resource scopes.
+The code map is one offline file with source, types, calls and ownership side by side. `ms map --view review --diff` compares the checked program before and after the diff and ranks what to look at first: changed contracts, error flow and resource scopes.
 
 ![The Calls view of the code map, showing run calling run_command, with the three changed declarations listed in the sidebar](/images/code-map-calls.png "The Calls view for a changed program. Start from the outlined declarations and follow callers and callees.")
 

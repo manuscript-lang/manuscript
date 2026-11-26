@@ -29,6 +29,6 @@ Versions are dates: `2026.11.0` is the first release of November 2026, and `2026
 
 ## When something is removed
 
-Every removal from now on leaves an error that names the replacement. When the rewrite is mechanical, it also leaves a fix that `ms check --fix` applies. When the replacement depends on the program, such as moving the methods of an `impl` block, there is no fix and the error shows the new form.
+Every removal from now on leaves an error that names the replacement. When the rewrite is mechanical, it also leaves a fix that `ms check --only types --fix` applies. When the replacement depends on the program, such as moving the methods of an `impl` block, there is no fix and the error shows the new form.
 
 The list of removed spellings is in [removed spellings](removed-spellings.md).

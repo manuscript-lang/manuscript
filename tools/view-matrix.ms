@@ -167,7 +167,7 @@ fn main() Int {
 				file := f"{scratch.path()}/{name}.ms"
 				void write_file(file, program(o, source, stomp)).wait().get()
 
-				verdict := run(ms.clone(), ["check", file.clone()]).wait()
+				verdict := run(ms.clone(), ["check", "--only", "types", file.clone()]).wait()
 
 				if verdict.is_error() or verdict.get().exit_code != 0 {
 					rejected += 1

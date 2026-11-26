@@ -1,5 +1,5 @@
 /* tooling/guide.h: documentation of the bundled standard library: a snapshot of every importable module read from the
- * embedded sources, and the bounded pages and search `ms search_symbol` prints from it.
+ * embedded sources, and the bounded pages and search `ms search` prints from it.
  * Texts live in the arena. */
 #ifndef MS_TOOLING_GUIDE_H
 #define MS_TOOLING_GUIDE_H
@@ -35,7 +35,7 @@ typedef struct MsGuide {
 
 void ms_guide_build(MsArena *arena, MsNames *names, MsGuide *out);
 
-/* `ms search_symbol` with no words: every module with a few of its names. */
+/* `ms search` with no words: every module with a few of its names. */
 MsSpan ms_guide_index(MsArena *arena, const MsGuide *guide);
 
 /* The page of a module (`json`), a declaration (`json.parse`) or a member (`prelude.List.sorted`). False leaves the reason. */

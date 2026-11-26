@@ -104,7 +104,7 @@ static void add_node(Scan *scan, uint32_t module, const MsDecl *decl, const MsMe
   ms_directives_free(&header);
 }
 
-/* The functions come first, in program order: `ms inspect` finds a function's effects by its place among them. Then
+/* The functions come first, in program order: `ms map --view inspect` finds a function's effects by its place among them. Then
  * the methods, types and constants. */
 static void add_nodes(Scan *scan) {
   scan->line_starts = MS_ARENA_NEW_ARRAY(scan->arena, uint32_t *, scan->program->modules.len);

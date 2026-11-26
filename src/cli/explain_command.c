@@ -1,4 +1,4 @@
-/* Owns `ms explain` (explain_command.h): the rule family and usual repair of diagnostic and lint codes. */
+/* Owns `ms help` (explain_command.h): the rule family and usual repair of diagnostic and lint codes. */
 #include "cli/explain_command.h"
 
 #include <stdio.h>
@@ -72,7 +72,7 @@ int ms_explain_command(int argc, char **argv) {
     codes++;
     Entry entry;
     if (!find_entry(argv[i], &entry)) {
-      (void)fprintf(stderr, "ms explain: unknown diagnostic code %s\n", argv[i]);
+      (void)fprintf(stderr, "ms help: unknown diagnostic code %s\n", argv[i]);
       status = STATUS_FAILED;
     } else if (json) {
       append_json_entry(&entries, &entry, ms_strbuild_length(&entries) == 0);
@@ -81,7 +81,7 @@ int ms_explain_command(int argc, char **argv) {
     }
   }
   if (codes == 0) {
-    (void)fprintf(stderr, "ms explain needs at least one diagnostic code\n");
+    (void)fprintf(stderr, "ms help: pass a command name or at least one diagnostic code\n");
     status = STATUS_USAGE;
   } else if (json) {
     (void)printf("{\n  \"format\": 1,\n  \"codes\": [");

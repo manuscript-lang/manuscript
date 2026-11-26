@@ -1,4 +1,4 @@
-/* cli/explain_command.h: `ms explain <code>... [--json]`. */
+/* cli/explain_command.h: `ms help <code>... [--json]`. */
 #ifndef MS_CLI_EXPLAIN_COMMAND_H
 #define MS_CLI_EXPLAIN_COMMAND_H
 

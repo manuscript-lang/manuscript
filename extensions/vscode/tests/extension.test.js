@@ -73,7 +73,7 @@ test('editor commands pass argument arrays, discover projects, and require trust
     assert.equal(logSubscriptions, 2);
     assert.equal(clientOptions[1].outputChannel, clientOptions[0].outputChannel);
     await commands.get('manuscript.profile')();
-    assert.deepEqual(terminals[0].shellArgs, ['profile', path.join(root, 'ms.toml'), '--out-dir', path.join(root, 'profile capture')]);
+    assert.deepEqual(terminals[0].shellArgs, ['run', '--profile', path.join(root, 'ms.toml'), '--out-dir', path.join(root, 'profile capture')]);
     assert.equal(terminals[0].shellPath, '/compiler path/ms');
     assert.equal(terminals[0].cwd, root);
     canceled = true;

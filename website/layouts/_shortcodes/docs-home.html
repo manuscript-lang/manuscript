@@ -21,7 +21,7 @@
     <li><a href="{{ $start }}"><strong>Run your first program</strong><span>Install <code>ms</code>, run a project, and build a native executable.</span></a></li>
     <li><a href="{{ with .Site.GetPage "guide" }}{{ .RelPermalink }}{{ end }}"><strong>Learn the language</strong><span>Types, ownership, errors and concurrency, one idea at a time.</span></a></li>
     <li><a href="{{ with .Site.GetPage "cookbook" }}{{ .RelPermalink }}{{ end }}"><strong>Build something</strong><span>HTTP servers, JSON, files, processes and tests, ready to copy.</span></a></li>
-    <li><a href="{{ with .Site.GetPage "developer-tooling/implementation" }}{{ .RelPermalink }}{{ end }}#commands-for-agents"><strong>Use it with an agent</strong><span><code>ms verify</code>, <code>ms check --fix</code> and the downloadable agent skill give agents a tight loop.</span></a></li>
+    <li><a href="{{ with .Site.GetPage "developer-tooling/implementation" }}{{ .RelPermalink }}{{ end }}#commands-for-agents"><strong>Use it with an agent</strong><span><code>ms check --only types --test</code>, <code>ms check --fix</code> and the downloadable agent skill give agents a tight loop.</span></a></li>
   </ul>
 </section>
 {{- else if eq $part "proof" -}}
@@ -30,8 +30,8 @@
   <ul class="home-proof-list">
     <li><strong>One owner per value.</strong> No GC, no lifetimes to write, and use-after-move is a compile error. <a href="{{ with .Site.GetPage "core-language/types/references" }}{{ .RelPermalink }}{{ end }}">Ownership rules</a></li>
     <li><strong>Failure is a value.</strong> <code>T!</code> and <code>T?</code> make errors and absence visible. There is no <code>any</code> and no reflection.</li>
-    <li><strong>Effects the compiler checks.</strong> Declare one in a comment and <code>ms lint</code> flags every caller that did not allow it.</li>
-    <li class="home-proof-map"><strong>Diagrams and a code map.</strong> <code>ms diagram</code> builds an interactive, offline code map of types, calls and control flow, with a diff overlay for what changed. <a href="{{ with .Site.GetPage "developer-tooling/implementation" }}{{ .RelPermalink }}{{ end }}#interactive-code-map">Code map</a>
+    <li><strong>Effects the compiler checks.</strong> Declare one in a comment and <code>ms check --only lint</code> flags every caller that did not allow it.</li>
+    <li class="home-proof-map"><strong>Diagrams and a code map.</strong> <code>ms map</code> builds an interactive, offline code map of types, calls and control flow, with a diff overlay for what changed. <a href="{{ with .Site.GetPage "developer-tooling/implementation" }}{{ .RelPermalink }}{{ end }}#interactive-code-map">Code map</a>
       {{ .Page.RenderString "![The code map's Calls tab: the callers and callees of a function beside its source, with the changed declarations listed on the left.](/images/code-map-calls.png \"The code map, Calls tab, with a diff overlay.\")" }}
     </li>
     <li><strong>Build speed.</strong> A 122,000-line project builds in debug in 5.4 s against 9.0 s for <code>go build</code> (<a href="https://github.com/manuscript-lang/manuscript/blob/48b25d38/bench/perf/results-2026-11-05.md">measured 2026-11-05</a>).</li>

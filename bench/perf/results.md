@@ -8,7 +8,7 @@ _Whole programs against rust, go, node and c. Run: `make perf GROUP=suite`._
 
 ### 2026-11-26, per-function MIR passes on every core (on `98dcbd11`)
 
-Release `ms` with and without the change, same 4 vCPU VM, wall time of `ms build`. The generated 123k-line project of `bench/perf/tools/compile_time_project.ms` (40 packages, 25 files, 10 functions) and `tools/conform-run.ms` (384 lines plus the standard library it reaches). `ms emit --opt` of the project, pinned to one core with `taskset`, against four cores: 4.8 s against 3.9 s; the optimized MIR is byte-identical on one and four cores.
+Release `ms` with and without the change, same 4 vCPU VM, wall time of `ms build`. The generated 123k-line project of `bench/perf/tools/compile_time_project.ms` (40 packages, 25 files, 10 functions) and `tools/conform-run.ms` (384 lines plus the standard library it reaches). `ms build --emit mir --opt` of the project, pinned to one core with `taskset`, against four cores: 4.8 s against 3.9 s; the optimized MIR is byte-identical on one and four cores.
 
 | build | before | after |
 |---|---:|---:|

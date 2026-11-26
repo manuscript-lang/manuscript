@@ -34,9 +34,9 @@ The [cookbook](../cookbook/_index.md) has complete programs for common jobs: com
 Run these from your project directory:
 
 ```sh
-ms search_symbol read file
-ms search_symbol json
-ms search_symbol PromiseOptions
+ms search read file
+ms search json
+ms search PromiseOptions
 ```
 
 The `PromiseOptions` search starts with:
@@ -66,4 +66,4 @@ irm https://manuscript-lang.github.io/manuscript/install-skill.ps1 | iex
 
 This creates a self-contained `manuscript` skill with concept references and the language version.
 
-Use `ms verify` to run type checking, the formatting check, lint and tests together; `ms check --json` gives structured diagnostics for tools (agents should read the plain output), and `ms check --fix` applies available mechanical fixes. See [commands for agents](../developer-tooling/implementation.md#commands-for-agents).
+Use `ms check --test` to run type checking, the formatting check, lint and tests together; `ms check --only types --json` gives structured diagnostics for tools (agents should read the plain output), and `ms check --only types --fix` applies available mechanical fixes. See [commands for agents](../developer-tooling/implementation.md#commands-for-agents).

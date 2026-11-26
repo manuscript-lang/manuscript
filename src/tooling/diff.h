@@ -1,4 +1,4 @@
-/* tooling/diff.h: unified diff parsing and reverse application, for `ms review --diff`. Never runs git.
+/* tooling/diff.h: unified diff parsing and reverse application, for `ms map --view review --diff`. Never runs git.
  * Texts live in the arena. */
 #ifndef MS_TOOLING_DIFF_H
 #define MS_TOOLING_DIFF_H

@@ -128,6 +128,6 @@ void finding_terminal_text(MsStrBuild *err, MsSpan root, const FindingList *find
   if (warnings != 0) {
     ms_strbuild_printf(err, "%zu %s; %s\n", warnings, warnings == 1 ? "warning" : "warnings",
                        deny_warnings ? "failing because of --deny-warnings"
-                                     : "warnings do not fail ms lint; pass --deny-warnings to fail on them");
+                                     : "warnings do not fail ms check --only lint; pass --deny-warnings to fail on them");
   }
 }

@@ -1,0 +1,2 @@
+  src/main.ms:9:5: `two` reaches std.console.write: two -> print; permit it with `// ms: allow_effect std.console.write`, move the call to the caller, or take a capability parameter
+lint warnings do not fail ms check; pass --deny-warnings to fail on them

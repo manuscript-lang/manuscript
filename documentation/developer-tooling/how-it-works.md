@@ -21,11 +21,13 @@ ms run ms.toml --build-type Debug -- first second
 The check and run report:
 
 ```text
-Checked ms.toml (2 modules)
+types  passed
+fmt    passed
+lint   passed
 Arguments: 2
 ```
 
-`check` catches source errors without running the application. `run` builds and starts it; arguments after `--` go to your program. `Debug` keeps the edit/run cycle quick.
+`check` catches type errors, unformatted source and lint findings without running the application (`--only types` runs just the type check). `run` builds and starts it; arguments after `--` go to your program. `Debug` keeps the edit/run cycle quick.
 
 To rebuild after each saved change, use `ms run ms.toml --watch -- first second`. To see diagnostics while you type, [set up your editor](implementation.md).
 
@@ -50,22 +52,22 @@ The adjacent `my-app.ms-build.json` holds the compiler version, build level and 
 ## Check a change before sharing it {#one-binary}
 
 ```sh
-ms verify ms.toml
-ms diagram ms.toml --format html -o code-map.html
+ms check --test ms.toml
+ms map ms.toml --format html -o code-map.html
 ```
 
-For the generated project, `verify` reports:
+For the generated project, `ms check --test` reports:
 
 ```text
-check  passed
+types  passed
 fmt    passed
 lint   passed
 test   passed
 ```
 
-`verify` checks types, formatting, lint and tests. Fix any failed step before you build the version you intend to share. It never rewrites files. The second command succeeds silently and writes an offline HTML map: open `code-map.html` to follow source, checked types and calls during review. See [the code-map workflow](implementation.md#interactive-code-map) for change overlays.
+`check --test` checks types, formatting, lint and tests. Fix any failed step before you build the version you intend to share. It never rewrites files. The second command succeeds silently and writes an offline HTML map: open `code-map.html` to follow source, checked types and calls during review. See [the code-map workflow](implementation.md#interactive-code-map) for change overlays.
 
-The same compiler includes the standard library, formatter, linter, language server and analysis tools. Source-only commands such as `check`, `fmt`, `lint` and `diagram` need no native linker. For a repeatable team setup, use the same `ms` version and keep `ms.toml` with your source.
+The same compiler includes the standard library, formatter, linter, language server and analysis tools. Source-only commands such as `check`, `fmt` and `map` need no native linker. For a repeatable team setup, use the same `ms` version and keep `ms.toml` with your source.
 
 ## Build tools and local setup
 

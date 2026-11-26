@@ -1,0 +1,13 @@
+<DIR>/main.ms:2:5: warning MSL108: Matching an Optional with only a payload arm and null; bind it with 'v := x' and test 'if v != null { ... }', or use `x or default` or an Optional method such as map
+   |
+ 2 |     match a {
+   |     ^
+<DIR>/main.ms:4:13: MSL107: Nested match obscures control flow; bind the outer payload with an early exit, use a compatible trailing '?', or call a small helper
+   |
+ 4 |             match b {
+   |             ^
+<DIR>/main.ms:4:13: warning MSL108: Matching an Optional with only a payload arm and null; bind it with 'v := x' and test 'if v != null { ... }', or use `x or default` or an Optional method such as map
+   |
+ 4 |             match b {
+   |             ^
+2 warnings; warnings do not fail ms check --only lint; pass --deny-warnings to fail on them

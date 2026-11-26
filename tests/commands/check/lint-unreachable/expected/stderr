@@ -1,0 +1,5 @@
+<DIR>/main.ms:3:5: warning MSL103: Statement is unreachable
+   |
+ 3 |     print("never")
+   |     ^
+1 warning; warnings do not fail ms check --only lint; pass --deny-warnings to fail on them

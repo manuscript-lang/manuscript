@@ -1,0 +1,29 @@
+Usage: ms init [--lib | --workspace] [directory]
+
+Create a runnable project in the directory (default: the current directory).
+Writes ms.toml, src/main.ms (a hello program), test.ms, a .gitignore that excludes the
+.ms-cache/ build cache, and a .gitattributes that keeps source, manifests and the lock LF
+on Windows checkouts. An existing .gitignore or .gitattributes gets the lines appended.
+An existing file is never overwritten; the command fails before writing anything when
+ms.toml, src/main.ms, or test.ms exist.
+
+--lib creates a library, which a package must be: its ms.toml has no entry, and
+src/lib.ms holds a function and a test in place of main.
+
+--workspace creates a workspace: a root ms.toml listing the members, an app that
+imports a greeter library through a path dependency, and one shared ms.lock location
+at the root. Run `ms test` at the root to test every member.
+
+Keep .ms-cache/ out of version control.
+
+Options:
+  --lib        Create a library with no entry, for sharing as a package
+  --workspace  Create a workspace with an app member and a library member
+  -h, --help  Show this help without creating files
+
+Examples:
+  ms init
+  ms init --lib greeter
+  ms init --workspace team
+  ms init hello
+  cd hello && ms run ms.toml -- first second

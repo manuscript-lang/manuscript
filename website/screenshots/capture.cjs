@@ -1,4 +1,4 @@
-// Captures light and dark screenshots of an `ms diagram --format html` map for the documentation.
+// Captures light and dark screenshots of an `ms map --format html` map for the documentation.
 // Usage: node website/screenshots/capture.cjs <map.html> <symbol> <name> [Tab...]
 // Writes website/static/images/<name>-<tab>.png (light) and <name>-<tab>-dark.png.
 // Requires Playwright with Chromium; it is not a project dependency. See README.md.

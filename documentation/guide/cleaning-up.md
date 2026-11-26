@@ -56,6 +56,6 @@ void file.close()
 slow_work(head)
 ```
 
-`close()` returns a `Result`, because closing can fail. Flush output before you close it so delivery errors reach you: `output.flush()?`. `ms lint` warns when a scope-closed resource has an uncalled `flush`.
+`close()` returns a `Result`, because closing can fail. Flush output before you close it so delivery errors reach you: `output.flush()?`. `ms check --only lint` warns when a scope-closed resource has an uncalled `flush`.
 
 **Next:** [Doing things at once](doing-things-at-once.md). **Exact rules:** [Scope-end cleanup](../core-language/cleanup/scopes.md).

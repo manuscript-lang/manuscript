@@ -5,7 +5,7 @@ weight = 4
 
 # Effects and permissions
 
-A function is pure unless a comment permits what it reaches. `ms lint` reports a function that prints, reads a file, calls the network or reads the clock without that permission, and names the call that brings the effect in. Effects are comments, so the language has no extra syntax.
+A function is pure unless a comment permits what it reaches. `ms check --only lint` reports a function that prints, reads a file, calls the network or reads the clock without that permission, and names the call that brings the effect in. Effects are comments, so the language has no extra syntax.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
@@ -138,12 +138,12 @@ Standard-library functions declare what they let a caller do. Calls through a ha
 | `std.console.read`, `std.console.write` | standard input, output and error |
 | `std.system.read` | host facts such as the hostname and system roots |
 
-`ms search_symbol read_file` prints `effects: std.fs.read`, and hovering a function in the editor shows its effects, its permissions, or that it is pure.
+`ms search read_file` prints `effects: std.fs.read`, and hovering a function in the editor shows its effects, its permissions, or that it is pure.
 
 ## Seeing and reviewing effects
 
-- `ms lint` reports `MSL116` as a warning for now; `--deny-warnings` makes it fail. It becomes an error in a later release.
-- `ms review ms.toml --diff change.patch` lists new permissions and newly reached effects under `EFFECT+`, permissions first. `--effect 'std.net.*'` keeps only the findings for one effect.
+- `ms check --only lint` reports `MSL116` as a warning for now; `--deny-warnings` makes it fail. It becomes an error in a later release.
+- `ms map --view review ms.toml --diff change.patch` lists new permissions and newly reached effects under `EFFECT+`, permissions first. `--effect 'std.net.*'` keeps only the findings for one effect.
 - [Understanding effects](../../developer-tooling/source/effects.md) describes the separate call-graph view.
 
 ## Limits

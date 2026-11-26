@@ -9,7 +9,7 @@
 // about 12, quadratic work about 100, so the default bound of 30 leaves room for cache
 // effects and noisy runners. Compile shapes (long functions, many locals, long
 // interpolation, many impls, many functions, many branches, big literals) run
-// `ms check` and `ms emit`; the runtime half runs tests/checks/scaling/containers.ms at 10k
+// `ms check --only types` and `ms build --emit mir`; the runtime half runs tests/checks/scaling/containers.ms at 10k
 // and 100k and compares each phase's own timing. A ratio over the bound is measured
 // again (RETRIES times) and the lowest kept. An input that exceeds TIMEOUT seconds
 // fails. MS names the ms to measure (default .artifacts/build/ci/src/cli/ms);
@@ -120,7 +120,7 @@ fn commands(shape String) List[List[String]] {
 	if shape == "release_loopfree" or shape == "release_map_adds" {
 		return [["build", "--build-type", "Release", "-o", "OUT"]]
 	}
-	return [["check"], ["emit"]]
+	return [["check", "--only", "types"], ["build", "--emit", "mir"]]
 }
 
 // Seconds `ms <command> <file> [extra]` took, or -1.0 when it failed or hit the

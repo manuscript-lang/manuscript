@@ -99,9 +99,9 @@ fn clipped(value JsonValue) String {
 	return f"{text.slice(0, 2500)}..."
 }
 
-// The text of `ms version`, stored in each expectation for provenance.
+// The text of `ms --version`, stored in each expectation for provenance.
 fn oracle_version(ms String) String {
-	result := run(ms, ["version"], RunOptions(timeout: seconds(30))).wait()
+	result := run(ms, ["--version"], RunOptions(timeout: seconds(30))).wait()
 	if out := result { return text_of(out.stdout).trim().clone() }
 
 	return ""

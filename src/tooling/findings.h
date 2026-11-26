@@ -25,7 +25,7 @@ MS_LIST_DEFINE(FindingList, finding_list, Finding)
 void finding_add_graph(const MsGraph *graph, FindingList *findings);
 void finding_add_check(const MsCheckProgram *program, const MsNames *names, FindingList *findings);
 
-/* The findings of `ms lint`. */
+/* The findings of `ms check --only lint`. */
 void finding_add_lint(const MsLintFindingList *lint, FindingList *findings);
 
 /* The code a finding reports: its lint rule's, or the family of its phase and message. */

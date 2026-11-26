@@ -1,4 +1,4 @@
-/* cli/diagram_command.c: `ms diagram`. */
+/* cli/diagram_command.c: `ms map`. */
 #include "cli/files.h"
 #include "cli/diagram_command.h"
 
@@ -88,7 +88,7 @@ static int view_command(MsArena *arena, MsCheckedInput *checked, const MsInvocat
   MsViewNode *tree = NULL;
   MsSpan error = {0};
   if (!ms_build_view(arena, &model, view, invocation->entity, (int64_t)invocation->depth, &tree, &error)) {
-    (void)fprintf(stderr, "ms diagram: %.*s\n", (int)error.len, (const char *)error.ptr);
+    (void)fprintf(stderr, "ms map: %.*s\n", (int)error.len, (const char *)error.ptr);
     return EXIT_USAGE;
   }
   MsCheckedInput base = {0};

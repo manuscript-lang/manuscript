@@ -1,4 +1,4 @@
-/* tooling/lint_rules.h: the lint rules `ms lint` can report and `ms explain` describes. */
+/* tooling/lint_rules.h: the lint rules `ms check --only lint` can report and `ms help` describes. */
 #ifndef MS_TOOLING_LINT_RULES_H
 #define MS_TOOLING_LINT_RULES_H
 
@@ -6,7 +6,7 @@
 
 #include "base/safe.h"
 
-/* Warnings are reported without failing `ms lint`; errors fail it. */
+/* Warnings are reported without failing `ms check --only lint`; errors fail it. */
 typedef enum MsLintSeverity { MS_LINT_WARNING, MS_LINT_ERROR } MsLintSeverity;
 
 typedef struct MsLintRule {
