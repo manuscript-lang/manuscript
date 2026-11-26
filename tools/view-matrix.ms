@@ -23,11 +23,13 @@ import (
 HEADER := """
 import print from "@std/core.ms"
 
-fn mk(a: String, b: String) String:
+fn mk(a String, b String) String {
     return a + b
+}
 
-fn show(v: String) Void:
+fn show(v String) Void {
     print(v)
+}
 
 """
 
@@ -68,7 +70,7 @@ fn sources() List[Source] {
 		Source("concat_local", "s := \" ab\" + \" cd \"", "", "run()"),
 		Source("call_local", "s := mk(\" ab\", \" cd \")", "", "run()"),
 		Source("literal_local", "s := \" ab cd \"", "", "run()"),
-		Source("parameter", "", "s: String", "run(mk(\" ab\", \" cd \"))"),
+		Source("parameter", "", "s String", "run(mk(\" ab\", \" cd \"))"),
 		// No variable holds the text: the call result is passed by value, so the
 		// backend spills it into a slot of its own for the call.
 		Source("temporary", "", "", "run()"),
@@ -104,12 +106,12 @@ fn stomps() List[Stomp] {
 		// the view's own.
 		Stomp(
 			"branch",
-			"n := mk(\"\", \"\").length() + 1\n    if n > 0:\n        t1 := mk(\"p\", \"q\") + \"rs\"\n        print(t1)\n    else:\n        t2 := \"x\".repeat(3) + \"y\"\n        print(t2)",
+			"n := mk(\"\", \"\").length() + 1\n    if n > 0 {\n        t1 := mk(\"p\", \"q\") + \"rs\"\n        print(t1)\n    } else {\n        t2 := \"x\".repeat(3) + \"y\"\n        print(t2)\n    }",
 			["pqrs"],
 		),
 		Stomp(
 			"loop",
-			"for i in [1, 2]:\n        t1 := mk(\"a\", \"b\") + f\"{i}\"\n        print(t1)",
+			"for i in [1, 2] {\n        t1 := mk(\"a\", \"b\") + f\"{i}\"\n        print(t1)\n    }",
 			["ab1", "ab2"],
 		),
 	]
@@ -128,7 +130,7 @@ fn program(o Operation, source Source, stomp Stomp) String {
 	body = f"{body}    print({o.shown})\n"
 	if source.name != "temporary" { body = f"{body}    show(s)\n" }
 	return (
-		f"{HEADER}fn run({source.params}) Void:\n{body}\nfn main() Void:\n    {source.caller}\n"
+		f"{HEADER}fn run({source.params}) Void \{\n{body}\}\nfn main() Void \{\n    {source.caller}\n\}\n"
 	)
 }
 
