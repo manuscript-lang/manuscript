@@ -2,10 +2,10 @@
 # per program. tools/memcpy-check.ms fails when a program emits more than its budget; a change that adds a copy must justify it
 # in design/wiki/compiler/emitted-copies-are-moves-between-cells-each-one-audited.md and raise the budget in the same change, and
 # one that removes copies lowers it (the tool prints the new number). Columns: budget, program.
-145	bench/perf/programs/ms/ms.toml
+139	bench/perf/programs/ms/ms.toml
 98	bench/perf/json/ms.toml
-87	bench/perf/web/ms/ms.toml
-113	bench/perf/csv/ms/ms.toml
+84	bench/perf/web/ms/ms.toml
+88	bench/perf/csv/ms/ms.toml
 79	bench/perf/datastructures/ms/ms.toml
 52	bench/perf/listloops/ms/ms.toml
 89	bench/perf/kernels/ms/ms.toml
