@@ -488,7 +488,8 @@ type WatchSource {
 
 // Waits for the next change. null once the watched path itself has been removed (its
 // removal event comes first). A stream closed by the caller ends (`null`); a native
-// watcher that overflowed with policy `error` is `EOVERFLOW`; with the default `rescan` it delivers one `rescan` event instead.
+// watcher that overflowed with policy `error` is `EOVERFLOW`; with the default `rescan`
+// it delivers one `rescan` event instead.
 fn var WatchSource.next() FileEvent?! {
 	while true {
 		event := self.pending.pop()
@@ -628,8 +629,8 @@ export type WatchOptions {
 	// Most queued native events. Native watchers only. null sets no limit.
 	max_events Int? = null
 	// What a native watcher does when its queue overflows: exactly `rescan` (default),
-	// which drops the queued events and queues one `rescan` event for the watched
-	// root, `error` (the stream fails with EOVERFLOW), or `ignore`. Native watchers only.
+	// which drops the queued events and queues one `rescan` event for the watched root,
+	// `error` (the stream fails with EOVERFLOW), or `ignore`. Native watchers only.
 	overflow String? = null
 }
 
