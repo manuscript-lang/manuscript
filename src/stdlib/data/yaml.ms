@@ -492,7 +492,7 @@ fn numeric(text String) Bool {
 		return true
 	}
 
-	exponent := clean.lower().split("e")
+	exponent := clean.lower().split("e").collect()
 	if exponent.length() > 2 { return false }
 
 	if exponent.length() == 2 {
@@ -503,7 +503,9 @@ fn numeric(text String) Bool {
 		if not digit_text(power) { return false }
 	}
 
-	mantissa := (exponent.first() or panic("called Optional.get() on null")).split(".")
+	mantissa := (exponent.first() or panic("called Optional.get() on null")).split(
+		"."
+	).collect()
 	if mantissa.length() > 2 { return false }
 	if mantissa.length() == 1 {
 		return digit_text(mantissa.first() or panic("called Optional.get() on null"))
@@ -1825,7 +1827,7 @@ fn inline_value(
 	}
 
 	var flow = Flow(
-		chars: joined.split("").clone(),
+		chars: joined.split("").collect().clone(),
 		codes: joined.scalar_values(),
 		pos: 0,
 		line: line,
@@ -1998,7 +2000,7 @@ fn block_string(
 
 		// Count the final run of line feeds once: trimming one scalar at a time is
 		// quadratic.
-		pieces := result.split("\n")
+		pieces := result.split("\n").collect()
 		var trailing = 0
 		while (trailing < pieces.length() and pieces.get_or(-1 - trailing, "x") == "") { trailing += 1 }
 		if trailing == pieces.length() { trailing -= 1 }
@@ -2101,7 +2103,7 @@ fn block_value(
 	// Node properties, an anchor and a tag in either order, come before the content.
 	while lead == 38 or lead == 33 {
 		var flow = Flow(
-			chars: remainder.split("").clone(),
+			chars: remainder.split("").collect().clone(),
 			codes: [],
 			pos: 0,
 			line: start_line,
@@ -2245,7 +2247,7 @@ fn pad(width Int) String {
 
 // Columns of the nested sequence levels opened by consecutive compact `- ` indicators.
 fn nested_columns(line String, base Int) List[Int] {
-	chars := line.split("")
+	chars := line.split("").collect()
 	var columns List[Int] = []
 	var marker = base
 
@@ -2660,7 +2662,7 @@ fn block(
 
 			if quoted_key {
 				var flow = Flow(
-					chars: name.split("").clone(),
+					chars: name.split("").collect().clone(),
 					codes: [],
 					pos: 0,
 					line: source_line(context, context.index),
@@ -2793,7 +2795,7 @@ fn directives(var context Context) Void! {
 		words := uncomment(context.lines[context.index]).replace(
 			"\t",
 			" ",
-		).split(" ").filter(word => (word != ""))
+		).split(" ").collect().filter(word => (word != ""))
 		line := source_line(context, context.index)
 
 		if words[0] == "%YAML" {
@@ -2804,7 +2806,9 @@ fn directives(var context Context) Void! {
 			seen_version = true
 
 			var parts List[String] = []
-			if words.length() == 2 { parts = words[1].split(".").clone() }
+			if words.length() == 2 {
+				parts = words[1].split(".").collect().clone()
+			}
 			if (
 				parts.length() != 2
 				or (parts[0].parse_int() == null)
@@ -2910,7 +2914,7 @@ fn open_stream(text String, options YamlOptions) Context! {
 				0,
 				normalized.index_of(character) or 0,
 			).scalar_length()
-			position := cursor_position(normalized.split(""), at, 1, 1)
+			position := cursor_position(normalized.split("").collect(), at, 1, 1)
 			return error(
 				yaml_invalid(
 					line: position.line,
@@ -2922,7 +2926,7 @@ fn open_stream(text String, options YamlOptions) Context! {
 	}
 
 	var context = Context(
-		lines: normalized.split("\n").clone(),
+		lines: normalized.split("\n").collect().clone(),
 		final_break: normalized.ends_with("\n"),
 		index: 0,
 		max_depth: options.max_depth,

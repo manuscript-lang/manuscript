@@ -131,9 +131,11 @@ export fn media_type_for_extension(extension String) String? {
 // Returns the first extension, with its dot, registered for a media type (parameters
 // ignored), or null.
 export fn extension_for_media_type(media_type String) String? {
-	wanted := media_type.split(";")[0].trim().lower()
+	wanted := media_type.split(";").collect()[0].trim().lower()
 	for entry in TYPES.entries() {
-		if entry.value.split(";")[0] == wanted { return f".{entry.key}" }
+		if entry.value.split(
+			";"
+		).collect()[0] == wanted { return f".{entry.key}" }
 	}
 	return null
 }
@@ -144,7 +146,7 @@ export fn extension_for_media_type(media_type String) String? {
 export fn parse_media_type(text String) MediaType! {
 	pieces := split_params(text)
 	essence := pieces[0].trim().lower()
-	parts := essence.split("/")
+	parts := essence.split("/").collect()
 	if (
 		parts.length() != 2
 		or parts[0].is_empty()

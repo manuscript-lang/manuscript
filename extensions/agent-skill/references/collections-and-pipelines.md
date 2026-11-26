@@ -23,7 +23,7 @@ fn main() Int {
 }
 ```
 
-`values.length()` counts a List, Map, Set or String; always call it with parentheses. Map `.get(key)` returns Optional; `.get_or(key, default)` supplies a fallback. Iterate `.entries()` and read `.key`/`.value`. List `.slice(start, end)` returns a borrowed Result (an error when `end` is past the length); `xs[i]` reads an element (negative counts from the end, out of range faults) and `.get_or(index, default)` supplies a fallback. `.take(n)` and `.drop(n)` clamp. `m.keys()`, `m.values()`, `m.get(k)`, `xs.first()`, `xs.last()`, `s.split(sep)` and `s.chars()` borrow their receiver: use them in place or `.clone()` to keep them, and do not change the receiver while one is in use.
+`values.length()` counts a List, Map, Set or String; always call it with parentheses. Map `.get(key)` returns Optional; `.get_or(key, default)` supplies a fallback. Iterate `.entries()` and read `.key`/`.value`. List `.slice(start, end)` returns a borrowed Result (an error when `end` is past the length); `xs[i]` reads an element (negative counts from the end, out of range faults) and `.get_or(index, default)` supplies a fallback. `.take(n)` and `.drop(n)` clamp. `m.keys()`, `m.values()`, `m.get(k)`, `xs.first()`, `xs.last()`, `s.split(sep).collect()` and `s.chars()` borrow their receiver: use them in place or `.clone()` to keep them, and do not change the receiver while one is in use.
 
 `x | f(a: 1)` passes x first; `x | .m()` calls a method; `x | f?` propagates f's Result. Thus `x | f(a: 1) | g? | .m()` means `(g(f(x, a: 1))?).m()`.
 

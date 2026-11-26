@@ -74,7 +74,7 @@ export fn main() Int {
 
 	rows := "first row is longer than inline\nsecond row is longer than inline\nthird row is longer than inline".split(
 		"\n"
-	)
+	).collect()
 
 	for row in rows.slice(1, rows.length()).get() {
 		if row == "" { continue }

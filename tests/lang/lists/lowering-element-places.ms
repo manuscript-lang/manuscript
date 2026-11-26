@@ -72,7 +72,7 @@ test "an eager list get default is released on every path" {
 	expect_equal(xs.get_or(5, [9, 9]), [9, 9])?
 	expect_equal(xs.get_or(-1, [9, 9]), [3])?
 
-	words := "a,b".split(",")
+	words := "a,b".split(",").collect()
 	expect_equal(words.get_or(1, "z" + "z"), "b")?
 	expect_equal(words.get_or(8, "z" + "z"), "zz")?
 }

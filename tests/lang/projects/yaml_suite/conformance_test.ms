@@ -98,7 +98,7 @@ test "the official YAML suite agrees with the parser except for the listed cases
 	var expected List[String] = []
 
 	for line in listed.split("\n") {
-		name := line.split(" ").get_or(0, "")
+		name := line.split(" ").collect().get_or(0, "")
 		if name != "" and not name.starts_with("#") {
 			expected.append(name.clone())
 		}

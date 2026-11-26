@@ -67,7 +67,7 @@ fn count(program, out_file String, own_path Bool, shape String) Int {
 		// http-request guards) also reports the child's count, and the child exits
 		// first: the count wanted is the one of the process valgrind started, the first
 		// to print.
-		lines := (out.stderr.decode_utf8() or "").split("\n")
+		lines := (out.stderr.decode_utf8() or "").split("\n").collect()
 		var prefix = ""
 
 		for line in lines {
@@ -96,7 +96,7 @@ fn committed(path String) Map[String, Int] {
 	text := read_file(path).wait().get_or("".to_bytes()).decode_utf8() or ""
 
 	for line in text.split("\n") {
-		parts := line.trim().split(" ")
+		parts := line.trim().split(" ").collect()
 		if parts.length() != 2 or parts[0].starts_with("#") { continue }
 
 		known[parts[0].clone()] = parts[1].parse_int() or 0

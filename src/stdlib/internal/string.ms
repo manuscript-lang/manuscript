@@ -4,6 +4,9 @@ export extern fn msrt_string_from_scalars(values List[Int]) String!
 
 export extern fn msrt_string_fields(hold text String) List[&String]
 
+// The piece of `text` that starts at byte `at` when it is split at `separator`, a view
+// of `text`.
+
 // Byte offset of the first scalar of `text` that occurs in `set`, or null.
 export extern fn msrt_string_index_any(text, set String) Int?
 
@@ -53,3 +56,23 @@ export extern fn msstd_regex_capture_all_spans(
 	max_matches,
 	max_captures Int?,
 ) List[Int]!
+
+// The byte offset where the piece that starts at `at` ends when `text` is split at
+// `separator`.
+export extern fn msrt_string_split_end(text, separator String, at Int) Int
+
+// The bytes of `text` from `start` to `end` as a view, without checking that they cut
+// between scalars: for the iterators, which cut at separators and scalar ends.
+export extern fn msrt_string_piece(hold text String, start, end Int) &String
+
+// The pieces of `text` from byte `at` on, as a list of views; none when `at` is past
+// them.
+export extern fn msrt_string_split_view(hold text, separator String, at Int) List[
+	&String
+]
+
+// The lines of `text` as a list of views.
+export extern fn msrt_string_lines(hold text String) List[&String]
+
+// The scalar at byte offset `at`, an inline string.
+export extern fn msrt_string_scalar_text(text String, at Int) String

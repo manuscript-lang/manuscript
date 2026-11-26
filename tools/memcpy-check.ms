@@ -44,7 +44,7 @@ fn main() Int {
 			"#"
 		) { continue }
 
-		columns := line.split("\t")
+		columns := line.split("\t").collect()
 		allowed := columns[0].parse_int() or 0
 		program := columns[1].clone()
 		out := run(

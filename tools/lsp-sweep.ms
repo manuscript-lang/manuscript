@@ -74,7 +74,7 @@ fn probes_of(module, text String) List[Probe] {
 		line_number += 1
 
 		// A text literal over several lines (`"""`) holds words, not names.
-		quotes := line.split("\"\"\"").length() - 1
+		quotes := line.split("\"\"\"").collect().length() - 1
 
 		if in_text or quotes > 0 {
 			if quotes % 2 == 1 { in_text = not in_text }
@@ -227,7 +227,7 @@ fn line_of(root, uri String, at Int, var sources Map[String, List[String]]) Stri
 				lines.extend(
 					(bytes.get().decode_utf8() or "").split(
 						"\n"
-					).map(line => line.clone())
+					).collect().map(line => line.clone())
 				)
 				break
 			}
@@ -264,7 +264,7 @@ fn main() Int {
 			).wait().get().decode_utf8()
 			or ""
 		).clone()
-		lines := text.split("\n").map(line => line.clone())
+		lines := text.split("\n").collect().map(line => line.clone())
 		sources.add(module.clone(), lines.clone())
 		probes.extend(probes_of(module, text))
 	}

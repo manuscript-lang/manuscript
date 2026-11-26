@@ -109,7 +109,7 @@ test "closing the input leaves the output open and closing both ends the connect
 
 test "host names resolve whatever their case" {
 	listener := listen("127.0.0.1:0")?
-	port := listener.address().split(":").last().clone() or ""
+	port := listener.address().split(":").collect().last().clone() or ""
 	client := connect(f"LocalHost:{port}", timeout: 2.seconds()).wait()?
 	server := listener.accept(2.seconds()).wait()?
 	expect_equal(server.info.peer_address, client.info.local_address)?
@@ -279,7 +279,7 @@ test "resolve returns typed DNS records from the configured resolver" {
 
 test "an empty host listens on every interface, with or without IPv6" {
 	var listener = listen(":0")?
-	parts := listener.address().split(":")
+	parts := listener.address().split(":").collect()
 	port := parts[parts.length() - 1]
 	var client = connect(f"127.0.0.1:{port}", timeout: 2.seconds()).wait()?
 	var server = listener.accept(2.seconds()).wait()?

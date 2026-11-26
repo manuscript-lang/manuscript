@@ -100,7 +100,7 @@ fn money(cents Int) String {
 }
 
 fn parse_sale(line String) Sale? {
-    parts := line.split(",")
+    parts := line.split(",").collect()
     if parts.length() != 2 {
         return null
     }
@@ -156,7 +156,7 @@ type Line {
 }
 
 fn parse_line(text String) Line! {
-    parts := text.split(",")
+    parts := text.split(",").collect()
     if parts.length() != 3 {
         return error(Error(f"expected name,quantity,cents: {text}", kind: "EBADMSG"))
     }
@@ -478,7 +478,7 @@ fn var Shop.take(sku String, qty Int) String {
 }
 
 fn run_command(var shop Shop, line String) String {
-    words := line.split(" ")
+    words := line.split(" ").collect()
     qty := words.get_or(2, "").parse_int()
     if words.length() != 3 or qty == null {
         return "error: usage: add|take <sku> <qty>"
@@ -587,7 +587,7 @@ import (
 fn word_counts(text List[String]) Map[String, Int] {
     var counts = Map[String, Int]()
     for line in text {
-        for word in line.split(" ").filter(w => not w.is_empty()) {
+        for word in line.split(" ").collect().filter(w => not w.is_empty()) {
             counts.add(word.clone(), counts.get_or(word, 0) + 1)
         }
     }
@@ -683,7 +683,7 @@ import (
 )
 
 fn count_rows(text String) Int {
-    return text.split("\n").filter(line => not line.is_empty()).length()
+    return text.split("\n").collect().filter(line => not line.is_empty()).length()
 }
 
 // ms: allow_effect std.fs.read

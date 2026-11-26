@@ -26,14 +26,80 @@ typedef struct SvGet {
   uint32_t index;
 } SvGet;
 
+/* The list and the block parameters it reaches through branches that pass it or an exit's `undef` (an inlined
+ * callee's result): the same list under another name. */
+enum { SV_ALIASES = 8 };
+
 typedef struct SvUses {
-  MirValue list;
+  MirValue alias[SV_ALIASES]; /* alias[0] is the list the call made */
+  uint32_t count;
+  uint32_t seen; /* the uses of an alias among a terminator's values */
   bool escapes;
 } SvUses;
 
+static bool is_alias(const SvUses *uses, MirValue value) {
+  for (uint32_t k = 0; k < uses->count; k++) {
+    if (uses->alias[k] == value) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static void term_use(void *context, MirValue value) {
   SvUses *uses = context;
-  uses->escapes |= value == uses->list;
+  uses->seen += is_alias(uses, value);
+}
+
+/* Whether `value` is an `undef`: the placeholder an exit path passes where a result would go. */
+static bool is_undef(const MirFunc *f, MirValue value) {
+  for (uint32_t b = 0; b < f->blocks.len; b++) {
+    const MirInstList *insts = &f->blocks.ptr[b].insts;
+    for (uint32_t i = 0; i < insts->len; i++) {
+      if (insts->ptr[i].res == value) {
+        return insts->ptr[i].op == MOP_Undef;
+      }
+    }
+  }
+  return false;
+}
+
+/* Whether argument `k` of every branch into `block` is an alias or an `undef` (an exit path), so the parameter holds
+ * the list or nothing. */
+static bool only_list_enters(const MirFunc *f, MirBlock block, uint32_t k, const SvUses *uses) {
+  for (uint32_t b = 0; b < f->blocks.len; b++) {
+    const MirTerm *term = &f->blocks.ptr[b].term;
+    for (uint32_t t = 0; t < mir_term_ntargets(term); t++) {
+      const MirTarget *target = mir_term_target_const(term, t);
+      if (target->block == block &&
+          (k >= target->nargs || (!is_alias(uses, target->args[k]) && !is_undef(f, target->args[k])))) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+/* The block parameter that a branch of `term` passes an alias to, when every entry passes the list or an `undef`; the number of
+ * such branches is added to `*taken`. Adds the parameters it finds to the aliases and reports whether it added one. */
+static bool follow_edges(const MirFunc *f, const MirTerm *term, SvUses *uses, uint32_t *taken) {
+  bool added = false;
+  for (uint32_t t = 0; t < mir_term_ntargets(term); t++) {
+    const MirTarget *target = mir_term_target_const(term, t);
+    const MirBlockData *dest = &f->blocks.ptr[target->block];
+    for (uint32_t k = 0; k < target->nargs && k < dest->params.len; k++) {
+      if (!is_alias(uses, target->args[k]) || !only_list_enters(f, target->block, k, uses)) {
+        continue;
+      }
+      *taken += 1;
+      const MirValue param = dest->params.ptr[k].value;
+      if (!is_alias(uses, param) && uses->count < SV_ALIASES) {
+        uses->alias[uses->count++] = param;
+        added = true;
+      }
+    }
+  }
+  return added;
 }
 
 static bool is_zero_const(const MirFunc *f, MirValue v) {
@@ -82,11 +148,50 @@ static MirBlock site_continuation(const MirModule *m, const MirFunc *f, MirBlock
   return next;
 }
 
+/* Whether the block ends in the test of an unwind site (its only instruction is the byte test): the branch to the exit
+ * is not taken on the straight line. */
+static bool is_site_test(const MirModule *m, const MirBlockData *blk) {
+  if (blk->insts.len != 1 || blk->term.kind != MT_CONDBR) {
+    return false;
+  }
+  const MirInst *test = &blk->insts.ptr[0];
+  return test->op == MOP_CallRt && test->imm.tag == MI_EXT && m->externs.ptr[test->imm.a].role == MR_UNWINDING &&
+         test->res == blk->term.value;
+}
+
+/* Whether block `to` is `from` or follows it along unconditional branches and unwind sites, every block on the way only
+ * computing (the straight line of an inlined callee that returns the list; other entries of a block carry no list). */
+static bool past_site_read(const MirModule *m, const MirFunc *f, MirBlock from, MirBlock to) {
+  MirBlock cur = from;
+  for (uint32_t steps = 0; steps < f->blocks.len; steps++) {
+    if (cur == to) {
+      return true;
+    }
+    const MirBlockData *blk = &f->blocks.ptr[cur];
+    if (is_site_test(m, blk)) {
+      cur = blk->term.b.block;
+    } else if (blk->term.kind == MT_BR && only_computes(blk, 0, (uint32_t)blk->insts.len)) {
+      cur = blk->term.a.block;
+    } else {
+      return false;
+    }
+  }
+  return false;
+}
+
 /* How the list `l` made by the call at `blk.insts[call]` is used: the plan, and for SV_FIRST the instructions that read
  * element 0 (in `gets`, `*nget` of them, at most `max`). */
 static SvPlan plan_of(const MirModule *m, const MirFunc *f, MirBlock blk_index, uint32_t call, MirValue l,
-                      SvGet *gets, uint32_t *nget, uint32_t max) {
-  SvUses uses = {.list = l};
+                      SvUses *found, SvGet *gets, uint32_t *nget, uint32_t max) {
+  SvUses uses = {.alias = {l}, .count = 1};
+  *found = uses;
+  for (bool grown = true; grown;) {
+    grown = false;
+    for (uint32_t b = 0; b < f->blocks.len; b++) {
+      uint32_t taken = 0;
+      grown |= follow_edges(f, &f->blocks.ptr[b].term, &uses, &taken);
+    }
+  }
   const MirBlock after = site_continuation(m, f, blk_index, call);
   bool first_only = true;
   *nget = 0;
@@ -96,7 +201,7 @@ static SvPlan plan_of(const MirModule *m, const MirFunc *f, MirBlock blk_index, 
       const MirInst *inst = &blk->insts.ptr[i];
       bool mentions = false;
       for (uint32_t k = 0; k < inst->nargs; k++) {
-        mentions |= inst->args[k] == l;
+        mentions |= is_alias(&uses, inst->args[k]);
       }
       if (!mentions) {
         continue;
@@ -109,14 +214,14 @@ static SvPlan plan_of(const MirModule *m, const MirFunc *f, MirBlock blk_index, 
         continue;
       }
       if ((inst->op == MOP_ListGetU || inst->op == MOP_ListAddr || inst->op == MOP_ListAddrU) && inst->nargs == 2 &&
-          inst->args[0] == l && inst->args[1] != l) {
+          is_alias(&uses, inst->args[0]) && !is_alias(&uses, inst->args[1])) {
         first_only = false; /* a read of an element that is not known to be the first */
         continue;
       }
-      if ((inst->op == MOP_ListGet || inst->op == MOP_ListGetNn) && inst->nargs == 2 && inst->args[0] == l &&
-          inst->args[1] != l) {
+      if ((inst->op == MOP_ListGet || inst->op == MOP_ListGetNn) && inst->nargs == 2 && is_alias(&uses, inst->args[0]) &&
+          !is_alias(&uses, inst->args[1])) {
         const bool here = b == blk_index && i > call && only_computes(blk, call + 1, i);
-        const bool past_site = after != MIR_NONE && b == after && only_computes(blk, 0, i);
+        const bool past_site = after != MIR_NONE && past_site_read(m, f, after, b) && only_computes(blk, 0, i);
         if ((here || past_site) && *nget < max && is_zero_const(f, inst->args[1])) {
           gets[(*nget)++] = (SvGet){.block = b, .index = i};
         } else {
@@ -126,8 +231,13 @@ static SvPlan plan_of(const MirModule *m, const MirFunc *f, MirBlock blk_index, 
       }
       uses.escapes = true;
     }
+    uint32_t taken = 0;
+    (void)follow_edges(f, &blk->term, &uses, &taken);
+    uses.seen = 0;
     mir_term_each_value(&blk->term, term_use, &uses);
+    uses.escapes |= uses.seen > taken; /* a use other than the hand-over to a single-entry block */
   }
+  *found = uses;
   if (uses.escapes) {
     return SV_KEEP;
   }
@@ -154,7 +264,7 @@ static bool rewrite_one(MirModule *m, MirFunc *f) {
   for (uint32_t b = 0; b < f->blocks.len; b++) {
     for (uint32_t i = 0; i < f->blocks.ptr[b].insts.len; i++) {
       MirInst *call = &f->blocks.ptr[b].insts.ptr[i];
-      if (call->op != MOP_CallRt || call->imm.tag != MI_EXT || call->nargs != 2 || call->res == MIR_NONE ||
+      if (call->op != MOP_CallRt || call->imm.tag != MI_EXT || call->nargs != 3 || call->res == MIR_NONE ||
           m->externs.ptr[call->imm.a].twin != MTW_SPLIT_VIEW) {
         continue;
       }
@@ -163,37 +273,57 @@ static bool rewrite_one(MirModule *m, MirFunc *f) {
         continue;
       }
       SvGet gets[8];
+      SvUses aliases;
       uint32_t nget = 0;
-      const SvPlan plan = plan_of(m, f, b, i, call->res, gets, &nget, 8);
+      const SvPlan plan = plan_of(m, f, b, i, call->res, &aliases, gets, &nget, 8);
       if (plan == SV_KEEP) {
         continue;
       }
-      const MirValue text = call->args[0], separator = call->args[1], l = call->res;
+      const MirValue text = call->args[0], separator = call->args[1], from = call->args[2], l = call->res;
       MirBlockData *blk = &f->blocks.ptr[b];
       if (plan == SV_FRAME) {
-        const MirTy str_pair[3] = {MIR_STR, MIR_STR, MIR_PTR};
-        const uint32_t into = mir_extern_get(m, ms_span_of_text("msrt_string_split_view_into"), str_pair, 3, mir_value_ty(f, l),
+        const MirTy wanted[4] = {MIR_STR, MIR_STR, MIR_INT, MIR_PTR};
+        const uint32_t into = mir_extern_get(m, ms_span_of_text("msrt_string_split_view_into"), wanted, 4, mir_value_ty(f, l),
                                              false, MR_VIEW_RESULT);
         const MirValue buffer = mir_new_value(f, MIR_PTR);
         const MirLoc loc = call->loc;
         const MirInst slot = mir_inst(MOP_Slot, (MirImm){.tag = MI_TY, .a = frame_type(m)}, buffer, loc, NULL, 0);
         mir_block_insert(blk, i, &slot);
         call = &blk->insts.ptr[i + 1];
-        const MirValue args[3] = {text, separator, buffer};
-        call->args = mir_args_copy(m, args, 3);
-        call->nargs = 3;
+        const MirValue args[4] = {text, separator, from, buffer};
+        call->args = mir_args_copy(m, args, 4);
+        call->nargs = 4;
         call->imm = mir_imm_ext(into);
         return true;
       }
-      const MirTy str_pair[2] = {MIR_STR, MIR_STR};
-      const uint32_t first = mir_extern_get(m, ms_span_of_text("msrt_string_split_first"), str_pair, 2, MIR_STR, false,
+      const MirTy wanted[3] = {MIR_STR, MIR_STR, MIR_INT};
+      const uint32_t first = mir_extern_get(m, ms_span_of_text("msrt_string_split_first"), wanted, 3, MIR_STR, false,
                                             MR_VIEW_RESULT);
       const MirValue piece = mir_new_value(f, MIR_STR);
       call->res = piece;
       call->imm = mir_imm_ext(first);
-      /* Element 0 reads become the piece, and the drops of the list drop it. */
+      /* The block parameters that carried the list carry the piece, and the exits' `undef`s stand for a piece. */
+      for (uint32_t k = 1; k < aliases.count; k++) {
+        f->values.ptr[aliases.alias[k]] = MIR_STR;
+      }
+      for (uint32_t x = 0; x < f->blocks.len; x++) {
+        const MirTerm *term = &f->blocks.ptr[x].term;
+        for (uint32_t t = 0; t < mir_term_ntargets(term); t++) {
+          const MirTarget *target = mir_term_target_const(term, t);
+          const MirBlockData *dest = &f->blocks.ptr[target->block];
+          for (uint32_t k = 0; k < target->nargs && k < dest->params.len; k++) {
+            if (is_alias(&aliases, dest->params.ptr[k].value) && is_undef(f, target->args[k])) {
+              f->values.ptr[target->args[k]] = MIR_STR;
+            }
+          }
+        }
+      }
+      /* The piece stands where the list was (its drops, and the hand-over to the aliases), and element 0 reads become
+       * the value they read: the piece, or the alias that carries it. */
+      mir_func_replace_uses(f, l, piece);
       for (uint32_t k = 0; k < nget; k++) {
-        mir_func_replace_uses(f, f->blocks.ptr[gets[k].block].insts.ptr[gets[k].index].res, piece);
+        const MirInst *read = &f->blocks.ptr[gets[k].block].insts.ptr[gets[k].index];
+        mir_func_replace_uses(f, read->res, read->args[0]);
       }
       for (uint32_t k = 0; k < nget; k++) { /* the reads leave their blocks, a block at a time */
         if (gets[k].index == UINT32_MAX) {
@@ -209,15 +339,6 @@ static bool rewrite_one(MirModule *m, MirFunc *f) {
         }
         mir_block_remove(&f->blocks.ptr[gets[k].block], dead, ndead);
         gets[k].index = UINT32_MAX;
-      }
-      for (uint32_t x = 0; x < f->blocks.len; x++) {
-        MirBlockData *other = &f->blocks.ptr[x];
-        for (uint32_t y = 0; y < other->insts.len; y++) {
-          MirInst *inst = &other->insts.ptr[y];
-          if ((inst->op == MOP_Drop || inst->op == MOP_Forget) && inst->nargs == 1 && inst->args[0] == l) {
-            inst->args[0] = piece; /* the piece is the call's own result, dropped where the list was */
-          }
-        }
       }
       return true;
     }

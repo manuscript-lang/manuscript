@@ -130,7 +130,7 @@ fn plain_number(part String) Bool {
 }
 
 fn calendar_error(version String) String {
-	parts := version.split(".")
+	parts := version.split(".").collect()
 	if parts.length() != 3 { return "write YYYY.M.PATCH, for example 2026.11.0" }
 	if not (
 		plain_number(parts[0].clone())
@@ -220,7 +220,7 @@ fn block(lines List[String], key String, indent Int) List[String]? {
 // whatever files change, and on the merge queue's combined commit (the ruleset on main
 // requires it).
 fn trigger_error(text String) String {
-	lines := text.split("\n")
+	lines := text.split("\n").collect()
 	on := block(lines, "on", 0) or []
 	unfiltered := "required checks must run on every pull request without path filters"
 	pull := block(on.clone(), "pull_request", 2)
@@ -285,7 +285,7 @@ fn field(line, key String) String {
 // The license file a lock line vendors: the entry of `paths=` that names one.
 fn license_path(name, line String) String {
 	for entry in field(line.clone(), "paths").split(",") {
-		base := entry.split("/").last() or ""
+		base := entry.split("/").collect().last() or ""
 		for stem in ["LICENSE", "LICENCE", "COPYING"] {
 			if base.starts_with(
 				stem
@@ -305,7 +305,7 @@ fn notices_under(files List[String]) List[String] {
 				f"{root}/"
 			) { continue }
 
-			base := path.split("/").last() or ""
+			base := path.split("/").collect().last() or ""
 			if notice_names.contains(base) {
 				found.append(path.clone())
 			}
@@ -323,7 +323,7 @@ fn libraries(lock String) List[String] {
 			"#"
 		) { continue }
 
-		name := line.split(" ")[0].clone()
+		name := line.split(" ").collect()[0].clone()
 		path := license_path(name.clone(), line.clone())
 		digest := if path != "" { file_sha256(path.clone()) } else { "" }
 		version := quoted(field(line.clone(), "version"))

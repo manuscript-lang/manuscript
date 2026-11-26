@@ -58,7 +58,7 @@ export fn trial_order(labels List[String], trial Int) List[String] {
 // Runs a producer and returns its integers.
 export fn run_ints(path String, args List[String]) List[Int]! {
 	text := sample(path, args)?
-	parts := text.replace("\n", " ").replace("\t", " ").split(" ").filter(
+	parts := text.replace("\n", " ").replace("\t", " ").split(" ").collect().filter(
 		p => (p != "")
 	)
 	var out = List[Int]()

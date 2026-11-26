@@ -49,7 +49,7 @@ import (
 // import read_file from "@std/os/fs.ms"
 //
 // fn count_words(text String) Int! {
-//     return ok(text.split(" ").length())
+//     return ok(text.split(" ").collect().length())
 // }
 //
 // config := read_file("config.json")  // Promise[Bytes], already running

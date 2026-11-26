@@ -245,7 +245,7 @@ fn tokenize(source String) List[Token]! {
 
 	// Splitting once keeps lexing linear: each piece starts right after an opening
 	// delimiter.
-	pieces := source.split("{{")
+	pieces := source.split("{{").collect()
 	var literal = pieces[0].clone()
 	var index = 1
 	var line = 1
@@ -570,7 +570,7 @@ fn var ExprParser.primary() TemplateExpr! {
 			return error(self.fail("unexpected operator"))
 		}
 
-		return ok(Path(t.text.split(".").clone()))
+		return ok(Path(t.text.split(".").collect().clone()))
 	}
 
 	return error(self.fail("expected a value"))
@@ -712,7 +712,7 @@ fn var Builder.for_block(header String, line, depth Int) TemplateNode! {
 		return error(syntax_error(line: line, reason: "for needs `name in value`"))
 	}
 
-	names := header.view(0, at).split(",")
+	names := header.view(0, at).split(",").collect()
 	if names.length() > 2 {
 		return error(syntax_error(line: line, reason: "for takes one or two names"))
 	}
@@ -752,7 +752,7 @@ fn var Builder.for_block(header String, line, depth Int) TemplateNode! {
 }
 
 fn first_word(body String) String {
-	return body.split(" ")[0].trim()
+	return body.split(" ").collect()[0].trim()
 }
 
 fn after_word(body String) String {

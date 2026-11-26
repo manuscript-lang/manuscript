@@ -132,7 +132,7 @@ export fn parse_meta(text String) Meta {
 				}
 			}
 		} else if key == "phase" {
-			meta.phases = value.split(",").map(name => name.trim().clone())
+			meta.phases = value.split(",").collect().map(name => name.trim().clone())
 			meta.phase = meta.phases[0].clone()
 		} else if key == "timeout" {
 			meta.timeout = value.parse_int() or 0

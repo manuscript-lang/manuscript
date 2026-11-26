@@ -310,6 +310,7 @@ static uint32_t runtime_function(LowerFn *fn, const MsSymbol *symbol, MirTy ret)
                          .params = mir_params,
                          .nparams = count,
                          .ret = ret,
+                         .leaf = sig != NULL && sig->leaf,
                          .role = (uint8_t)(sig != NULL && sig->keeps ? MR_KEEPS_SLOT : MR_NONE)};
   return mir_extern_intern(fn->cx->module, &def);
 }
@@ -709,11 +710,15 @@ static MirValue call_body(LowerFn *fn, const MsExpr *expr, CallBufs *bufs) {
   LowerTarget target;
   const bool source = (call->callee.kind == MS_REF_FUNCTION || call->callee.kind == MS_REF_METHOD) &&
                       fn_callee_target(fn, call, &target);
-  const bool receiver_var = source && call->callee.kind == MS_REF_METHOD && (target.receiver_flags & MS_PARAM_VAR) != 0;
   /* An interface operation takes its `var` arguments in slots too: the vtable's method changes them there. */
-  const bool dispatched = call->callee.kind == MS_REF_OPERATION && fn_call_callee(expr)->kind == MS_E_MEMBER &&
+  const bool operation = call->callee.kind == MS_REF_OPERATION && fn_call_callee(expr)->kind == MS_E_MEMBER;
+  const bool dispatched = operation &&
                           mir_ty_data(fn->cx->module, fn_type(fn, fn_read_type(fn, fn_call_callee(expr)->u.member.left)))->kind == MK_IFACE;
-  if (!lower_args(fn, expr, call, args, source || dispatched ? slots : NULL, &nslots, receiver_var, !source, held)) {
+  /* An operation of a bound type variable (`self.source.next()` with `I: Iterator[T]`) is the instance's own method:
+   * its `var` receiver is the place itself, taken into a slot like that of any `var` method. */
+  const bool bound_var = operation && !dispatched && call->arg_count > 0 && (call->args[0].flags & MS_PARAM_VAR) != 0;
+  const bool receiver_var = (source && call->callee.kind == MS_REF_METHOD && (target.receiver_flags & MS_PARAM_VAR) != 0) || bound_var;
+  if (!lower_args(fn, expr, call, args, source || dispatched || bound_var ? slots : NULL, &nslots, receiver_var, !source, held)) {
     return MIR_NONE;
   }
   const MirTy ret = fn_type(fn, ms_facts_type(fn->facts, expr->id));

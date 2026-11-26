@@ -15,7 +15,7 @@ type Line {
 }
 
 fn parse_line(text String) Line! {
-    parts := text.split(",")
+    parts := text.split(",").collect()
     if parts.length() != 3 {
         return error(Error(f"expected name,quantity,cents: {text}", kind: "EBADMSG"))
     }

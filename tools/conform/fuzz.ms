@@ -843,7 +843,7 @@ export fn syntax_error(seed Int) Generated {
 
 	valid := assemble(g, seed)
 	var rng = rng_new(bit_xor(seed, 0xf00d))
-	var lines = valid.source.split("\n")
+	var lines = valid.source.split("\n").collect()
 	lines.pop()
 
 	var body_start = 0

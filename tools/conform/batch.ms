@@ -128,7 +128,7 @@ fn slice(report JsonValue, entry String) JsonValue? {
 	summary.add("duration_ns", number(duration))
 	fields.add("summary", JsonValue.ObjectValue(summary))
 
-	var kept = string_member(report, "stdout").split("\n").filter(
+	var kept = string_member(report, "stdout").split("\n").collect().filter(
 		line => line.starts_with(f"RUN {prefix}") or line.starts_with(
 			f"PASS {prefix}"
 		)

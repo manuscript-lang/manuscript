@@ -27,8 +27,8 @@ fn updating() Bool {
 // Internal: names the first line where two texts differ, with both sides, so a
 // mismatch is readable without a diff tool.
 fn first_difference(expected, actual String) String {
-	want := expected.split("\n")
-	got := actual.split("\n")
+	want := expected.split("\n").collect()
+	got := actual.split("\n").collect()
 	var line = 0
 
 	while line < want.length() and line < got.length() {

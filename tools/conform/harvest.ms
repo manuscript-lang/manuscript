@@ -71,7 +71,7 @@ fn category_of(relative String) List[String] {
 		rel = rel.slice("tests/e2e/testdata/".length(), rel.length()).clone()
 	}
 
-	parts := rel.split("/")
+	parts := rel.split("/").collect()
 	first := parts[0].clone()
 	var category = "repo"
 
@@ -335,7 +335,7 @@ fn header(origin, phase, text String, extra List[String]) Meta {
 }
 
 fn strip_headers(source String) String {
-	var lines = source.split("\n")
+	var lines = source.split("\n").collect()
 	var skipped_lines = 0
 	while (
 		skipped_lines < lines.length()

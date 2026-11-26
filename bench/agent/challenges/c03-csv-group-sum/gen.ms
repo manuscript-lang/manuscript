@@ -10,7 +10,7 @@ import (
 // The amount in cents, or none when `amt` is not digits with an optional fraction of
 // one or two digits.
 fn cents(amt String) Int? {
-	parts := amt.split(".")
+	parts := amt.split(".").collect()
 	if parts.length() > 2 { return null }
 
 	whole := parts[0].clone()
@@ -54,7 +54,7 @@ fn parse_line(line String) Row? {
 		cat = line.slice(1, close)
 		amt = line.slice(close + 2, line.length())
 	} else {
-		parts := line.split(",")
+		parts := line.split(",").collect()
 		if parts.length() != 2 { return null }
 
 		cat = parts[0].clone()

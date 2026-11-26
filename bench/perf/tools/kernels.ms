@@ -76,7 +76,7 @@ fn run(suite String, n Int, work String) Result[String, Error] {
 				build_c(
 					f"{here}/c/ms.c",
 					f"{work}/{entry[0]}/bench",
-					entry[1].split(" "),
+					entry[1].split(" ").collect(),
 				)?
 			}
 

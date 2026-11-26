@@ -18,7 +18,7 @@ import (
 
 // The probe lines the compiler printed on standard error, without their prefix.
 fn copies(text String) List[String] {
-	sites := text.split("\n").filter(
+	sites := text.split("\n").collect().filter(
 		line => line.starts_with("copy-probe\t")
 	).map(line => (line.slice(11, line.length()).clone()))
 	return sites

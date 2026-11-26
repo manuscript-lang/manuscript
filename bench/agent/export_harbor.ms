@@ -65,7 +65,9 @@ fn quote(text String) String => dumps(JsonValue.StringValue(text.clone()), 0)
 
 fn put(from, to String) Void {
 	create_directory(
-		to.split("/").take(to.split("/").length() - 1).join("/"),
+		to.split("/").collect().take(to.split("/").collect().length() - 1).join(
+			"/"
+		),
 		recursive: true,
 	).get()
 	copy(from, to, CopyOptions(replace: true)).get()
@@ -126,7 +128,7 @@ fn export_one(ch Challenge, lang Lang, out, ms_binary String, agent_timeout Int)
 }
 
 fn split_ids(text String) List[String] {
-	return text.split(",").filter(x => not x.is_empty())
+	return text.split(",").collect().filter(x => not x.is_empty())
 }
 
 fn run_export(o Options) Int! {

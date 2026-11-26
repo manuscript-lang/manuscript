@@ -46,12 +46,14 @@ export fn write_text(path, text String) Void {
 // compare output.
 export fn norm(text String) String {
 	if text.trim().is_empty() { return "" }
-	return text.trim_end().split("\n").map(line => line.trim_end().clone()).join("\n")
+	return text.trim_end().split("\n").collect().map(
+		line => line.trim_end().clone()
+	).join("\n")
 }
 
 // The nonblank lines of `text`.
 export fn nonblank_lines(text String) List[String] {
-	return text.split("\n").filter(l => not l.trim().is_empty())
+	return text.split("\n").collect().filter(l => not l.trim().is_empty())
 }
 
 // What a finished shell command left behind.

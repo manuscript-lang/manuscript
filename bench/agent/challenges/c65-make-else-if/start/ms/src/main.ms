@@ -1485,7 +1485,7 @@ fn fmt_rule(name String, pre, oo List[String]) String {
 fn main() Void! {
 	b := read_all(stdin())?
 	text := b.decode_utf8() or ""
-	all := text.lines()
+	all := text.lines().collect()
 	var sec = 0
 	var mk = List[String]()
 	var tbl = List[String]()
