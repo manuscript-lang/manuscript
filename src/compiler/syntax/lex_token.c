@@ -244,8 +244,10 @@ static bool close_delimiter(Scanner *s, uint8_t b) {
   uint8_t open = lex_open_char(s->delimiters.ptr[s->delimiters.len - 1]);
   if ((char)b != lex_closer_of(open)) {
     MsPos opener = s->opened.ptr[s->opened.len - 1];
-    return lex_fail_format(s, "mismatched closing delimiter '%c'; the '%c' opened at line %u:%u needs '%c'",
-                           b, open, opener.line, opener.column, lex_closer_of(open));
+    const bool failed = lex_fail_format(s, "mismatched closing delimiter '%c'; the '%c' opened at line %u:%u needs '%c'",
+                                        b, open, opener.line, opener.column, lex_closer_of(open));
+    s->diag->opener_line = opener.line; /* the statement to drop when recovering is the one that opened it */
+    return failed;
   }
   if (s->groups.len != 0 && s->groups.ptr[s->groups.len - 1] == lex_open_delimiters(s)) {
     s->groups.len--;

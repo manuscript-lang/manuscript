@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "base/arena.h"
+#include "base/cstr.h"
 #include "base/file.h"
 #include "base/path.h"
 #include "base/message.h"
@@ -324,6 +325,22 @@ static bool is_project_entry(const LspAnalysis *analysis, const LspDoc *doc) {
   return entry;
 }
 
+/* Whether `offset` of `file` lies in a declaration the parser kept only after blanking a broken statement. What the
+ * checker and the lint rules find there mostly follows from the blanked text (a binding it declared is "unknown",
+ * a value it used is "never read"), so the syntax error alone is reported until it is fixed. */
+static bool in_recovered(const LspAnalysis *analysis, MsSpan file, size_t offset) {
+  if (!analysis->resolved) return false;
+  const MsCheckProgram *program = &analysis->checked.program;
+  for (uint32_t m = 0; m < program->user_modules; m++) {
+    if (!ms_span_equal(analysis->paths[m], file)) continue;
+    const MsModule *tree = program->modules.ptr[m].tree;
+    for (uint32_t r = 0; r < tree->nrecovered; r++) {
+      if (offset >= tree->recovered[r].start && offset < tree->recovered[r].end) return true;
+    }
+  }
+  return false;
+}
+
 static MsString diagnostics_of(LspDoc *doc, const LspDocList *docs) {
   LspAnalysis analysis;
   lsp_analyze(docs, doc, &analysis);
@@ -357,6 +374,7 @@ static MsString diagnostics_of(LspDoc *doc, const LspDocList *docs) {
                  ms_span_equal(other->file, finding->file);
     }
     if (repeated) continue;
+    if (!ms_cstr_equal(finding->phase, "parse") && in_recovered(&analysis, file, finding->diag.pos.offset)) continue;
     append_diagnostic(&out, &first, source, finding);
   }
     FindingList entry_findings = {0};
@@ -378,6 +396,7 @@ static MsString diagnostics_of(LspDoc *doc, const LspDocList *docs) {
     const MsLintFinding *item = &lint.ptr[i];
     const MsSpan file = lsp_absolute_file(analysis.arena, analysis.checked.graph.source_root, item->file);
     if (!ms_span_equal(file, ms_string_span(&doc->path))) continue;
+    if (in_recovered(&analysis, file, item->pos.offset)) continue;
     const LspRange range = lsp_diagnostic_range(source, item->pos.offset);
     if (!first) ms_strbuild_append_byte(&out, ',');
     first = false;
