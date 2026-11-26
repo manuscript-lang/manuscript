@@ -15,7 +15,7 @@ exchange a `MirModule` in memory; there is no text between them. Allowed include
 - `mir_data.h`, `mir_data.c`, `mir_data_const.c`: the static data (descriptors, vtables, globals, unit blocks, long string literals, constant bytes and lists) as symbols with relocations; built after glue.
 - `mir_tables.h`, `mir_tables.c`: the fault tables blob (functions, line ranges, inlined scopes, strings) the runtime reads, with the code-address relocations the back end fills.
 - `mir_expand.h`, `mir_expand.c`, `mir_expand_owned.c`: list checks and growth as explicit blocks; the ownership shorthands as reads, drops and frees.
-- `mir_print.h`, `mir_print.c`, `mir_print_func.c`, `mir_print_ty.c`: the text form (`ms emit`), a dump only; passes exchange the in-memory module.
+- `mir_print.h`, `mir_print.c`, `mir_print_func.c`, `mir_print_ty.c`: the text form (`ms build --emit mir`), a dump only; passes exchange the in-memory module.
 - `mir_persist.h`, `mir_persist.c`: persistent sets and maps of dense ids for the ownership passes. `mir_hash.h`, `mir_hash.c`: an arena-backed `uint64_t` map for the same passes.
 - `mir_elab.h` and `mir_elab*.c`: drop elaboration. Reads the scope markers a Raw function carries, runs a move-state dataflow, and places the drops, closes and drop flags where each scope ends. Cancel exits are not ported yet.
 - `mir_pipeline.h`, `mir_pipeline.c`: the passes between lowering and the emitter in order (prepare, finish, backend).
