@@ -84,21 +84,6 @@ static const MsSymbol *symbol_of(const Outline *outline, uint32_t module, const 
   return symbol->decl == decl ? symbol : NULL;
 }
 
-/* A function's detail: its declaration header after the name (`(move b Box) Int`), from the formatter's layout. */
-static bool function_detail(const Outline *outline, MsStrBuild *detail, size_t offset, MsSpan name) {
-  size_t at;
-  if (!lsp_header(outline->source, offset, name, &at)) return false;
-  const MsSpan header = ms_declaration_header(outline->arena, outline->source, at);
-  for (size_t i = 0; i + name.len < header.len; i++) {
-    const uint8_t next = header.ptr[i + name.len];
-    if (header.ptr[i] != name.ptr[0] || (i > 0 && header.ptr[i - 1] != ' ' && header.ptr[i - 1] != '.')) continue;
-    if ((next != '(' && next != '[') || !ms_span_equal(ms_span_of(header.ptr + i, name.len), name)) continue;
-    ms_strbuild_append(detail, ms_span_of(header.ptr + i + name.len, header.len - i - name.len));
-    return true;
-  }
-  return false;
-}
-
 static void write_declaration(const Outline *outline, MsStrBuild *out, uint32_t module, const MsDecl *decl, size_t end) {
   MsStrBuild name = ms_strbuild_new();
   MsStrBuild detail = ms_strbuild_new();
@@ -110,7 +95,7 @@ static void write_declaration(const Outline *outline, MsStrBuild *out, uint32_t 
     selection_name = name_text(outline, declared);
     ms_strbuild_append(&name, selection_name);
     const MsSymbol *symbol = symbol_of(outline, module, decl, declared);
-    if (symbol != NULL && decl->kind == MS_D_FN && function_detail(outline, &detail, decl->pos.offset, selection_name)) {
+    if (symbol != NULL && decl->kind == MS_D_FN && lsp_function_detail(outline->arena, &detail, outline->source, decl->pos.offset, selection_name)) {
       /* The parameters and result as the formatter writes the declaration. */
     } else if (symbol != NULL && (decl->kind == MS_D_FN || decl->kind == MS_D_CONST) && symbol->ty != MS_TY_NONE &&
         !ms_ty_is_invalid(&outline->program->types, symbol->ty)) {
