@@ -79,7 +79,7 @@ fn RouteParams.get(name String) String? {
 // Returns the text captured for `name`, or `fallback` when the pattern has no such
 // parameter.
 fn RouteParams.get_or(name, fallback String) String {
-	return self.get(name) or fallback
+	return self.get(name).clone() or fallback.clone()
 }
 
 // One segment of a route pattern.
@@ -223,7 +223,7 @@ fn var Router.options(
 // router holds functions, which have one owner, so `routes` is taken: build it
 // again to mount it elsewhere. An invalid prefix returns `EINVAL`, and a route that
 // duplicates an existing method and pattern shape returns `EEXIST`.
-fn var Router.mount(prefix String, routes Router) Void! {
+fn var Router.mount(prefix String, move routes Router) Void! {
 	if prefix.ends_with(
 		"/"
 	) and prefix != "/" { return error(invalid_pattern(prefix)) }
@@ -262,7 +262,7 @@ fn var Router.use(
 // first. Unmatched paths answer 404. A path matched only under other methods answers
 // 405 with `Allow`, and OPTIONS on a known path answers 204 with `Allow`. `OPTIONS *`
 // answers 204 with the `Allow` of every registered method.
-fn Router.handler() fn(var HttpExchange) Void! {
+fn move Router.handler() fn(var HttpExchange) Void! {
 	return fn(var exchange HttpExchange) => dispatch(
 		self.routes,
 		self.middleware,
@@ -893,14 +893,14 @@ fn var Tap.write_bytes(move data Bytes) Void! {
 }
 
 // `state` is a slot counting what is sent, which the caller made and reads afterwards.
-fn new_tap(inner HttpExchange, extra, request HttpHeaders, state Int? = null) Tap {
+fn new_tap(move inner HttpExchange, move extra HttpHeaders, move request HttpHeaders, state Int? = null) Tap {
 	return Tap(inner: inner, extra: extra, request: request, state: state)
 }
 
 // Replaces `exchange` with one whose `headers()` reports `request` and everything else
 // passes through. Middleware uses it to hand later layers changed request headers,
 // since a received header set is a copy.
-export fn with_request_headers(var exchange HttpExchange, request HttpHeaders) Void {
+export fn with_request_headers(var exchange HttpExchange, move request HttpHeaders) Void {
 	exchange = new_tap(exchange, headers(), request)
 }
 
@@ -1036,7 +1036,7 @@ fn answered(status Int, succeeded Bool) Int {
 // replaces the exchange with a wrapper of its own type, so the value that comes back
 // from a handler is not the one that was handed in; the slot is what both sides can
 // reach.
-fn new_slot[T](value T) Int {
+fn new_slot[T](move value T) Int {
 	pipe := msrt_pipe_new(1)
 	_first := msrt_pipe_write(pipe, value)
 	return pipe
@@ -1050,7 +1050,7 @@ fn take_slot[T](slot Int) T {
 	return value
 }
 
-fn put_slot[T](slot Int, value T) Void {
+fn put_slot[T](slot Int, move value T) Void {
 	_written := msrt_pipe_write(slot, value)
 }
 
