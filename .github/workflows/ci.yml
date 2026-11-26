@@ -58,9 +58,11 @@ jobs:
       - name: Probe collatz code and cpu
         shell: bash
         run: |
+          case "$(uname)" in Darwin|Linux) ;; *) exit 0;; esac
+          set +e
           ms=$(find .artifacts/build/ci -maxdepth 3 \( -name ms.exe -o -name ms \) -type f | head -1); ms=$PWD/$ms
           mkdir -p .artifacts/probe
-          echo "== cpu"; if [ "$(uname)" = Darwin ]; then sysctl -n machdep.cpu.brand_string machdep.cpu.features machdep.cpu.leaf7_features 2>&1 | tr '\n' ' '; else lscpu | grep -E "Model name|Flags" | cut -c1-600; fi
+          echo "== cpu"; if [ "$(uname)" = Darwin ]; then sysctl -n machdep.cpu.brand_string machdep.cpu.features machdep.cpu.leaf7_features 2>&1 | tr '\n' ' ' || true; else lscpu | grep -E "Model name|Flags" | cut -c1-600; fi
           "$ms" build --build-type debug -o .artifacts/probe/kd bench/perf/kernels/ms/src/main.ms
           echo "== symbols"; nm .artifacts/probe/kd | grep -i collatz | head
           sym=$(nm .artifacts/probe/kd | grep -i " [tT] .*collatz" | head -1 | awk '{print $3}')
