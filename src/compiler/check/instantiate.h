@@ -30,4 +30,9 @@ MS_NODISCARD bool ms_check_instantiate(MsCheckProgram *program, MsTy callee, con
                                        const MsTy *arg_tys, size_t nargs, const size_t *order, MsTy expected_result,
                                        MsInstance *out);
 
+/* Fills `out->message` (and `out->unbound`) with the "cannot infer type argument" diagnostic for each `bound[i]` that
+ * is MS_TY_NONE. */
+void ms_check_missing_message(MsCheckProgram *program, MsSpan name, const MsTy *vars, size_t count, const MsTy *bound,
+                              MsInstance *out);
+
 #endif
