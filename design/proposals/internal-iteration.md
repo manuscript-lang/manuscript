@@ -56,3 +56,12 @@ fn var Filtered[I Folding[&T], T].for_each(visit fn(&T) Bool) Bool {
 ## Testing and expected result
 
 Prototype first, behind a test: nested `for_each` adapters over a list reach 0.23 s (the fused loop) only if the closure-through-capture inlining lands; target is within 3% of `bench/perf` fused times on dedupe-style chains, instruction counts by callgrind. A result above 0.25 s keeps the idea unmerged.
+
+## Revision 2026-11-26: desugaring a consumed chain into a loop (owner question)
+
+Chinmay asked whether chains can simply be desugared into `for` loops, and ruled out a list of method names ("we need to make it work generally first"). A chain consumed where it is written (`for`, `fold`, `count`, `collect`) has no need of an iterator value; only a chain that is stored, returned or passed does, and that keeps the `next` protocol. Two general ways to get the loop:
+
+- **A. Internal iteration (above).** Adapters are ordinary `.ms` methods; the loop comes from inlining `for_each` and its closures. No language change; needs the closure-through-capture inlining, which also speeds every callback-taking API (`map_concurrent`, `sort_by`). Risk: it is an optimizer result, so it can regress silently; the test is the callgrind and wall check above.
+- **B. Inline-consumed generators.** An adapter is written as a loop with `yield` (`fn filter(...) { for x in source { if keep(x) { yield x } } }`); when its caller is a `for` (or a terminal written the same way), the checker substitutes the `for` body at each `yield`, and the nested loops are the desugared chain. No optimizer dependency and the shape is guaranteed, not hoped for. Cost: a new language construct (`yield`), a second meaning for an iterator-returning function, and the stored-chain case still needs a state-machine or the `next` fallback.
+
+Recommendation: A, because it needs no new syntax and its optimizer piece is wanted regardless; take B only if A's prototype misses the 3% bar. The choice adds or avoids a language feature, so it is the owner's.
