@@ -174,6 +174,7 @@ const MsHelpPage MS_HELP_PAGES[] = {
     "  --exclude <regex>    Exclude names matching a regular expression\n"
     "  --list              List selected tests without running them\n"
     "  --fail-fast         Stop after the first failed test\n"
+    "  --verbose           Print a RUN and PASS line for every test (default: failures and the summary)\n"
     "  --repeat <count>     Run the selected tests count times\n"
     "  --shuffle <seed>     Shuffle with a reproducible integer seed\n"
     "  --runs <count>       Cases per property test from @std/test/property.ms (default 100)\n"

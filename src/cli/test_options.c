@@ -93,6 +93,8 @@ void ms_test_options_parse(const MsSpanList *arguments, MsTestOptions *out) {
       out->list = true;
     } else if (ms_span_is_text(arg, "--fail-fast")) {
       out->fail_fast = true;
+    } else if (ms_span_is_text(arg, "--verbose")) {
+      out->verbose = true;
     } else if (ms_span_is_text(arg, "--ops")) {
       out->ops = true;
     } else if (!split_option(arg, &name, &value) || !apply(out, name, value)) {
