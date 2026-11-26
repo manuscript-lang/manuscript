@@ -208,25 +208,21 @@ static void sf_decode(MirBuilder *b, MirValue text, MirValue offset, MirValue b0
   sf_return_scalar(b, r, 4, step);
 }
 
-/* `scalar_at(text, offset, has, default)`, or `scalar_step(text, offset)` (the offset is inside the text, on a
- * scalar boundary) answering `scalar << 3 | width`. */
+/* `scalar_at(text, offset, has, default)`, or `scalar_step(text, offset)` answering `scalar << 3 | width`. Both read a
+ * byte only for an offset inside the text. */
 static void sf_scalar(MirBuilder *b, uint32_t slow_ext, bool step) {
   MirValue ps[4];
   mir_b_params(b, ps, step ? 2 : 4);
   const MirValue text = ps[0], offset = ps[1];
   const MirBlock slow = mir_b_new_block(b), ascii = mir_b_new_block(b), multi = mir_b_new_block(b);
-  MirValue b0;
-  if (step) {
-    b0 = sf_byte_of_text(b, text, offset);
-  } else {
-    const MirBlock read = mir_b_new_block(b);
-    const MirValue len = mir_b_emit(b, MOP_StrBytes, &text, 1, (MirImm){0}, MIR_INT);
-    const MirValue inside = ob_and(b, sf_const_cmp(b, MCC_GE, offset, 0), mir_b_icmp(b, MCC_LT, offset, len));
-    mir_b_br_if(b, inside, read, NULL, 0, slow, NULL, 0);
-    mir_b_seal_block(b, read);
-    mir_b_switch_to(b, read);
-    b0 = sf_byte_of_text(b, text, offset);
-  }
+  /* An offset outside the text is the runtime's to answer (an invalid byte, or the default): no byte is read for it. */
+  const MirBlock read = mir_b_new_block(b);
+  const MirValue len = mir_b_emit(b, MOP_StrBytes, &text, 1, (MirImm){0}, MIR_INT);
+  const MirValue inside = ob_and(b, sf_const_cmp(b, MCC_GE, offset, 0), mir_b_icmp(b, MCC_LT, offset, len));
+  mir_b_br_if(b, inside, read, NULL, 0, slow, NULL, 0);
+  mir_b_seal_block(b, read);
+  mir_b_switch_to(b, read);
+  const MirValue b0 = sf_byte_of_text(b, text, offset);
   ob_br_if(b, sf_const_cmp(b, MCC_LT, b0, 128), ascii, multi);
   mir_b_switch_to(b, ascii);
   mir_b_ret(b, step ? ob_int(b, MOP_Or, ob_int(b, MOP_Shl, b0, 3), 1) : b0);
@@ -242,7 +238,8 @@ static void sf_scalar_at(MirBuilder *b, uint32_t slow_ext) { sf_scalar(b, slow_e
 /* `scalar_text(text, offset)`: the scalar at a byte offset inside the text, as a string. A scalar is at most four
  * bytes, so the string is always inline: its two words are built here from the scalar's bytes and length (a
  * multi-byte scalar asks the runtime for them), with the tag a constant. Its users then compare words and read the
- * length without testing which kind of string they were given. */
+ * length without testing which kind of string they were given. The offset must be inside the text: the two callers,
+ * the `chars` loop (`index < len`) and `Fields.next` (`i < n`), test it, as the runtime function does not. */
 static void sf_scalar_text(MirBuilder *b, uint32_t slow_ext) {
   MirValue ps[2];
   mir_b_params(b, ps, 2);
