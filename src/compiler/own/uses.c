@@ -688,12 +688,17 @@ static void consume_loops(void *ctx, const MsStmt *stmt) {
   const MsTyTable *types = &pass->program->types;
   const MsTy list = ms_facts_type(pass->facts, iter->id);
   if (list == MS_TY_NONE || !ms_ty_is(types, list, MS_BUILTIN_List) || ms_ty_arg_count(types, list) != 1 ||
-      !ms_check_holds_resource(pass->program, ms_ty_args(types, list)[0])) {
+      ms_class_of(pass->classes, ms_ty_args(types, list)[0]) == MS_CLASS_COPY) {
     return;
   }
   Moved moved = {.pass = pass, .local = binding->local};
   ms_walk_block(&(MsVisitor){.ctx = &moved, .expr = find_moved_loop_name}, stmt->u.each.body);
-  if (moved.found || last_use_outside_loops(pass, pass->params, pass->body, stmt, iter)) {
+  /* A resource is closed in its round unless moved on; any other owner is taken only where the body moves it on, out
+   * of a list the callable owns. */
+  const bool resource = ms_check_holds_resource(pass->program, ms_ty_args(types, list)[0]);
+  const MsRef *list_ref = ms_facts_ref(pass->facts, iter->id);
+  const bool owned = resource || (list_ref != NULL && list_ref->kind == MS_REF_LOCAL);
+  if ((moved.found && owned) || (resource && last_use_outside_loops(pass, pass->params, pass->body, stmt, iter))) {
     pass->facts->uses[iter->id] = MS_USE_MOVE;
   }
 }

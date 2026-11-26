@@ -20,7 +20,7 @@ fn list_size(
 fn flag(value Bool?) Bool => value or panic("called Optional.get() on null")
 
 fn success(value Int!Error?) Int {
-	return (value or panic("called Optional.get() on null")).get_or(-1)
+	return (value or panic("called Optional.get() on null")).clone().get_or(-1)
 }
 
 fn context[T](hold fallback T, hold value T?) &T {

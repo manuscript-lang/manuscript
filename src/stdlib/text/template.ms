@@ -253,7 +253,7 @@ fn tokenize(source String) List[Token]! {
 
 	while index < pieces.length() {
 		var text = literal.clone()
-		if trim_next { text = text.trim_start() }
+		if trim_next { text = text.trim_start().clone() }
 
 		// An action ends at the first closing delimiter, even when its body holds a
 		// literal opener.
@@ -292,7 +292,7 @@ fn tokenize(source String) List[Token]! {
 		trim_next = false
 
 		if body.starts_with("-") and (body.length() == 1 or is_blank_at(body, 1)) {
-			text = text.trim_end()
+			text = text.trim_end().clone()
 			body = body.view(1, body.length()).clone()
 		}
 
@@ -320,13 +320,9 @@ fn tokenize(source String) List[Token]! {
 		literal = tail
 	}
 
-	tokens.append(
-		Token(
-			action: false,
-			body: if trim_next { literal.trim_start() } else { literal.clone() },
-			line: line,
-		)
-	)
+	var last = literal.clone()
+	if trim_next { last = last.trim_start().clone() }
+	tokens.append(Token(action: false, body: last, line: line))
 	return ok(tokens)
 }
 
@@ -725,7 +721,7 @@ fn var Builder.for_block(header String, line, depth Int) TemplateNode! {
 	}
 
 	first := names[0].trim().clone()
-	second := if names.length() == 2 { names[1].trim() } else { "" }
+	second := if names.length() == 2 { names[1].trim().clone() } else { "" }
 	if first.is_empty() or not is_word_start(first.chars()[0]) or first.contains(".") {
 		return error(syntax_error(line: line, reason: "bad loop name"))
 	}
@@ -759,7 +755,7 @@ fn var Builder.for_block(header String, line, depth Int) TemplateNode! {
 }
 
 fn first_word(body String) String {
-	return body.split(" ")[0].trim()
+	return body.split(" ")[0].trim().clone()
 }
 
 fn after_word(body String) String {

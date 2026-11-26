@@ -6,17 +6,17 @@ fn long_text() String {
 	return "  a heap string that is longer than any inline text, padded  ".upper()
 }
 
-// `trim` answers a view of its receiver; a new owner copies it, so the old owner can end first.
+// `trim` answers a view of its receiver; a new owner keeps a `.clone()` of it, so the old owner can end first.
 test "a trimmed view assigned back to its own variable is a copy" {
 	var text = long_text()
-	text = text.trim()
+	text = text.trim().clone()
 	expect_equal(text, "A HEAP STRING THAT IS LONGER THAN ANY INLINE TEXT, PADDED")?
 }
 
 test "a trimmed view assigned to another variable survives the source" {
 	var kept = ""
 	var source = long_text()
-	kept = source.trim()
+	kept = source.trim().clone()
 	source = "other"
 	expect_equal(kept, "A HEAP STRING THAT IS LONGER THAN ANY INLINE TEXT, PADDED")?
 	expect_equal(source, "other")?
@@ -28,7 +28,7 @@ type Label {
 
 test "a trimmed view assigned to a field of the same record is a copy" {
 	var label = Label(long_text())
-	label.name = label.name.trim()
+	label.name = label.name.trim().clone()
 	expect_equal(
 		label.name,
 		"A HEAP STRING THAT IS LONGER THAN ANY INLINE TEXT, PADDED",

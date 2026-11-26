@@ -70,7 +70,7 @@ export fn parse_address(text String) Address! {
 		) { return error(Error("mail: invalid address", kind: "EBADMSG")) }
 
 		name = trimmed.view(0, open).trim().clone()
-		address = trimmed.slice(open + 1, trimmed.length() - 1).trim()
+		address = trimmed.slice(open + 1, trimmed.length() - 1).trim().clone()
 	} else if trimmed.contains(">") {
 		return error(Error("mail: invalid address", kind: "EBADMSG"))
 	}
