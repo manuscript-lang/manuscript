@@ -1,4 +1,3 @@
-RUN g_test.ms::division
 FAIL g_test.ms::division: division by zero; right must be nonzero, found 0
   at g_test.ms:8 in divide
   at g_test.ms:12 in level2

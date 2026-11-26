@@ -262,7 +262,8 @@ static int flag_option(Parser *p, MsSpan flag, bool inline_value, MsSpan value) 
     out->allocs = true;
   } else if (ms_span_is_text(flag, "--json")) {
     out->json = true;
-  } else if (ms_span_is_text(flag, "--list") || ms_span_is_text(flag, "--fail-fast") || ms_span_is_text(flag, "--ops")) {
+  } else if (ms_span_is_text(flag, "--list") || ms_span_is_text(flag, "--fail-fast") || ms_span_is_text(flag, "--ops") ||
+             ms_span_is_text(flag, "--verbose")) {
     ms_span_list_push(&p->raw.test_options, flag);
   } else if (ms_span_is_text(flag, "--build-type")) {
     return build_type_option(p, inline_value, value);

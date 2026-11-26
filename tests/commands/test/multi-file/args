@@ -1,3 +1,4 @@
 test
+--verbose
 a_test.ms
 sub/b_test.ms

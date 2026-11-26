@@ -114,8 +114,6 @@ For this generated project, the commands report:
 
 ```text
 Checked ms.toml (2 modules)
-RUN test.ms::arithmetic
-PASS test.ms::arithmetic
 1 tests, 0 failed
 ```
 

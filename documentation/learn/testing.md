@@ -31,12 +31,10 @@ ms test test.ms
 ```
 
 ```text
-RUN test.ms::addition
-PASS test.ms::addition
-RUN test.ms::zero is unchanged
-PASS test.ms::zero is unchanged
 2 tests, 0 failed
 ```
+
+Output is quiet by default: failures and the summary. Add `--verbose` to print a `RUN` and `PASS` line for every test.
 
 Select one test or set a per-test deadline:
 
@@ -48,8 +46,6 @@ ms test test.ms --timeout 10s
 With `--filter addition`, only the selected test runs:
 
 ```text
-RUN test.ms::addition
-PASS test.ms::addition
 1 tests, 0 failed
 ```
 
@@ -93,8 +89,6 @@ test "typed JSON and Optional payloads" {
 Test output:
 
 ```text
-RUN test.ms::typed JSON and Optional payloads
-PASS test.ms::typed JSON and Optional payloads
 1 tests, 0 failed
 ```
 
@@ -153,8 +147,6 @@ test "reversing twice restores a list" {
 Test output:
 
 ```text
-RUN test.ms::reversing twice restores a list
-PASS test.ms::reversing twice restores a list
 1 tests, 0 failed
 ```
 
@@ -279,10 +271,6 @@ test "starts fresh" {
 Test output:
 
 ```text
-RUN test.ms::increments
-PASS test.ms::increments
-RUN test.ms::starts fresh
-PASS test.ms::starts fresh
 2 tests, 0 failed
 ```
 

@@ -28,8 +28,6 @@ Run it with the compiler built from your checkout:
 ```
 
 ```text
-RUN decrement.ms::checked decrement
-PASS decrement.ms::checked decrement
 1 tests, 0 failed
 ```
 

@@ -28,8 +28,6 @@ test "serve a greeting" {
 ```
 
 ```text
-RUN server_test.ms::serve a greeting
-PASS server_test.ms::serve a greeting
 1 tests, 0 failed
 ```
 
