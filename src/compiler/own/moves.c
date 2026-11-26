@@ -693,9 +693,28 @@ static void note_var_borrow(Moves *pass, const MsStmt *stmt) {
   uint32_t binding = 0;
   const MsTy ty = value != NULL ? ms_facts_type(pass->facts, value->id) : MS_TY_NONE;
   if (pass->instance || pass->depth != 0 || value == NULL || value->kind != MS_E_MEMBER || root->kind != MS_E_NAME ||
-      !ms_bind_of(pass->facts, root->id, &binding) ||
-      !(ms_binding_list_contains(&pass->varparams, binding) || ms_binding_list_contains(&pass->plainparams, binding)) || ty == MS_TY_NONE ||
-      ms_class_of(pass->classes, ty) == MS_CLASS_COPY || ms_ty_kind(&pass->program->types, ty) == MS_TY_FUNCTION) {
+      !ms_bind_of(pass->facts, root->id, &binding) || ty == MS_TY_NONE || ms_class_of(pass->classes, ty) == MS_CLASS_COPY ||
+      ms_ty_kind(&pass->program->types, ty) == MS_TY_FUNCTION) {
+    return;
+  }
+  if (ms_binding_list_contains(&pass->vars, binding) && ms_check_holds_resource(pass->program, ty)) {
+    /* A resource field of a local `var` leaves it only as `part := holder.field`, refilled by the next statement. */
+    MsStrBuild taken = ms_strbuild_new();
+    ms_strbuild_append_text(&taken, "`var ");
+    ms_strbuild_append(&taken, ms_names_span(pass->program->names, stmt->u.bind.pattern->u.name));
+    ms_strbuild_append_text(&taken, "` cannot take the resource `");
+    ms_strbuild_append(&taken, place_text(pass, value));
+    ms_strbuild_append_text(&taken, "`: it would leave `");
+    ms_strbuild_append(&taken, ms_names_span(pass->program->names, root->u.sym));
+    ms_strbuild_append_text(&taken, "` with a hole; use it in place, or take it with `part := ");
+    ms_strbuild_append(&taken, place_text(pass, value));
+    ms_strbuild_append_text(&taken, "` and refill `");
+    ms_strbuild_append(&taken, place_text(pass, value));
+    ms_strbuild_append_text(&taken, " = ...` in the next statement");
+    ms_check_report(pass->program, pass->module, value->pos, MS_CHECK_TYPE, ms_strbuild_finish(&taken));
+    return;
+  }
+  if (!(ms_binding_list_contains(&pass->varparams, binding) || ms_binding_list_contains(&pass->plainparams, binding))) {
     return;
   }
   MsStrBuild text = ms_strbuild_new();
