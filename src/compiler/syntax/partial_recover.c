@@ -158,6 +158,19 @@ static void blank_statement(const Buffer *buffer, size_t at, size_t indent) {
   }
 }
 
+/* Writes `...` at `indent` on a blanked line when it is long enough to hold it. */
+static bool stand_in(MsSpanMut line, size_t indent) {
+  size_t room = line.len;
+  while (room > 0 && (line.ptr[room - 1] == '\n' || line.ptr[room - 1] == '\r')) {
+    room--;
+  }
+  if (room < indent + 3) {
+    return false;
+  }
+  __builtin_memcpy(line.ptr + indent, "...", 3);
+  return true;
+}
+
 bool partial_recover_statements(Partial *partial, MsSpan chunk, MsChunk where, const MsDiag *first, MsSpan *out,
                                 DiagList *issues) {
   Buffer buffer = buffer_of(partial, chunk);
@@ -184,6 +197,14 @@ bool partial_recover_statements(Partial *partial, MsSpan chunk, MsChunk where, c
     if (parse_ok(partial, buffer_span(&buffer), where, &error)) {
       *out = buffer_span(&buffer);
       return true;
+    }
+    /* Blanking the only statement leaves an empty block; `...` stands in so the declaration survives. */
+    if (ms_span_starts_with_text(error.message, "a block cannot be empty") && stand_in(buffer.lines[at], indent)) {
+      MsDiag again = {0};
+      if (parse_ok(partial, buffer_span(&buffer), where, &again)) {
+        *out = buffer_span(&buffer);
+        return true;
+      }
     }
     issue = error;
   }
