@@ -32,7 +32,6 @@ static const Keyword KEYWORDS[] = {
     KW("fn", MS_T_Fn),
     KW("for", MS_T_For),
     KW("if", MS_T_If),
-    KW("impl", MS_T_Impl),
     KW("import", MS_T_Import),
     KW("in", MS_T_In),
     KW("interface", MS_T_Interface),
@@ -43,7 +42,6 @@ static const Keyword KEYWORDS[] = {
     KW("self", MS_T_SelfKw),
     KW("test", MS_T_Test),
     KW("true", MS_T_True),
-    KW("try", MS_T_Try),
     KW("type", MS_T_Type),
     KW("var", MS_T_Var),
     KW("void", MS_T_Void),
@@ -90,7 +88,6 @@ bool ms_tok_is_contextual(MsTok kind) {
   case MS_T_Fixture:
   case MS_T_For:
   case MS_T_If:
-  case MS_T_Impl:
   case MS_T_Import:
   case MS_T_In:
   case MS_T_Interface:

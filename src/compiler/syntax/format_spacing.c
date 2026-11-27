@@ -278,7 +278,7 @@ static bool minus_is_unary(const MsToken *tokens, size_t at) {
 bool fmt_token_space(const MsToken *tokens, size_t at) {
   const MsTok current = (MsTok)tokens[at].kind;
   const MsTok previous = (MsTok)tokens[at - 1].kind;
-  if (current == MS_T_Dot && (previous == MS_T_Pipe || previous == MS_T_Try)) {
+  if (current == MS_T_Dot && previous == MS_T_Pipe) {
     return true;
   }
   if (previous == MS_T_Bang && current == MS_T_Name && tokens[at].lo == tokens[at - 1].hi) {

@@ -169,7 +169,7 @@ static bool group_scan(Grouper *g, size_t start, uint32_t limit, WrapScan *scan)
       // A line starting with `.` after a flow step applies to the whole flow, which
       // `| .name` spells out as a stage of its own.
       if (scan->pipes > 0 && at > start && tokens[at].pos.line != tokens[at - 1].pos.line &&
-          tokens[at - 1].kind != MS_T_Pipe && tokens[at - 1].kind != MS_T_Try) {
+          tokens[at - 1].kind != MS_T_Pipe) {
         group_insert(g, tokens[at].lo, false, ms_span_of_text("| "));
         scan->pipes++;
       }

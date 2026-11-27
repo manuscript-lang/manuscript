@@ -306,7 +306,7 @@ static void report_misplaced_opaque(Parser *p, MsToken token) {
 /* Reports why `token` cannot start a module declaration. */
 static void report_bad_declaration(Parser *p, MsToken token) {
   MsTok k = (MsTok)token.kind;
-  if (k == MS_T_Impl) {
+  if (k == MS_T_Name && parse_text_is(p, token, "impl")) {
     parse_fail(p, token, ms_span_of_text(IMPL_REMOVED));
     return;
   }

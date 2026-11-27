@@ -35,6 +35,7 @@ static const ForeignKeyword FOREIGN_KEYWORDS[] = {
      "a { ... }' with 'else if' for plain values",
      NULL,
      false},
+    {{"try"}, PARSE_TRY_REMOVED, NULL, false},
     {{"except", "finally"}, FAILURES_ADVICE, NULL, true},
     {{"loop"}, "'loop' is not a keyword; write 'while true { ... }' and leave it with 'break'", NULL, false},
     {{"foreach"}, "'foreach' is not a keyword; write 'for item in items { ... }'", NULL, false},

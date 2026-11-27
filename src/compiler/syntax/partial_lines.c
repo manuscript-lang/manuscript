@@ -98,7 +98,7 @@ static bool opaque_start(MsSpan source) {
 
 bool partial_root_start(MsSpan source) {
   static const char *const keywords[] = {"import", "export", "extern",    "type",
-                                         "enum",   "interface", "impl", "test"};
+                                         "enum",   "interface", "test"};
   MsSpan rest = {0};
   for (size_t i = 0; i < sizeof keywords / sizeof keywords[0]; i++) {
     if (after_keyword(source, keywords[i], &rest)) {
