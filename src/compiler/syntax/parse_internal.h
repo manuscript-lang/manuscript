@@ -196,6 +196,7 @@ MS_NODISCARD bool parse_statement(Parser *p, bool allow_value, MsStmt **out);
 MS_NODISCARD bool parse_statement_suite(Parser *p, bool is_expression, bool fn_body, MsStmts *out);
 
 /* parse_expr.c */
+extern const char PARSE_TRY_REMOVED[]; /* the advice for the removed prefix `try` */
 MsExpr *parse_mk_unary(Parser *p, MsPos pos, MsUnaryOp op, MsExpr *operand);
 MS_NODISCARD bool parse_expression(Parser *p, int min, MsExpr **out);
 MS_NODISCARD bool parse_if_expression(Parser *p, MsToken t, MsExpr **out);

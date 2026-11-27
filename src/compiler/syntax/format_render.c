@@ -14,7 +14,7 @@ typedef struct FlowPrefix {
 
 static bool flow_advance(FlowPrefix *flow, const Node *node, uint32_t last_line) {
   const bool joined = node->tok.kind == MS_T_Dot && last_line != 0 && last_line != node->tok.pos.line &&
-                      flow->has_pipe && flow->previous != MS_T_Pipe && flow->previous != MS_T_Try;
+                      flow->has_pipe && flow->previous != MS_T_Pipe;
   // Only preceding code in the current comma-separated item contributes.
   if (node->group < 0 && node->tok.kind == MS_T_Comma) {
     flow->previous = -1;

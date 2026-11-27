@@ -1,7 +1,7 @@
 /* Owns expressions: operators, pipes, ranges, and match and if expressions. */
 #include "compiler/syntax/parse_internal.h"
 
-static const char TRY_REMOVED[] =
+const char PARSE_TRY_REMOVED[] =
     "'try' was replaced by a postfix '?': write f(x)? instead of try f(x), and x | step? instead of x | try "
     "step";
 
@@ -12,6 +12,23 @@ MsExpr *parse_mk_unary(Parser *p, MsPos pos, MsUnaryOp op, MsExpr *operand) {
   e->op = (uint8_t)op;
   e->u.bin.left = operand;
   return e;
+}
+
+/* True at the removed prefix `try`: the name `try` followed by the operand it applied to. */
+static bool at_removed_try(Parser *p) {
+  if (parse_kind(p) != MS_T_Name || !parse_text_is(p, parse_peek(p), "try")) {
+    return false;
+  }
+  switch ((MsTok)parse_ahead(p, 1).kind) {
+  case MS_T_Name:
+  case MS_T_Number:
+  case MS_T_String:
+  case MS_T_Match:
+  case MS_T_Newline:
+    return true;
+  default:
+    return false;
+  }
 }
 
 /* Rejects prefix `try`. When the operand is one call or access chain, the fix rewrites
@@ -25,7 +42,7 @@ static void fail_try(Parser *p, MsToken t) {
     parse_checkpoint_restore(p, &checkpoint);
     operand = NULL;
   }
-  MsDiag *d = parse_diag(p, t.pos, ms_span_of_text(TRY_REMOVED));
+  MsDiag *d = parse_diag(p, t.pos, ms_span_of_text(PARSE_TRY_REMOVED));
   d->has_end = true;
   d->end = t.end;
   MsToken last = parse_previous(p);
@@ -130,8 +147,9 @@ MS_NODISCARD static bool parse_pipe(Parser *p, MsExpr *lhs, MsExpr **out) {
         "or");
     return false;
   }
-  if (parse_kind(p) == MS_T_Try) {
-    parse_fail(p, parse_peek(p), ms_span_of_text(TRY_REMOVED));
+  if (parse_kind(p) == MS_T_Name && parse_text_is(p, parse_peek(p), "try") &&
+      parse_ahead(p, 1).kind != MS_T_LParen) {
+    parse_fail(p, parse_peek(p), ms_span_of_text(PARSE_TRY_REMOVED));
     return false;
   }
   MsExpr *step;
@@ -160,7 +178,7 @@ MS_NODISCARD static bool leading_operand(Parser *p, int min, MsExpr **out) {
             "not requires grouping at this operator position; wrap it in parentheses, e.g. a == (not b)"));
     return false;
   }
-  if (t.kind == MS_T_Try) {
+  if (at_removed_try(p)) {
     fail_try(p, t);
     return false;
   }
