@@ -17,6 +17,8 @@ then check the parsed operator and formatter idempotence.
 
 A diagnostic file that is already absolute is printed as itself. `finding_terminal_text` used to prefix the source root onto every file, so a missing `/tmp/missing.ms` whose root was `/tmp` displayed as `/tmp//tmp/missing.ms`. A relative file still sits under the root; a package file (`@id/...`) does not. `findings_unit` covers all three.
 
+An empty list is a null pointer. Adding zero to it (`ptr + 0`) is undefined, and UBSan rejects it. Sort, scan, or describe the list only when it has elements (`finding_add_graph` on a graph with no diagnostics, an empty `.gitignore`, a type with no arguments).
+
 Apply when: adding or rewording any lexer, parser, checker, project, compiler, CLI, or runtime message.
 Evidence: [message-shape rule](../../../documentation/developer-tooling/source/diagnostics.md), code classification, checker hints, recovery.
 Verify: run `ctest --preset ci` and `make conform` (check-phase fixtures compare code, phase, message, and position); extend the hint tests with the new message.

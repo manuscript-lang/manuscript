@@ -18,7 +18,11 @@ void finding_add_graph(const MsGraph *graph, FindingList *findings) {
     const char *phase = diag->phase == MS_GRAPH_PARSE ? "parse" : "resolution";
     finding_list_push(findings, (Finding){.file = diag->file, .phase = phase, .diag = diag->diag});
   }
-  ms_sort((uint8_t *)(findings->ptr + first), findings->len - first, sizeof(Finding), finding_compare, NULL);
+  /* One new diagnostic is already ordered. Zero means the list was never allocated, and `ptr + 0` on that
+   * null pointer is undefined; UBSan rejects it. */
+  if (findings->len - first > 1) {
+    ms_sort((uint8_t *)(findings->ptr + first), findings->len - first, sizeof(Finding), finding_compare, NULL);
+  }
 }
 
 /* Diagnostics by file, line and column; the sort is stable, so ties keep the order the phases produced them in. */

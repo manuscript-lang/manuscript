@@ -219,6 +219,10 @@ static inline void fmt_spaces(MsStrBuild *builder, size_t count) {
 /* The bytes of the builder after offset `from`. */
 static inline MsSpan fmt_tail(const MsStrBuild *builder, size_t from) {
   MsSpan all = ms_strbuild_span(builder);
+  /* An empty builder is a null pointer. A tail from 0 is the whole span, with no addition. */
+  if (from == 0) {
+    return all;
+  }
   return ms_span_of(all.ptr + from, all.len - from);
 }
 

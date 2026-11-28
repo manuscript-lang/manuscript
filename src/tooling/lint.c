@@ -81,8 +81,11 @@ void ms_lint_modules(MsArena *arena, const MsCheckProgram *program, MsLintFindin
       }
     }
     ms_lint_effects(arena, program, findings);
-    ms_sort((uint8_t *)(findings->ptr + lexical), findings->len - lexical, sizeof(MsLintFinding), compare_semantic,
-            NULL);
+    /* No new findings leaves `ptr` null; adding zero to it is undefined. */
+    if (findings->len - lexical > 1) {
+      ms_sort((uint8_t *)(findings->ptr + lexical), findings->len - lexical, sizeof(MsLintFinding), compare_semantic,
+              NULL);
+    }
     size_t kept = lexical;
     for (size_t i = lexical; i < findings->len; i++) {
       if (!is_standard(findings->ptr[i].file)) {

@@ -153,7 +153,8 @@ static bool append_rule(MsArena *arena, MsSpan path, const char *addition, bool 
     ms_bytes_free(&bytes);
   }
   size_t start = 0;
-  for (size_t i = 0; i <= existing.len; i++) {
+  /* A missing or empty file has no lines. `ptr + 0` on its null buffer is undefined. */
+  for (size_t i = 0; existing.len != 0 && i <= existing.len; i++) {
     if (i == existing.len || existing.ptr[i] == '\n') {
       MsSpan line = ms_span_of(existing.ptr + start, i - start);
       while (line.len > 0 && line.ptr[0] <= ' ') {

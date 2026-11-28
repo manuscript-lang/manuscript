@@ -52,7 +52,14 @@ void ms_list_reserve(MsList *list, size_t element_size, size_t extra) {
   list->cap = capacity;
 }
 
+/* A stable non-null address for a zero-length extension. Callers write `count` elements and write none. */
+static uint8_t ms_list_vacant;
+
 void *ms_list_extend_grow(MsList *list, size_t element_size, size_t count) {
+  /* Zero new elements do not allocate. Adding to a null buffer is undefined, and the result must be non-null. */
+  if (count == 0) {
+    return &ms_list_vacant;
+  }
   ms_list_reserve(list, element_size, count);
   uint8_t *first = list->ptr + list->len * element_size;
   list->len += count;
