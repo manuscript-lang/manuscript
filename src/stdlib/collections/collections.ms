@@ -75,7 +75,7 @@ fn var List[T].reverse() Void { ... }
 
 // Sorts the list in place, stably, in the order `compare` defines, as `sorted` does.
 // Comparable elements also have `sort()` without a comparator. Example:
-// `var xs = [3, 1, 2]` then `xs.sort(fn a, b: b - a)` leaves `[3, 2, 1]`.
+// `var xs = [3, 1, 2]` then `xs.sort((a, b) => b - a)` leaves `[3, 2, 1]`.
 fn var List[T].sort(compare fn(T, T) Int) Void { ... }
 
 // Returns the zero-based index of the first element for which `predicate` is true,
@@ -275,7 +275,7 @@ fn List[T Clonable].reversed() List[T] {
 /*
 Returns a new list ordered by `compare`; the receiver is unchanged. The sort is stable: equal elements keep their order.
 A negative, zero or positive result puts the first argument before, level with or after the second. Comparable elements also have `sorted()` without a comparator.
-Example: `names.sorted(fn a, b: a.length() - b.length())` orders by length.
+Example: `names.sorted((a, b) => a.length() - b.length())` orders by length.
 */
 fn List[T Clonable].sorted(compare fn(T, T) Int) List[T] { ... }
 
@@ -563,7 +563,7 @@ fn var List[T].retain(keep fn(T) Bool) Void {
 /*
 Collapses each run of consecutive elements that `same` calls equal into its first element, in place.
 `same(previous, next)` receives the last kept element and the candidate, so it runs once for each element after the first.
-Example: `var xs = [1, 1, 2, 1]` then `xs.compact_by(fn a, b: a == b)` leaves `[1, 2, 1]`.
+Example: `var xs = [1, 1, 2, 1]` then `xs.compact_by((a, b) => a == b)` leaves `[1, 2, 1]`.
 */
 fn var List[T].compact_by(same fn(T, T) Bool) Void {
 	if self.length() < 2 { return }
@@ -863,7 +863,7 @@ fn var Map[T Hashable & Clonable, U].update(
 /*
 Keeps only the entries for which `keep(key, value)` is true, in place, like `List.retain`. The rest keep their insertion order.
 `keep` is called once per entry in insertion order, before any removal.
-Example: `cache.retain(fn key, hits: hits > 0)` evicts unused entries.
+Example: `cache.retain((key, hits) => hits > 0)` evicts unused entries.
 */
 fn var Map[T Hashable & Clonable, U].retain(keep fn(T, U) Bool) Void {
 	doomed := self.keys().filter(

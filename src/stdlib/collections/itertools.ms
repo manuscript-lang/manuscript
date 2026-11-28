@@ -24,7 +24,7 @@ export fn pairwise[T Clonable](values List[T]) List[Pair[T, T]] {
 /*
 Returns the running results of folding `step` over the items: the first item, then `step(first, second)`, and so on.
 The result has as many items as the input, so an empty list gives an empty list.
-Example: `accumulate([1, 2, 3, 4], fn a, b: a + b)` is `[1, 3, 6, 10]`.
+Example: `accumulate([1, 2, 3, 4], (a, b) => a + b)` is `[1, 3, 6, 10]`.
 */
 export fn accumulate[T Clonable](values List[T], step fn(T, T) T) List[T] {
 	var out List[T] = []

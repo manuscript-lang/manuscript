@@ -154,7 +154,7 @@ fn Box[T Equal].same(other T) Bool {
 }
 ```
 
-A `Box[T]` without `T: Equal` has no `same`. A receiver may also fix an argument, `fn Box[Int].total() Int`; it applies to `Box[Int]` only. Two receiver forms that could match the same application and declare one name are rejected, as are two methods of one name on the same form.
+A `Box[T]` without `T Equal` has no `same`. A receiver may also fix an argument, `fn Box[Int].total() Int`; it applies to `Box[Int]` only. Two receiver forms that could match the same application and declare one name are rejected, as are two methods of one name on the same form.
 
 ## Generic operations
 
@@ -162,10 +162,10 @@ An interface operation and a method may declare type parameters after their name
 
 ```text
 interface Ranked[T] {
-    fn best_by[K: Comparable](key: fn(T) K) T?
+    fn best_by[K Comparable](key fn(T) K) T?
 }
 
-fn Scores.best_by[K: Comparable](key: fn(Int) K) Int? {
+fn Scores.best_by[K Comparable](key fn(Int) K) Int? {
     ...
 }
 ```
@@ -202,7 +202,7 @@ An interface is never constructed: `Increment(value: offset)` is rejected, so an
 
 A type has one method per name, so a call on a concrete receiver, a generic parameter or an interface value names one operation. Interfaces that declare the same name and signature are met by that one method. A bound method keeps its receiver and has the operation's ordinary function type.
 
-An interface type satisfies its own exact generic bound: `Converter[Int]` satisfies `T: Converter[Int]`, not `T: Converter[String]`.
+An interface type satisfies its own exact generic bound: `Converter[Int]` satisfies `T Converter[Int]`, not `T Converter[String]`.
 
 <!-- manuscript-example: {"mode":"fragment","context":"interface Increment {\n    fn apply(amount Int) Int\n}\n\ntype Offset {\n    delta Int\n}\n\nfn Offset.apply(amount Int) Int {\n    return amount + self.delta\n}","given":["offset Offset","view Increment"]} -->
 ```manuscript

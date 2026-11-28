@@ -5,7 +5,7 @@ weight = 2
 
 # Commands and editor setup
 
-Install an `ms` binary from [Manuscript Releases](https://github.com/manuscript-lang/manuscript/releases), or [build it from source](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/rust-toolchain.md). One binary covers formatting, lint, editor support, code maps, builds and profiling. See [build setup](how-it-works.md) and [profiling](debugging/debugger-integration.md) for the tools each task uses.
+Install an `ms` binary from [Manuscript Releases](https://github.com/manuscript-lang/manuscript/releases), or [build it from source](../contributing/development.md). One binary covers formatting, lint, editor support, code maps, builds and profiling. See [build setup](how-it-works.md) and [profiling](debugging/debugger-integration.md) for the tools each task uses.
 
 ## Choose the next command
 

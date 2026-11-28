@@ -16,7 +16,8 @@ What sets it apart is a toolchain built for both kinds of reader. Every diagnost
 
 A simple HTTP server:
 
-```rust
+<!-- manuscript-example: {"mode":"check"} -->
+```manuscript
 import buffered, headers, HttpRequest, HttpResponse from "@std/net/http.ms"
 import serve from "@std/net/net.ms"
 
@@ -36,7 +37,7 @@ HTTP/1.1, HTTP/2 and TLS work too, and each connection runs as its own promise a
 ## Ownership without annotations
 
 <!-- manuscript-example: {"mode":"error","contains":"is moved here"} -->
-```rust
+```manuscript
 fn main() Void {
     var names = List[String]()
     first := "ada"
@@ -54,11 +55,12 @@ Use-after-move is a compile error, and there are no lifetime annotations to writ
 
 ## All cores, regular functions
 
-```rust
+<!-- manuscript-example: {"mode":"check"} -->
+```manuscript
 import promise, wait_all from "@std/concurrency/promise.ms"
 
 fn fib(n Int) Int {
-    return if n < 2: n else: fib(n - 1) + fib(n - 2)
+    return if n < 2 { n } else { fib(n - 1) + fib(n - 2) }
 }
 
 fn main() Void {
@@ -71,7 +73,8 @@ No async, no await, no function coloring: wrap a call in `promise(() => ...)` an
 
 ## Effects the compiler checks
 
-```rust
+<!-- manuscript-example: {"mode":"check"} -->
+```manuscript
 import write_file from "@std/os/fs.ms"
 
 // ms: effect db.write
@@ -100,7 +103,8 @@ Every diagnostic gives the cause and the remedy, `ms check --only types --fix` a
 
 ## Batteries included
 
-```rust
+<!-- manuscript-example: {"mode":"check"} -->
+```manuscript
 import parse, stringify, StringifyOptions from "@std/data/json.ms"
 
 type Config {

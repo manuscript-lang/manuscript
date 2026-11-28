@@ -72,7 +72,7 @@ Largest: 9
 
 - `interface Priced` declares one method. `Book.cents` is where `Book` provides it; nothing else declares that `Book` is `Priced`. Methods never go inside the `type`.
 - `total` takes a `List[Priced]` and works with any mix of types that implement the interface. It depends on behavior, not on a concrete type.
-- `largest[T: Clonable]` is generic: it works for any `T` that meets its bound, and the compiler checks the bound at every call. `Clonable` is a bound that says "this type can be cloned with `.clone()`". Without it the compiler refuses `item.clone()`, because a generic body cannot assume every type has a `clone`.
+- `largest[T Clonable]` is generic: it works for any `T` that meets its bound, and the compiler checks the bound at every call. `Clonable` is a bound that says "this type can be cloned with `.clone()`". Without it the compiler refuses `item.clone()`, because a generic body cannot assume every type has a `clone`.
 - There is no `any` and no cast. If you need to handle unknown JSON, use `JsonValue`.
 
 ## Files are modules
