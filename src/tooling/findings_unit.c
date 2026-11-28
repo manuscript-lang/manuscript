@@ -1,7 +1,6 @@
 /* Unit test of the terminal diagnostic report: an absolute file is a location already, so the source root
  * is not prefixed onto it. */
 #include <stdio.h>
-#include <string.h>
 
 #include "base/file.h"
 #include "base/path.h"
@@ -19,12 +18,28 @@ static int failures = 0;
   } while (0)
 
 static bool starts_with(MsSpan text, MsSpan prefix) {
-  return text.len >= prefix.len && memcmp(text.ptr, prefix.ptr, prefix.len) == 0;
+  if (text.len < prefix.len) {
+    return false;
+  }
+  for (size_t index = 0; index < prefix.len; index++) {
+    if (text.ptr[index] != prefix.ptr[index]) {
+      return false;
+    }
+  }
+  return true;
 }
 
 static Finding one(MsSpan file, const char *phase, const char *message) {
   return (Finding){.file = file, .phase = phase, .diag = {.pos = {.line = 1, .column = 1},
                                                           .message = ms_span_of_text(message)}};
+}
+
+/* An empty graph never allocated its diagnostic list. Sorting that range must not add zero to a null pointer. */
+static void test_empty_graph_does_not_sort_null(void) {
+  MsGraph graph = {0};
+  FindingList findings = {0};
+  finding_add_graph(&graph, &findings);
+  CHECK(findings.len == 0 && findings.ptr == NULL);
 }
 
 static void test_absolute_file_is_not_prefixed(void) {
@@ -77,6 +92,7 @@ static void test_package_file_has_no_root(void) {
 }
 
 int main(void) {
+  test_empty_graph_does_not_sort_null();
   test_absolute_file_is_not_prefixed();
   test_relative_file_keeps_the_root();
   test_package_file_has_no_root();

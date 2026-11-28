@@ -284,8 +284,9 @@ static MirValue default_argument(LowerFn *fn, const MsCall *call, const MsCallAr
   const MsTy *own_vars = owner != NULL ? fn->cx->program->symbol_vars.ptr + owner->var_at : NULL;
   uint32_t own_count = owner != NULL ? owner->var_count : 0;
   if (method != NULL && method->variables.len >= method->shared) { /* a method's own variables follow its receiver's */
-    own_vars = method->variables.ptr + method->shared;
     own_count = (uint32_t)(method->variables.len - method->shared);
+    /* A method with no own variables has a null list; adding `shared` (often 0) to it is undefined. */
+    own_vars = own_count == 0 ? NULL : method->variables.ptr + method->shared;
   }
   if (fn->default_params != NULL && fn->default_vars.count != 0) {
     fn->subst = fn->default_vars; /* a method value: the variables it was bound with */

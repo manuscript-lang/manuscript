@@ -135,8 +135,10 @@ static MsTy rebuild(MsTyTable *table, MsTy ty, const Binding *binding) {
   if (changed || result != row.result) {
     const MsTyDesc desc = {.name = row.name, .id = row.id, .kind = (MsTyKind)row.kind,
                            .builtin = (MsBuiltin)row.builtin, .def = row.def,
-                           .args = table->scratch.ptr + arg_mark, .arg_count = row.arg_count,
-                           .params = table->param_scratch.ptr + param_mark, .param_count = row.param_count,
+                           .args = row.arg_count == 0 ? NULL : table->scratch.ptr + arg_mark,
+                           .arg_count = row.arg_count,
+                           .params = row.param_count == 0 ? NULL : table->param_scratch.ptr + param_mark,
+                           .param_count = row.param_count,
                            .result = result};
     out = ms_ty_intern(table, &desc);
   }

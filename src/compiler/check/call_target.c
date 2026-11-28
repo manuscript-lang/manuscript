@@ -355,8 +355,12 @@ static bool method_target(Body *body, const MsExpr *callee, MsTy receiver, Targe
       target->ast_module = match->entry->module;
       target->receiver_flags = (uint8_t)((match->entry->source->mutating ? MS_PARAM_VAR : 0) |
                                          (match->entry->source->consuming ? MS_PARAM_MOVE : 0));
-      copy_vars(target, match->entry->variables.ptr + match->entry->shared,
-                match->entry->variables.len - match->entry->shared);
+      /* `ptr + 0` on a method with no variable list is undefined. Copy only when a tail remains. */
+      const size_t shared = match->entry->shared;
+      const size_t rest = match->entry->variables.len - shared;
+      if (rest != 0) {
+        copy_vars(target, match->entry->variables.ptr + shared, rest);
+      }
       for (size_t at = 0; at < match->entry->shared && at < ms_ty_arg_count(&body->program->types, receiver); at++) {
         ms_ty_list_push(&target->outer_vars, match->entry->variables.ptr[at]);
         ms_ty_list_push(&target->outer_args, ms_ty_args(&body->program->types, receiver)[at]);
