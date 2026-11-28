@@ -19,6 +19,8 @@ A diagnostic file that is already absolute is printed as itself. `finding_termin
 
 An empty list is a null pointer. Adding zero to it (`ptr + 0`) is undefined, and UBSan rejects it. Sort, scan, or describe the list only when it has elements (`finding_add_graph` on a graph with no diagnostics, an empty `.gitignore`, a type with no arguments).
 
+A remedy names a spelling the compiler accepts. After colon blocks, colon bounds and `fn:` closures were removed, hints still said `promise(fn: ...)`, `fn f[T: Bound]` and `() =>` written as `fn: ok(value)`, so the next edit failed the same way. Write `promise(() => ...)`, `[T Bound]` and `() => ok(value)`.
+
 Apply when: adding or rewording any lexer, parser, checker, project, compiler, CLI, or runtime message.
 Evidence: [message-shape rule](../../../documentation/developer-tooling/source/diagnostics.md), code classification, checker hints, recovery.
 Verify: run `ctest --preset ci` and `make conform` (check-phase fixtures compare code, phase, message, and position); extend the hint tests with the new message.

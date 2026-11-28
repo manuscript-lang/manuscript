@@ -48,7 +48,7 @@ static const Habit HABITS[] = {
      "import stdout from \"@std/io/io.ms\" and call stdout().write(\"text\\n\")",
      NULL},
     {{"spawn", "Promise", "Future", "Thread", "thread", "setTimeout", "setInterval"},
-     "there is no free {}: start concurrent work with promise(fn: ...) from "
+     "there is no free {}: start concurrent work with promise(() => ...) from "
      "\"@std/concurrency/promise.ms\" and call wait() on the returned Promise",
      NULL},
     {{"filesystem", "network", "commands", "control", "system", "clock", "wall_clock", "entropy", "terminal",

@@ -58,13 +58,13 @@ static const ForeignKeyword FOREIGN_KEYWORDS[] = {
      NULL,
      false},
     {{"async", "await"},
-     "'%S' is not a keyword; call the function directly, or start concurrent work with promise(fn: ...) "
+     "'%S' is not a keyword; call the function directly, or start concurrent work with promise(() => ...) "
      "from \"@std/concurrency/promise.ms\"",
      NULL,
      true},
     {{"go"},
-     "'go' is not a keyword; start concurrent work with promise(fn: ...) from "
-     "\"@std/concurrency/promise.ms\": result := promise(fn: work()), then result.wait()",
+     "'go' is not a keyword; start concurrent work with promise(() => ...) from "
+     "\"@std/concurrency/promise.ms\": result := promise(() => work()), then result.wait()",
      NULL,
      false},
 };

@@ -370,7 +370,7 @@ static MsTy alias_use(Resolver *resolver, const MsSymbol *alias, const MsTypeRef
       MsStrBuild text = ms_strbuild_new();
       const MsSpan name = ms_names_span(program->names, type->name);
       ms_strbuild_append(&text, name);
-      ms_strbuild_append_text(&text, " is a type set, which constrains a type parameter and has no values; write fn f[T: ");
+      ms_strbuild_append_text(&text, " is a type set, which constrains a type parameter and has no values; write fn f[T ");
       ms_strbuild_append(&text, name);
       ms_strbuild_append_text(&text, "](...) or use one of its members");
       ms_check_report(program, resolver->module, type->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
@@ -447,7 +447,7 @@ MsTy resolver_bound(Resolver *resolver, const MsTypeRef *bound) {
     ms_strbuild_append(&text, ms_names_span(program->names, bound->name));
     ms_strbuild_append_text(&text, " resolves to a type parameter; rename the type parameter or name an interface");
   } else {
-    ms_strbuild_append_text(&text, "a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'");
+    ms_strbuild_append_text(&text, "a bound must be an interface; write [T SomeInterface], where SomeInterface is declared with 'interface'");
   }
   ms_check_report(program, resolver->module, bound->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
   return MS_TY_NONE;

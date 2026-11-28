@@ -241,7 +241,7 @@ static bool report_shape_mismatch(Body *body, const Target *target, const MsExpr
     ms_ty_show(&text, body->program->names, types, wanted);
     if (ms_ty_is(types, wanted, MS_BUILTIN_Result)) {
       ms_strbuild_append_text(&text, "; a Result-returning callback reports failure as a value, so wrap the value in ok(...), "
-                                     "e.g. fn: ok(value)");
+                                     "e.g. () => ok(value)");
     }
   } else if (!is_function(types, param) && !ms_ty_is(types, param, MS_BUILTIN_Optional) && head_differs(types, param, actual) && !is_function(types, actual)) {
     ms_strbuild_append_text(&text, "expected ");
