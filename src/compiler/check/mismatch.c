@@ -168,7 +168,7 @@ static void interface_hint(Body *body, MsStrBuild *out, MsTy actual, MsTy expect
   ms_strbuild_append_text(out, "; ");
   if (has_generic_operation(body, expected)) {
     show(body, out, expected);
-    ms_strbuild_append_text(out, " declares an operation with type parameters of its own, so it bounds a type parameter (`fn f[T: ");
+    ms_strbuild_append_text(out, " declares an operation with type parameters of its own, so it bounds a type parameter (`fn f[T ");
     show(body, out, expected);
     ms_strbuild_append_text(out, "](x T)`) but cannot type a value");
     return;

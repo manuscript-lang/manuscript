@@ -377,9 +377,9 @@ void body_report_unknown_member(Body *body, const MsExpr *member, MsTy receiver)
         ms_strbuild_append_text(&text, " has no bound, so it has no operations: bound it where it is declared, as in "
                                        "`fn f[");
         show(body, &text, receiver);
-        ms_strbuild_append_text(&text, ": Contract]` for a function or `fn var Repository[");
+        ms_strbuild_append_text(&text, " Contract]` for a function or `fn var Repository[");
         show(body, &text, receiver);
-        ms_strbuild_append_text(&text, ": Contract].add` for a method of a generic type");
+        ms_strbuild_append_text(&text, " Contract].add` for a method of a generic type");
       } else {
         ms_strbuild_append_text(&text, "; this type has no fields or operations");
       }
