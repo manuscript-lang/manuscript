@@ -24,14 +24,10 @@ typedef struct LlvmBuffer {
   void *handle;
 } LlvmBuffer;
 
-/* Loads the library (once) and compiles `ir`, IR text or bitcode. On failure `why` holds the message. Safe to call from several threads once
+/* Loads the library (once) and compiles `ir` (LLVM IR text). On failure `why` holds the message. Safe to call from several threads once
  * `llvm_load` has loaded the library, as long as the compiles running at once use the same `codegen_level` and
  * `fast_codegen`: the code generator's options are process-wide. */
 MS_NODISCARD MS_NONNULL bool llvm_compile(const LlvmSettings *settings, MsSpan ir, LlvmBuffer *out, MsStrBuild *why);
-
-/* Converts IR text (or bitcode) to bitcode, for storing on disk; `llvm_compile` takes the result as its `ir`. Free the
- * buffer with `llvm_buffer_free`. */
-MS_NODISCARD MS_NONNULL bool llvm_bitcode_from_ir(MsSpan library, MsSpan ir, LlvmBuffer *out, MsStrBuild *why);
 
 /* Loads the library at `path` (once); on failure `why` holds the reason. Call it before compiling from several threads. */
 MS_NODISCARD MS_NONNULL bool llvm_load(MsSpan path, MsStrBuild *why);

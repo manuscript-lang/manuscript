@@ -149,8 +149,6 @@ static bool dequeue(MsSched *sched, MsTaskHandle *handle) {
   return true;
 }
 
-size_t ms_task_ready_count(const MsSched *sched) { return sched->ready_len; }
-
 /* ---- switching ---- */
 
 /* Frees what a finished task left behind; runs on the stack of a task that is still alive. */
@@ -427,7 +425,6 @@ void ms_task_cancel(MsTaskHandle handle) {
 MsTaskStatus ms_task_join(MsTaskHandle handle, uint8_t *outcome, MsFaultText *message) {
   MsSched *const sched = ms_sched();
   MsTask *const current = ms_task_running();
-  sched->timed_out = false;
   *message = (MsFaultText){0};
   MsTask *const task = ms_task_lookup(sched, handle);
   if (task == NULL) {
@@ -458,14 +455,11 @@ MsTaskStatus ms_task_join(MsTaskHandle handle, uint8_t *outcome, MsFaultText *me
     }
   }
   *outcome = task->outcome;
-  sched->timed_out = (task->flags & MS_TASK_FLAG_TIMED_OUT) != 0 && task->outcome == OUTCOME_CANCELLED;
   *message = task->message;
   task->message = (MsFaultText){0};
   free_task(sched, task);
   return MS_TASK_OK;
 }
-
-bool ms_task_timed_out(void) { return ms_sched()->timed_out; }
 
 /* ---- limits ---- */
 
@@ -489,16 +483,6 @@ void ms_task_limit_current_at(int64_t at_ns) {
   if (at_ns >= 0) {
     ms_park_arm_kill(ms_sched(), task, at_ns);
   }
-}
-
-void ms_task_limit_current(int64_t limit_ns) {
-  MsTask *const task = ms_task_running();
-  task->kill_at = MS_NO_DEADLINE;
-  if (limit_ns < 0) {
-    return;
-  }
-  const int64_t now = ms_sched_now();
-  ms_park_arm_kill(ms_sched(), task, now > INT64_MAX - limit_ns ? INT64_MAX : now + limit_ns);
 }
 
 /* ---- inspection ---- */

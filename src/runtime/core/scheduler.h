@@ -30,7 +30,6 @@ enum {
 enum {
   MS_TASK_FLAG_DETACHED = 1,
   MS_TASK_FLAG_FATAL = 2,
-  MS_TASK_FLAG_TIMED_OUT = 4,
   MS_TASK_FLAG_BORN_SHIELDED = 16, /* started while its spawner was shielded: the sweep does not cancel its parks */
   MS_TASK_FLAG_THREAD = 8, /* the record of the thread's own flow of control, not a task anything can cancel */
 };
@@ -169,8 +168,6 @@ typedef struct MsSched {
   MsIndexList free_tokens;
   size_t remote_tokens; /* live tokens, and parks on a wait word, still expecting a post from another thread */
   size_t peer_tokens;   /* those another isolate will post */
-
-  bool timed_out; /* the last join found the task cancelled for running too long */
 } MsSched;
 
 /* This thread's scheduler; NULL until the first ms_sched. Read through ms_sched, which creates it. */
@@ -260,6 +257,5 @@ bool ms_token_is_remote(const MsSched *sched, uint64_t id);
  * (Ready and queued, Waiting, or Done). */
 void ms_task_switch_away(MsSched *sched);
 void ms_task_enqueue(MsSched *sched, MsTask *task);
-size_t ms_task_ready_count(const MsSched *sched);
 
 #endif

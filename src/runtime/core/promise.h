@@ -107,10 +107,6 @@ MsPromiseProbe ms_promise_probe(MsPromise id);
  * reports a deadlock while the work runs elsewhere. */
 bool ms_promise_completes_elsewhere(MsPromise id);
 
-/* Whether the promise has ended as far as this isolate can tell without waiting: no yield, no ask. A promise of
- * another isolate reads as not ended. For mail handlers and the idle path, where the running task is parked. */
-bool ms_promise_finished(MsPromise id);
-
 /* Whether `id` belongs to another isolate's table. */
 bool ms_promise_is_foreign(MsPromise id);
 /* Marks a pending promise as a wait group member: ms_group_finished is called when it finishes. */
@@ -150,10 +146,6 @@ void ms_promise_io_done_int(MsPromise id, int64_t value);
 /* Completes with `block` (a heap block holding an owned value of `desc`, taken). `pipe` != 0 names the pipe that
  * gave the value up, so an untaken value goes back through the unread hook. A completed promise drops the block. */
 void ms_promise_io_done_block(MsPromise id, void *block, const MsTypeDesc *desc, int64_t pipe) MS_NONNULL_ARGS(2, 3);
-/* A promise for the readiness of `fd` for `events` (MS_WAIT_READ, WRITE, ...), limited by `timeout_ns` (negative:
- * none). It finishes with an Int of the ready bits, MS_WAIT_TIMEOUT when the limit passed; a descriptor that cannot
- * be polled is ready at once. Returns -1 when `fd` cannot be waited on. */
-MsPromise ms_promise_ready(int fd, uint32_t events, int64_t timeout_ns);
 /* A descriptor wait for an I/O promise `id`: `retry` is called with the ready bits (or MS_WAIT_TIMEOUT, or
  * MS_WAIT_CANCELLED when the promise ends first). False when `fd` cannot be waited on. */
 MS_NODISCARD bool ms_promise_io_on_ready(MsPromise id, int fd, uint32_t events, int64_t timeout_ns,

@@ -41,23 +41,11 @@ void msrt_promise_fault_report(int64_t id, MsString *out) {
   ms_fault_text_free(&report);
 }
 
-int64_t msrt_promise_finished(void) {
-  const MsPromise id = ms_promise_new();
-  ms_promise_io_done_unit(id);
-  return id;
-}
-
 void msrt_promise_limit(int64_t id, int64_t timeout_ns) { ms_promise_limit(id, timeout_ns); }
 void msrt_promise_on_cancel(int64_t id, int64_t cancel) { ms_promise_on_cancel(id, cancel); }
 
-void msrt_promise_drain(int64_t id, int64_t drain, int64_t grace_ns) { ms_promise_drain(id, drain, grace_ns); }
-
 void msrt_promise_put(int64_t id, uint8_t *value, const MsTypeDesc *d, int64_t failed) {
   ms_promise_put(id, value, d, failed != 0);
-}
-
-int64_t msrt_promise_ready(int64_t fd, int64_t events, int64_t timeout_ns) {
-  return ms_promise_ready((int)fd, (uint32_t)events, timeout_ns);
 }
 
 int64_t msrt_promise_run_watched(int64_t id, int64_t group, const MsList *ids, int64_t from) {
