@@ -113,14 +113,6 @@ MS_ALWAYS_INLINE int64_t ms_promise_result(MsPromise id, const MsTypeDesc *desc,
   return code;
 }
 
-bool ms_promise_finished(MsPromise id) {
-  if (promise_is_foreign(id)) {
-    return false; /* asking its owner waits */
-  }
-  const ptrdiff_t row = promise_row_of(id);
-  return row < 0 || promise_table.hot.ptr[row].state != STATE_PENDING;
-}
-
 bool ms_promise_done(MsPromise id) {
   if (promise_is_foreign(id)) {
     return ms_remote_done(id);
@@ -449,24 +441,6 @@ static void arm_timeout(MsPromise id, size_t row, int64_t timeout_ns) {
     promise_table.cold.ptr[row].deadline = at;
     ms_sched_arm((uint64_t)id, at);
   }
-}
-
-MsPromise ms_promise_ready(int fd, uint32_t events, int64_t timeout_ns) {
-  const MsPromise id = ms_promise_new();
-  const int armed = ms_sched_fd_wait_begin((uint64_t)id, fd, events);
-  if (armed == MS_POLL_FAILED) {
-    ms_promise_drop(id);
-    return -1;
-  }
-  if (armed == MS_POLL_ALWAYS) {
-    ms_promise_io_done_int(id, events & (MS_WAIT_READ | MS_WAIT_WRITE));
-    return id;
-  }
-  const size_t row = promise_new_row(id);
-  promise_table.cold.ptr[row].fd = fd;
-  promise_table.cold.ptr[row].events = events;
-  arm_timeout(id, row, timeout_ns);
-  return id;
 }
 
 bool ms_promise_io_on_ready(MsPromise id, int fd, uint32_t events, int64_t timeout_ns, MsPromiseRetry retry,

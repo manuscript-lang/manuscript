@@ -219,8 +219,6 @@ void ms_task_cancel(MsTaskHandle handle);
 /* Waits for a joinable task and reports how it ended in `*outcome`: 0 returned, 1 faulted (report in `*message`,
  * owned by the caller), 2 cancelled. A caller cancelled while waiting gets 2 and leaves the task unjoined. */
 MsTaskStatus ms_task_join(MsTaskHandle handle, uint8_t *outcome, MsFaultText *message) MS_NONNULL_ARGS(2, 3);
-/* True when the running task's last join found the task cancelled for running past its time limit. */
-bool ms_task_timed_out(void);
 
 /* Bounds every park of the running task until ms_task_read_limit_restore: no wait lasts past `timeout_ns` in all.
  * Returns the previous limit. */
@@ -230,9 +228,8 @@ void ms_task_read_limit_restore(int64_t previous);
 uint64_t ms_task_capture(void);
 void ms_task_set_capture(uint64_t capture);
 bool ms_task_read_limit_passed(void);
-/* Cancels the running task `limit_ns` from now (negative: never), or at an absolute time. Replaces an earlier
+/* Cancels the running task at an absolute time on ms_sched_now's clock (negative: never). Replaces an earlier
  * limit. */
-void ms_task_limit_current(int64_t limit_ns);
 void ms_task_limit_current_at(int64_t at_ns);
 
 /* The promise table keeps, per task, the head of the list of promises that task started (row + 1, 0 for none), so

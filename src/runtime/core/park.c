@@ -288,7 +288,6 @@ void ms_park_expire(MsSched *sched, int64_t now) {
     ms_timers_pop(&sched->kills);
     MsTask *const task = ms_task_lookup(sched, due.handle);
     if (task != NULL && task->state != MS_STATE_DONE && task->kill_at == due.deadline) {
-      task->flags |= MS_TASK_FLAG_TIMED_OUT;
       ms_task_cancel(due.handle);
     }
   }

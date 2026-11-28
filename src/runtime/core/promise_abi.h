@@ -29,8 +29,6 @@ int64_t msrt_group_poll(int64_t group);
 /* ms-sig: msrt_group_join(group: i64, ids: *const VecVal, from: i64) -> i64 @domain=promise */
 int64_t msrt_group_join(int64_t group, const MsList *ids, int64_t from);
 
-/* ms-sig: msrt_promise_finished() -> i64 @domain=promise */
-int64_t msrt_promise_finished(void);
 /* ms-sig: msrt_promise_cancel(id: i64) @domain=promise */
 void msrt_promise_cancel(int64_t id);
 /* ms-sig: msrt_promise_defer(work: *mut Closure) -> i64 @domain=promise @end */
@@ -47,12 +45,8 @@ void msrt_promise_fault_report(int64_t id, MsString *out);
 void msrt_promise_limit(int64_t id, int64_t timeout_ns);
 /* ms-sig: msrt_promise_on_cancel(id: i64, cancel: i64) @domain=promise */
 void msrt_promise_on_cancel(int64_t id, int64_t cancel);
-/* ms-sig: msrt_promise_drain(id: i64, drain: i64, grace_ns: i64) @domain=promise */
-void msrt_promise_drain(int64_t id, int64_t drain, int64_t grace_ns);
 /* ms-sig: msrt_promise_put(id: i64, value: *mut u8, d: ValueDesc, failed: i64) @domain=promise @end */
 void msrt_promise_put(int64_t id, uint8_t *value, const MsTypeDesc *d, int64_t failed);
-/* ms-sig: msrt_promise_ready(fd: i64, events: i64, timeout_ns: i64) -> i64 @domain=promise */
-int64_t msrt_promise_ready(int64_t fd, int64_t events, int64_t timeout_ns);
 /* ms-sig: msrt_promise_run_watched(id: i64, group: i64, ids: *const VecVal, from: i64) -> i64 @domain=promise */
 int64_t msrt_promise_run_watched(int64_t id, int64_t group, const MsList *ids, int64_t from);
 /* ms-sig: msrt_promise_sleep(ns: i64) -> i64 @domain=promise */
