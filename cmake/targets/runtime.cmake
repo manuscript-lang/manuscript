@@ -18,7 +18,7 @@ ms_library(ms_io runtime/io
 ms_library(ms_core runtime/core
   SOURCES
     alloc.c stats.c context.c stack.c timers.c queue.c frames.c record.c isolate.c watch.c unwind.c fault.c sched.c
-    segment.c park.c token.c task.c eq.c fault_kept.c fault_abi.c task_abi.c obj.c promise.c promise_end.c
+    segment.c park.c token.c task.c fault_kept.c fault_abi.c task_abi.c obj.c promise.c promise_end.c
     promise_wait.c promise_abi.c promise_remote.c group.c pipe.c cancel.c worker.c drop_queue.c release.c
   LINK ms_sys ms_base mimalloc)
 # Tasks, promises and the queue call each other on every start and wait: they compile as one unit so those calls

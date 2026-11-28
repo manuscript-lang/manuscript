@@ -137,13 +137,12 @@ void ms_task_destroy(MsSched *sched, MsTask *task) {
     ms_teb_list_free(&task->extra->segment_teb);
     ms_free(task->extra);
   }
-  ms_eq_pair_list_free(&task->unwind.eq_pairs);
   ms_fault_text_free(&task->message);
   ms_free(task);
 }
 
-/* A server task per request is the commonest short life: keeping a few finished records saves the allocation of the
- * record and the regrowth of its three lists from empty. */
+/* A server task per request is the commonest short life: keeping a few finished records saves allocating the
+ * record again. */
 enum { SPARE_TASKS = 64 };
 
 void ms_task_recycle(MsSched *sched, MsTask *task) {
@@ -155,10 +154,7 @@ void ms_task_recycle(MsSched *sched, MsTask *task) {
     ms_stacks_release(&sched->stacks, task->stack, task->stack_length);
   }
   ms_fault_text_free(&task->message);
-  MsEqPairList eq_pairs = task->unwind.eq_pairs;
-  eq_pairs.len = 0;
   *task = (MsTask){0};
-  task->unwind.eq_pairs = eq_pairs;
   task->argument = sched->spare_tasks;
   sched->spare_tasks = task;
   sched->spare_count++;
