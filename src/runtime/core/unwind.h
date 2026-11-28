@@ -19,7 +19,6 @@
 #include <stdint.h>
 
 #include "abi/layout.h"
-#include "base/list.h"
 #include "base/safe.h"
 #include "runtime/core/fault.h"
 
@@ -36,13 +35,6 @@ typedef struct MsTaskHdr {
 _Static_assert(offsetof(MsTaskHdr, cancel) == 8, "ISOLATE_HDR_CANCEL");
 _Static_assert(offsetof(MsTaskHdr, unwinding) == MS_HDR_UNWINDING, "ISOLATE_HDR_UNWINDING");
 
-/* The pair of objects an equality comparison is inside, to cut a cycle. */
-typedef struct MsEqPair {
-  uintptr_t a;
-  uintptr_t b;
-} MsEqPair;
-MS_LIST_DEFINE(MsEqPairList, ms_eq_pair_list, MsEqPair)
-
 /* Everything of the unwind machinery that belongs to one task. */
 typedef struct MsUnwind {
   MsTaskHdr hdr;
@@ -54,7 +46,6 @@ typedef struct MsUnwind {
   MsFaultText pending;   /* a posted fault (ms_fault_post) the frames are returning with; empty when none */
   bool reporting;        /* a fault report is being built or written: a fault now ends the process outright */
   bool held_unwinding;   /* an unwind was delivered or posted inside a shield: shown when the outermost shield exits */
-  MsEqPairList eq_pairs; /* the object pairs an equality comparison of this task is inside (cycle guard) */
 } MsUnwind;
 
 /* ---- shields and cancellation ---- */

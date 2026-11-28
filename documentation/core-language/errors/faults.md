@@ -61,7 +61,7 @@ Only literals and arithmetic over literals are folded. Values that arrive throug
   - It unwinds and runs cleanup. In a test run, it fails the current test while other tests remain isolated.
 - `ms check --only lint` reports **MSL112** for a function that calls itself on every path, such as `fn f(n Int) Int => f(n - 1)`; a `return`, `?`, or fault before the call counts as a base case.
 - A fault trace keeps its innermost 32 frames.
-- `==` and `!=` recurse through nested values; past 200,000 nested comparisons the fault is `equality comparison is nested too deeply`.
+- `==` and `!=` recurse through nested values and stop after 256 levels, answering unequal. They do not fault for depth. A cycle compares unequal.
 
 ## Out of memory
 
