@@ -1,6 +1,5 @@
-/* compiler/check/exprs_ops.c: types of literals, text and the unary and binary operators. This file computes result types and
- * records the operand conversions the lowering needs; diagnostics for ill-typed operands come in a later change,
- * so an operand that does not fit yields the invalid type. */
+/* compiler/check/exprs_ops.c: types of literals, text and the unary and binary operators. This file computes result types,
+ * records the operand conversions the lowering needs, and reports an operand whose type has no such operator. */
 #include "compiler/check/body.h"
 #include "compiler/check/call_internal.h"
 #include "compiler/syntax/walk.h"
@@ -292,6 +291,11 @@ MsTy body_unary(Body *body, const MsExpr *expr, MsTy expected) {
         ms_strbuild_append_text(&text, "; subtract from zero with a wider signed type, e.g. 0 - x.to_int()");
         ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
       }
+    } else if (!is_invalid(body, value) && !ms_ty_is(types, value, MS_BUILTIN_Never) && body_reports(body) && !body->quiet) {
+      MsStrBuild text = ms_strbuild_new();
+      ms_strbuild_append_text(&text, op == MS_U_NEG ? "unary - requires a numeric operand, found " : "unary + requires a numeric operand, found ");
+      ms_ty_show(&text, body->program->names, types, value);
+      ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
     }
   }
   body_set_type(body, expr->id, ty);
@@ -387,6 +391,38 @@ static MsTy equality_type(Body *body, const MsExpr *expr, MsTy left, MsTy right)
     ms_ty_show(&text, body->program->names, types, common);
     ms_strbuild_append_text(&text, ") Bool' or compare fields");
     ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+  }
+  return body_primitive(body, MS_BUILTIN_Bool);
+}
+
+/* `<`, `<=`, `>` and `>=` over two operands of one type: the type must be Comparable (numbers, String, Duration,
+ * Instant, a type with its own `compare`, or a variable bounded by Comparable or by a set of numbers). */
+static MsTy ordering_type(Body *body, const MsExpr *expr, MsTy operand) {
+  MsCheckProgram *program = body->program;
+  const MsSymbolId symbol = resolver_prelude_symbol(program, ms_names_intern(program->names, ms_span_of_text("Comparable")));
+  const MsTy comparable = symbol != 0 ? program->symbols.ptr[symbol].ty : MS_TY_NONE;
+  if (operand != MS_TY_NONE && !is_invalid(body, operand) && comparable != MS_TY_NONE &&
+      !ms_ty_is(&program->types, operand, MS_BUILTIN_Never) && !is_numeric(body, operand) &&
+      !ms_check_implements(program, operand, comparable) && body_reports(body) && !body->quiet) {
+    MsStrBuild text = ms_strbuild_new();
+    ms_strbuild_append_text(&text, "ordering requires Comparable operands; ");
+    ms_ty_show(&text, program->names, &program->types, operand);
+    const MsTyKind kind = ms_ty_kind(&program->types, operand);
+    const bool own = (kind == MS_TY_TYPE || kind == MS_TY_ALTERNATIVE) && ms_ty_builtin(&program->types, operand) == MS_BUILTIN_NONE;
+    if (kind == MS_TY_VARIABLE) {
+      ms_strbuild_append_text(&text, " has no order; bound it where it is declared, as in `[");
+      ms_ty_show(&text, program->names, &program->types, operand);
+      ms_strbuild_append_text(&text, " Comparable]`");
+    } else if (own) {
+      ms_strbuild_append_text(&text, " has no order; compare a field that has one, or give it 'fn ");
+      ms_ty_show(&text, program->names, &program->types, operand);
+      ms_strbuild_append_text(&text, ".compare(other ");
+      ms_ty_show(&text, program->names, &program->types, operand);
+      ms_strbuild_append_text(&text, ") Int'");
+    } else {
+      ms_strbuild_append_text(&text, " has no order; compare values that have one, such as numbers or text");
+    }
+    ms_check_report(program, body->module, expr->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
   }
   return body_primitive(body, MS_BUILTIN_Bool);
 }
@@ -498,7 +534,7 @@ MsTy body_binary(Body *body, const MsExpr *expr, MsTy expected) {
   } else if (op == MS_B_EQ || op == MS_B_NE) {
     ty = equality_type(body, expr, left, right);
   } else if (is_comparison(op)) {
-    ty = body_primitive(body, MS_BUILTIN_Bool);
+    ty = ordering_type(body, expr, ms_ty_is(&body->program->types, left, MS_BUILTIN_Never) ? right : left);
   } else {
     ty = arithmetic_type(body, expr, op, left, right);
     body_check_constant_arithmetic(body, expr, ty);

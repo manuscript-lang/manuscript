@@ -473,6 +473,31 @@ static bool takes_element_mutator(const MsTyTable *types, MsTy method, MsTy rece
   return false;
 }
 
+/* `self.value` in a method of a type set: every member of the set's bound has the field, with one type. The field's
+ * position may differ per member, so no reference is recorded; lowering finds it by name once `Self` is bound. */
+static bool set_field(Body *body, MsTy receiver, MsName name, MsTy *ty) {
+  MsTyTable *types = &body->program->types;
+  const MsTyVariable *variable = ms_ty_kind(types, receiver) == MS_TY_VARIABLE ? ms_ty_variable(types, receiver) : NULL;
+  for (size_t at = 0; variable != NULL && at < variable->bounds.len; at++) {
+    const MsTy set = variable->bounds.ptr[at];
+    if (!ms_ty_is(types, set, MS_BUILTIN_TypeSet) || ms_ty_arg_count(types, set) == 0) {
+      continue;
+    }
+    MsTy shared = MS_TY_NONE;
+    for (uint32_t member = 0; member < ms_ty_arg_count(types, set); member++) {
+      MsTy field = MS_TY_NONE;
+      uint32_t index = 0;
+      if (!body_field(body, ms_ty_args(types, set)[member], name, &field, &index) || (member != 0 && field != shared)) {
+        return false;
+      }
+      shared = field;
+    }
+    *ty = shared;
+    return true;
+  }
+  return false;
+}
+
 static MsTy member_expr(Body *body, const MsExpr *expr, MsTy expected) {
   MsTy ty = MS_TY_NONE;
   if (type_member(body, expr, expected, &ty)) {
@@ -490,6 +515,9 @@ static MsTy member_expr(Body *body, const MsExpr *expr, MsTy expected) {
       ms_strbuild_free(&what);
     }
     body_set_ref(body, expr->id, (MsRef){.kind = MS_REF_FIELD, .index = index, .owner = receiver});
+    return ty;
+  }
+  if (set_field(body, receiver, expr->u.member.name, &ty)) {
     return ty;
   }
   MsMethodMatchList found = {0};

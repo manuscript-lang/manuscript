@@ -322,13 +322,10 @@ static bool unmet_member_bound(Body *body, MsTy receiver, MsName name, MsStrBuil
 
 void body_report_unknown_member(Body *body, const MsExpr *member, MsTy receiver) {
   const MsTyTable *types = &body->program->types;
-  if (!body_reports(body) || body->quiet || holds_invalid(types, receiver, 6) ||
-      ms_ty_kind(types, receiver) == MS_TY_FUNCTION) {
+  if (!body_reports(body) || body->quiet || holds_invalid(types, receiver, 6)) {
     return;
   }
   const MsSpan name = ms_names_span(body->program->names, member->u.member.name);
-  const MsTyVariable *variable =
-      ms_ty_kind(types, receiver) == MS_TY_VARIABLE ? ms_ty_variable(&body->program->types, receiver) : NULL;
   MsStrBuild reason = ms_strbuild_new(); /* a method whose receiver bound is unmet is explained even if the name is standard */
   const bool unmet = unmet_member_bound(body, receiver, member->u.member.name, &reason);
   ms_strbuild_free(&reason);
@@ -337,7 +334,7 @@ void body_report_unknown_member(Body *body, const MsExpr *member, MsTy receiver)
                     ms_string_from_span(ms_span_of_text("index assignment requires a List[T] or Map[K, V]; Bytes and String are immutable, build a new value instead")));
     return;
   }
-  if ((name.len != 0 && name.ptr[0] == '[') || (variable != NULL && variable->bounds.len != 0) ||
+  if ((name.len != 0 && name.ptr[0] == '[') ||
       (!unmet && ms_ty_kind(types, receiver) != MS_TY_PRIMITIVE && ms_check_standard_operation(body->program, member->u.member.name, receiver))) {
     return;
   }
@@ -371,7 +368,13 @@ void body_report_unknown_member(Body *body, const MsExpr *member, MsTy receiver)
     } else if (names.len != 0) {
       append_available(&text, &names, name);
     } else {
-      if (ms_ty_kind(types, receiver) == MS_TY_VARIABLE) {
+      const MsTyVariable *variable =
+          ms_ty_kind(types, receiver) == MS_TY_VARIABLE ? ms_ty_variable(&body->program->types, receiver) : NULL;
+      if (variable != NULL && variable->bounds.len != 0) {
+        ms_strbuild_append_text(&text, "; no bound of ");
+        show(body, &text, receiver);
+        ms_strbuild_append_text(&text, " declares it: add an interface that does to its bounds, or call it on a concrete type");
+      } else if (variable != NULL) {
         ms_strbuild_append_text(&text, "; ");
         show(body, &text, receiver);
         ms_strbuild_append_text(&text, " has no bound, so it has no operations: bound it where it is declared, as in "

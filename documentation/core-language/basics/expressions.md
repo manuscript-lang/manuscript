@@ -117,18 +117,18 @@ fn main() Int {
 | `+` | Both String | String |
 | `%` | Matching integer types, or both BigInt | The common operand type |
 | `..` | Both Int | List[Int]; a direct `for` uses a counter loop |
-| `<`, `<=`, `>`, `>=` | Matching integer or float types, both Decimal, both BigInt, or both String | Bool |
+| `<`, `<=`, `>`, `>=` | Same exact type satisfying [Comparable](../types/equality-and-hashing.md): integer and float types, Decimal, BigInt, String, Duration, Instant, Timestamp, a type with its own `compare`, or a type parameter bounded by Comparable | Bool |
 | `==`, `!=` | Same exact type satisfying Equal | Bool |
 | `not` | Bool | Bool |
 | `and`, `or` | Both Bool | Bool |
 | postfix `?` | Result[T, E], with a compatible enclosing Result error type | T on success; propagates E on failure |
-| `<`, `<=`, `>`, `>=` | Both Duration or both Instant in the same clock domain | Bool |
 
 Decimal, BigInt, Duration, Instant, and Result rows apply only to the standard declarations; a local type with the same name does not enable them.
 
 - String ordering is lexicographic by Unicode scalar value, with no normalization, case folding, or collation.
 - Mixed numeric arithmetic, numeric truthiness, and operator overloads do not exist: `1 + 0.5`, `"a" + 1`, and `not 1` fail checking. Convert or interpolate instead.
-- Duration and Instant have no arithmetic operators; use their methods (`add`, `subtract`, `shift`, `difference`). Only the ordering operators apply to them.
+- Duration and Instant have no arithmetic operators; use their methods (`add`, `subtract`, `shift`, `difference`). Only the ordering operators apply to them, and Instants must share a clock domain.
+- Bool, lists, maps, nullables, enums and records without their own `compare` have no order: `true < false` and `[1] < [2]` fail checking.
 
 See [equality and hashing](../types/equality-and-hashing.md), [type rules](../types/compatibility.md), and [numeric outcomes](numbers-and-booleans.md#runtime-numeric-outcomes).
 
