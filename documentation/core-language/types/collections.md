@@ -7,7 +7,7 @@ weight = 3
 
 Choose a `List` for an ordered sequence, a `Map` for lookup by key, and a `Set` to keep distinct values. Declare a collection with `var` when you will update it; use `.clone()` when you need an independent copy. See [mutation and references](references.md) for moves and borrows.
 
-`List`, `Map`, `Set`, `ListEntry[T]`, and `MapEntry[K: Hashable, V]` are prelude names (with `Optional`, `Result`, `Error`, `Equal`, `Hashable`); importing them is rejected. Builders and factories need imports. See [names and declaration order](../modules/declarations.md#names-and-declaration-order).
+`List`, `Map`, `Set`, `ListEntry[T]`, and `MapEntry[K Hashable, V]` are prelude names (with `Optional`, `Result`, `Error`, `Equal`, `Hashable`); importing them is rejected. Builders and factories need imports. See [names and declaration order](../modules/declarations.md#names-and-declaration-order).
 
 | Type | Contents |
 | --- | --- |

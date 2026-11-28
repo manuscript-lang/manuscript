@@ -16,7 +16,7 @@ Result[Decimal, DiscountError]
 
 ## Bounds
 
-Declare parameters as `[T, U]` with bounds such as `T: Equal` or `T: Read & Closeable`. A bound must resolve to an interface. Parameters are in scope in their bounds: `T: Converter[T]` is valid, `T: T` is not.
+Declare parameters as `[T, U]` with bounds such as `T Equal` or `T Read & Closeable`. A bound must resolve to an interface. Parameters are in scope in their bounds: `T Converter[T]` is valid, and a parameter cannot be its own bound.
 
 Don't name a parameter `Error`; use `E`. `Error` is a type, not an interface or a bound. Use it directly when a helper needs its `message`, `kind`, or `details`.
 
@@ -54,7 +54,7 @@ fn use_view() Bool {
 
 ### Clonable and Data
 
-- **`Clonable`**: every type qualifies except a resource (`Closeable`), a type holding one, a native type without a `clone` of its own (`Regex`, `Pipe`), a function value, and any type holding one of those. Generic code that copies a value of `T` (`xs.take(1)`, `xs.concat(ys)`, keeping a borrowed argument) declares `T: Clonable`.
+- **`Clonable`**: every type qualifies except a resource (`Closeable`), a type holding one, a native type without a `clone` of its own (`Regex`, `Pipe`), a function value, and any type holding one of those. Generic code that copies a value of `T` (`xs.take(1)`, `xs.concat(ys)`, keeping a borrowed argument) declares `T Clonable`.
 - **`Data`**: `json.parse`, `json.stringify`, and typed JSON stream codecs require it. Promises and pipes do not. Import it from `@std/core.ms`.
   - Types and enums qualify when every part does; `Closeable` types never do.
   - Of the collections, `List` qualifies, and a `Map[String, T]` qualifies when `T` does (it is a JSON object). A `Set` or a `Map` with another key type never does.
@@ -201,7 +201,7 @@ The check also covers mutual recursion, function values such as `grow[List[T]]`,
 
 ## Type sets
 
-`type Name = A | B | C` names a closed set of types. A set is only a bound: `T: Name` accepts exactly its members, and nothing exists at run time (no tag, no layout, no `match`). Generic code is monomorphized, so each instance is compiled for one member.
+`type Name = A | B | C` names a closed set of types. A set is only a bound: `T Name` accepts exactly its members, and nothing exists at run time (no tag, no layout, no `match`). Generic code is monomorphized, so each instance is compiled for one member.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript

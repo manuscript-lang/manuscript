@@ -29,7 +29,7 @@ interface Hashable {
 
 `Self` is the implementing type. An implementation writes its own type for `other`, as `CustomerKey.equals` does below, so it never has to check the argument's type.
 
-- In a bound `T: Equal`, `Self` is `T`: `left.equals(right)` takes two `T`.
+- In a bound `T Equal`, `Self` is `T`: `left.equals(right)` takes two `T`.
 - Through an `Equal` or `Comparable` value, `Self` is that interface: values of different types are unequal, and ordering them faults.
 - `Self` is allowed only as a whole parameter or result type of an interface operation.
 

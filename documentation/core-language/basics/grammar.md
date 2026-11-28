@@ -26,7 +26,7 @@ void var while
 - `try` and `impl` are not keywords. Writing the old `try f(x)` or an `impl` block reports the replacement: a postfix `?` (`f(x)?`) propagates a Result error, and `fn Type.name(...)` declares a method.
 - `opaque` is contextual: it modifies a `type` declaration only directly before `type` (`export opaque type Name { ... }`), so `opaque := 1` is valid.
 - `from` ends an import's names and `bench` starts a benchmark only before a string literal at a module item; both are contextual, so `from := 2` and `bench := 3` are valid.
-- Words from other languages (`def`, `lambda`, `elif`, `True`, `False`, `None`, `class`, `except`, `raise`, `finally`, `async`, `await`, `yield`, `global`, `nonlocal`, `del`, `is`, `pass`, `throw`, `catch`, `null`, `undefined`, `new`, `this`, `function`) and Python spellings (`f"..."`, `from "p" import x`, `Callable[[Int], Int]`, `a if c else b`, `case` arms, `()` for Void) are not syntax and get a targeted diagnostic naming the Manuscript form (`fn`, `else if`, `true`, `null`, `void`, `try expr`, and so on).
+- Words from other languages (`def`, `lambda`, `elif`, `True`, `False`, `None`, `class`, `except`, `raise`, `finally`, `async`, `await`, `yield`, `global`, `nonlocal`, `del`, `is`, `pass`, `throw`, `catch`, `null`, `undefined`, `new`, `this`, `function`) and Python spellings (`f"..."`, `from "p" import x`, `Callable[[Int], Int]`, `a if c else b`, `case` arms, `()` for Void) are not syntax and get a targeted diagnostic naming the Manuscript form (`fn`, `else if`, `true`, `null`, `void`, `expr?`, and so on).
 - `fixture` names the file fixture inside test blocks when a local `make_fixture` factory returns a concrete `TestHooks` implementer. `fixture` and `self` (the implementation receiver) cannot be declared as parameters or bindings.
 - Built-in type names and alternative constructors are not keywords.
 - `//` starts a comment through the end of the line. `#` is not syntax.
@@ -151,7 +151,7 @@ FunctionType  = "fn", "(", [ [ "var" ], Type, { ",", [ "var" ], Type } ], ")", T
 - Imports and declarations may interleave; order does not affect resolution. Import paths, test names, and bench names are plain literals (escapes allowed; plain `"..."` text, never `f"..."`).
 - `export` applies to records, aliases, enums, interfaces, named functions, constants and extern declarations, not tests, benches, or methods.
 - A receiver method is accepted only in the module that declares its type, and repeats the type's parameters (`fn Box[T].get() T`), optionally bounded (`fn Box[T Equal].same(...)`) or fixed (`fn List[Int].sum()`). Methods may also declare their own [type parameters](../types/contracts.md#generic-operations). Methods of one name on one receiver form are rejected as [contracts](../types/contracts.md#methods) describe.
-- `&` only combines generic bounds, as in `T: Read & Closeable`; order is irrelevant. There is no intersection or refinement syntax for value types.
+- `&` only combines generic bounds, as in `T Read & Closeable`; order is irrelevant. There is no intersection or refinement syntax for value types.
 - No module-level statements or `var`; a top-level `:=` is a [constant](../modules/declarations.md#constants). Snippets of local bindings are body fragments. Type paths add no wildcard imports; see [module rules](../modules/declarations.md).
 
 ## Statements and patterns
