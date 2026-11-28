@@ -23,9 +23,9 @@ fn check_file(ms, dir, name, source String) String! {
 
 	out := run(ms, ["check", "--only", "types", path]).wait()?
 	text := output_text(out.stdout, out.stderr)
-	if out.exit_code == 0 { return "" }
+	if out.exit_code == 0 { return ok("") }
 
-	return text
+	return ok(text)
 }
 
 fn main() Int! {
@@ -56,7 +56,7 @@ fn main() Int! {
 		}
 	}
 
-	if failed != 0 { return 1 }
+	if failed != 0 { return ok(1) }
 
-	return 0
+	return ok(0)
 }
