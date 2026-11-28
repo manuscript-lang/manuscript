@@ -73,8 +73,6 @@ static inline int32_t lay_lookup(const Layout *l, const uint32_t *table, uint32_
 bool fmt_group_statement_expressions(Fmt *f, MsSpan source, bool strip, MsSpan *out);
 void lay_parameters(Layout *l, MsParams params);
 size_t lay_following_width(const Layout *l, Nodes rest, bool clause);
-bool lay_compact_callback_suites(Fmt *f, const MsModule *module, const MsToken *tokens, size_t ntokens,
-                                 MsSpan source, MsSpan *out);
 MsToken *lay_layout_tokens(Layout *l, const MsToken *tokens, size_t ntokens, size_t *count);
 Nodes lay_sequence_tree(Layout *l, const MsToken *tokens, size_t ntokens, size_t *at, TokenList *code,
                         int close_kind);
