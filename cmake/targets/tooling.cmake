@@ -13,3 +13,5 @@ ms_library(ms_tooling tooling
     flow.c views.c views_custom.c views_mark.c report.c diff.c review.c doc_comment.c decl_header.c guide.c guide_pages.c search_text.c html.c
     occurrence.c occurrence_types.c json_value.c findings.c snippet.c checked_input.c ${page_c}
   LINK ms_base ms_syntax ms_project ms_check ms_own)
+ms_executable(findings_unit tooling SOURCES findings_unit.c LINK ms_tooling)
+add_test(NAME findings_unit COMMAND findings_unit)
