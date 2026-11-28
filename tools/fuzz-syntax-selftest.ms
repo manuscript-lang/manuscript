@@ -17,18 +17,18 @@ fn output_text(stdout, stderr Bytes) String {
 	return (stderr.decode_utf8() or "") + (stdout.decode_utf8() or "")
 }
 
-fn check_file(ms, dir, name, source String) String {
+fn check_file(ms, dir, name, source String) String! {
 	path := f"{dir}/{name}"
-	write_file(path, source).wait().get()
+	void write_file(path.clone(), source).wait()?
 
-	out := run(ms, ["check", "--only", "types", path]).wait().get()
+	out := run(ms, ["check", "--only", "types", path]).wait()?
 	text := output_text(out.stdout, out.stderr)
 	if out.exit_code == 0 { return "" }
 
 	return text
 }
 
-fn main() Int {
+fn main() Int! {
 	root := working_directory().get()
 	ms := tool_ms(root.clone())
 	scratch := temporary("fuzz-syntax-").get()
@@ -41,14 +41,14 @@ fn main() Int {
 			dir.clone(),
 			f"program-{seed}.ms",
 			program(seed).source,
-		)
+		)?
 
 		if problem != "" {
 			print(f"program({seed}) did not type-check:\n{problem}")
 			failed += 1
 		}
 
-		bad := check_file(ms, dir.clone(), f"type-{seed}.ms", type_error(seed).source)
+		bad := check_file(ms, dir.clone(), f"type-{seed}.ms", type_error(seed).source)?
 
 		if bad == "" or bad.contains("parse:") {
 			print(f"type_error({seed}) was not a check failure:\n{bad}")
