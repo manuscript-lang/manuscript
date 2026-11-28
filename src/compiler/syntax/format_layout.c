@@ -73,17 +73,8 @@ static size_t lay_group_following(const Layout *l, MsSpan text, Nodes nodes, siz
   return 0;
 }
 
-/* Parses and lexes `*text`, first compacting callback suites (which may rewrite `*text`). */
+/* Parses and lexes `*text`. */
 static bool layout_parse(Fmt *f, MsArena *scratch, MsSpan *text, MsModule *module, MsLexed *lexed) {
-  if (!fmt_parse(f, scratch, *text, module) || !fmt_lex(f, scratch, *text, lexed)) {
-    return false;
-  }
-  MsSpan compacted;
-  if (!lay_compact_callback_suites(f, module, lexed->tokens, lexed->ntokens, *text, &compacted)) {
-    return true;
-  }
-  ms_arena_free(scratch);
-  *text = compacted;
   return fmt_parse(f, scratch, *text, module) && fmt_lex(f, scratch, *text, lexed);
 }
 

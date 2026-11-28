@@ -454,9 +454,8 @@ bool ms_format(MsArena *result_arena, MsSpan source, MsStrBuild *out, MsDiag *di
   Fmt f = {.arena = &arena, .names = &names};
   MsSpan text = source;
   bool ok = fmt_once(&f, text, &text);
-  // Joining a multi-line header can make an `if` body eligible for the one-line form, which the
-  // compact pass judged on the unjoined text, so the output is formatted again until the pass
-  // has nothing left to do; a second run of `ms fmt` then changes nothing.
+  // A compound-assignment rewrite is judged on the text of this round, so format again until a
+  // round changes nothing. A second run of `ms fmt` then changes nothing.
   for (int round = 0; ok && round < 4; round++) {
     MsArena scratch = {0};
     MsModule module;
