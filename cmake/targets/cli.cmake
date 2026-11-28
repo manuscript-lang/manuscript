@@ -103,6 +103,11 @@ set_tests_properties(lsp_sweep PROPERTIES ENVIRONMENT "MS=$<TARGET_FILE:ms>")
 add_test(NAME lsp_parity COMMAND ms run ${CMAKE_SOURCE_DIR}/tools/lsp-parity.ms WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 set_tests_properties(lsp_parity PROPERTIES ENVIRONMENT "MS=$<TARGET_FILE:ms>")
 
+# Generated fuzz programs use the current syntax: valid seeds type-check, and injected errors fail checking.
+add_test(NAME fuzz_syntax COMMAND ms run ${CMAKE_SOURCE_DIR}/tools/fuzz-syntax-selftest.ms
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+set_tests_properties(fuzz_syntax PROPERTIES ENVIRONMENT "MS=$<TARGET_FILE:ms>")
+
 # The embedded-example check (docs-check) accepts a current example and rejects one in a removed syntax.
 add_test(NAME example_check_accepts_current COMMAND ms run ${CMAKE_SOURCE_DIR}/tools/example-check.ms -- tests/checks/examples/current.md
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})

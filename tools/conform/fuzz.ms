@@ -31,21 +31,21 @@ WORDS List[String] := [
 	"Tab\\there", "line\\nbreak", "quote\\\"d", "back\\\\slash", "brace{s}", "héllo",
 	"日本語", "naïve", "emoji 😀", "", "a", "MiXeD CaSe", "42"
 ]
-HELPER_FACT String := "fn fact(n Int) Int:\n    if n <= 1:\n        return 1\n    return n * fact(n - 1)\n"
-HELPER_FIB String := "fn fib(n Int) Int:\n    var a = 0\n    var b = 1\n    var i = 0\n    while i < n:\n        next := a + b\n        a = b\n        b = next\n        i += 1\n    return a\n"
-HELPER_GCD String := "fn gcd(a Int, b Int) Int:\n    if b == 0:\n        return a\n    return gcd(b, a % b)\n"
-HELPER_COLLATZ String := "fn collatz(start Int) Int:\n    var n = start\n    var steps = 0\n    while n != 1:\n        if n % 2 == 0:\n            n = n / 2\n        else:\n            n = 3 * n + 1\n        steps += 1\n    return steps\n"
+HELPER_FACT String := "fn fact(n Int) Int {\n    if n <= 1 {\n        return 1\n    }\n    return n * fact(n - 1)\n}\n"
+HELPER_FIB String := "fn fib(n Int) Int {\n    var a = 0\n    var b = 1\n    var i = 0\n    while i < n {\n        next := a + b\n        a = b\n        b = next\n        i += 1\n    }\n    return a\n}\n"
+HELPER_GCD String := "fn gcd(a Int, b Int) Int {\n    if b == 0 {\n        return a\n    }\n    return gcd(b, a % b)\n}\n"
+HELPER_COLLATZ String := "fn collatz(start Int) Int {\n    var n = start\n    var steps = 0\n    while n != 1 {\n        if n % 2 == 0 {\n            n = n / 2\n        } else {\n            n = 3 * n + 1\n        }\n        steps += 1\n    }\n    return steps\n}\n"
 // Statements that are each rejected by the checker, to splice into a valid program.
 TYPE_ERRORS List[String] := [
-	"    bad: Int = \"text\"", "    bad := 1 + \"one\"",
+	"    bad Int := \"text\"", "    bad := 1 + \"one\"",
 	"    bad := undefined_name + 1", "    bad := missing_function(3)",
-	"    bad: String = 5", "    bad := [1, \"two\"]", "    bad := 1.5 + 2",
+	"    bad String := 5", "    bad := [1, \"two\"]", "    bad := 1.5 + 2",
 	"    bad := true + 1", "    bad := say(1, 2)",
 	"    bad := \"abc\".no_such_method()", "    fixed := 1\n    fixed = 2",
-	"    bad := (1 < 2) < 3", "    bad: Bool = 1", "    bad := not 5",
-	"    bad := [1, 2].get(\"x\")", "    bad := 1 and 2",
-	"    if 1:\n        say(\"truthy\")", "    bad := say", "    return \"not an int\"",
-	"    bad := Map[Int, Int]().get(1, 2, 3)"
+	"    bad := (1 < 2) < 3", "    bad Bool := 1", "    bad := not 5",
+	"    bad := [1, 2][\"x\"]", "    bad := 1 and 2",
+	"    if 1 {\n        say(\"truthy\")\n    }", "    bad := say",
+	"    return \"not an int\"", "    bad := Map[Int, Int]().get(1, 2, 3)"
 ]
 
 // ---- the random stream ----
@@ -351,7 +351,7 @@ fn int_expr(var g Gen, depth Int) IntExpr {
 	}
 
 	i := below(g.rng, l.items.length())
-	return IntExpr(code: f"{l.name}.get({i})", ok: true, value: l.items[i])
+	return IntExpr(code: f"{l.name}[{i}]", ok: true, value: l.items[i])
 }
 
 // Retries until the expression does not fault.
@@ -499,7 +499,7 @@ fn list_expr(var g Gen, depth Int) ListExpr {
 	if which == 0 {
 		k := range(g.rng, 2, 9)
 		for x in base.items { items.append(x * k) }
-		return ListExpr(code: f"{base.name}.map(fn(x): x * {k})", items: items)
+		return ListExpr(code: f"{base.name}.map(x => x * {k})", items: items)
 	}
 
 	if which == 1 {
@@ -508,7 +508,7 @@ fn list_expr(var g Gen, depth Int) ListExpr {
 			if x > k { items.append(x) }
 		}
 		return ListExpr(
-			code: f"{base.name}.filter(fn x: x > {int_code(k)})",
+			code: f"{base.name}.filter(x => x > {int_code(k)})",
 			items: items,
 		)
 	}
@@ -517,7 +517,7 @@ fn list_expr(var g Gen, depth Int) ListExpr {
 		items = base.items.clone()
 		items.sort()
 		return ListExpr(
-			code: f"{base.name}.sorted(fn a, b: a.compare(b))",
+			code: f"{base.name}.sorted((a, b) => a.compare(b))",
 			items: items,
 		)
 	}
@@ -565,7 +565,7 @@ fn list_expr(var g Gen, depth Int) ListExpr {
 		if (x + k) % 2 == 0 { items.append(x + k) }
 	}
 	return ListExpr(
-		code: f"{base.name}.map(fn(x): x + {k}).filter(fn(x): x % 2 == 0)",
+		code: f"{base.name}.map(x => x + {k}).filter(x => x % 2 == 0)",
 		items: items,
 	)
 }
@@ -659,8 +659,9 @@ fn loop_statement(var g Gen) Void {
 
 	if kind == 0 {
 		g.out.append(f"    var {name} = 0")
-		g.out.append(f"    for i in 0..{n}:")
+		g.out.append(f"    for i in 0..{n} " + "{")
 		g.out.append(f"        {name} += i * {int_code(k)}")
+		g.out.append("    }")
 		g.out.append(say_line(name))
 		return
 	}
@@ -668,9 +669,10 @@ fn loop_statement(var g Gen) Void {
 	if kind == 1 {
 		g.out.append(f"    var {name} = 0")
 		g.out.append(f"    var step{name} = 0")
-		g.out.append(f"    while step{name} < {n}:")
+		g.out.append(f"    while step{name} < {n} " + "{")
 		g.out.append(f"        step{name} += 1")
 		g.out.append(f"        {name} += step{name} * step{name} + {int_code(k)}")
+		g.out.append("    }")
 		g.out.append(say_line(name))
 		return
 	}
@@ -679,11 +681,13 @@ fn loop_statement(var g Gen) Void {
 
 	l := g.lists[below(g.rng, g.lists.length())].clone()
 	g.out.append(f"    var {name} = 0")
-	g.out.append(f"    for x in {l.name}:")
-	g.out.append("        if x % 2 == 0:")
+	g.out.append(f"    for x in {l.name} " + "{")
+	g.out.append("        if x % 2 == 0 {")
 	g.out.append(f"            {name} += x")
-	g.out.append("        else:")
+	g.out.append("        } else {")
 	g.out.append(f"            {name} -= 1")
+	g.out.append("        }")
+	g.out.append("    }")
 	g.out.append(say_line(name))
 }
 
@@ -692,10 +696,11 @@ fn branch_statement(var g Gen) Void {
 	a := str_expr(g, 1)
 	b := str_expr(g, 1)
 	g.tags.append("control-flow")
-	g.out.append(f"    if {cond}:")
+	g.out.append(f"    if {cond} " + "{")
 	g.out.append(f"        say({a.code})")
-	g.out.append("    else:")
+	g.out.append("    } else {")
 	g.out.append(f"        say({b.code})")
+	g.out.append("    }")
 }
 
 fn helper_call(var g Gen) Void {
@@ -772,12 +777,12 @@ fn fault_statement(var g Gen) Void {
 		g.out.append("    say(f\"" + braced(f"{a.code} % {big}") + "\")")
 	} else if g.lists.is_empty() {
 		g.out.append(f"    {big} := [1, 2, 3]")
-		g.out.append("    say(f\"" + braced(f"{big}.get({3 + k})") + "\")")
+		g.out.append("    say(f\"" + braced(f"{big}[{3 + k}]") + "\")")
 	} else {
 		l := g.lists[below(g.rng, g.lists.length())].clone()
 		g.out.append(
 			"    say(f\"" + braced(
-				f"{l.name}.get({l.items.length() + k})"
+				f"{l.name}[{l.items.length() + k}]"
 			) + "\")"
 		)
 	}
@@ -786,7 +791,7 @@ fn fault_statement(var g Gen) Void {
 fn assemble(g Gen, seed Int) Generated {
 	var source = f"// Generated by ms-conform fuzz, seed {seed}.\n"
 	source += "import stdout from \"@std/io/io.ms\"\n"
-	source += "\nfn say(text String) Void:\n    _written := stdout().write(f\"{text}\\n\")\n\n"
+	source += "\nfn say(text String) Void {\n    _written := stdout().write(f\"{text}\\n\")\n}\n\n"
 
 	var seen = List[String]()
 
@@ -797,9 +802,9 @@ fn assemble(g Gen, seed Int) Generated {
 		}
 	}
 
-	source += "export fn main() Int:\n"
+	source += "export fn main() Int {\n"
 	for line in g.out { source += line + "\n" }
-	source += "    return 0\n"
+	source += "    return 0\n}\n"
 	return Generated(source: source, tags: sorted_unique(g.tags))
 }
 
