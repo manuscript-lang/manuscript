@@ -28,7 +28,7 @@ fn check_file(ms, dir, name, source String) String! {
 	return ok(text)
 }
 
-fn main() Int! {
+fn main() Int {
 	root := working_directory().get()
 	ms := tool_ms(root.clone())
 	scratch := temporary("fuzz-syntax-").get()
@@ -36,19 +36,33 @@ fn main() Int! {
 	var failed = 0
 
 	for seed in 0..12 {
-		problem := check_file(
+		checked := check_file(
 			ms,
 			dir.clone(),
 			f"program-{seed}.ms",
 			program(seed).source,
-		)?
+		)
+
+		if checked.is_error() {
+			print(checked.err().message)
+			return 1
+		}
+
+		problem := checked.get()
 
 		if problem != "" {
 			print(f"program({seed}) did not type-check:\n{problem}")
 			failed += 1
 		}
 
-		bad := check_file(ms, dir.clone(), f"type-{seed}.ms", type_error(seed).source)?
+		typed := check_file(ms, dir.clone(), f"type-{seed}.ms", type_error(seed).source)
+
+		if typed.is_error() {
+			print(typed.err().message)
+			return 1
+		}
+
+		bad := typed.get()
 
 		if bad == "" or bad.contains("parse:") {
 			print(f"type_error({seed}) was not a check failure:\n{bad}")
@@ -56,7 +70,7 @@ fn main() Int! {
 		}
 	}
 
-	if failed != 0 { return ok(1) }
+	if failed != 0 { return 1 }
 
-	return ok(0)
+	return 0
 }
