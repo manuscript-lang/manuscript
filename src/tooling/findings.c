@@ -59,10 +59,21 @@ bool finding_is_package_file(MsSpan file) {
   return ms_span_starts_with_text(file, "@") && !ms_span_starts_with_text(file, "@std/");
 }
 
+/* `file` as a location under `root`. An absolute path is already a location, so the root is not prefixed
+ * (prefixing `/tmp` onto `/tmp/missing.ms` printed `/tmp//tmp/missing.ms`). A package file (`@id/...`) has no
+ * place in the project directory. */
+static void finding_location(MsStrBuild *out, MsSpan root, MsSpan file) {
+  if (finding_is_package_file(file) || root.len == 0 || ms_path_is_absolute(file)) {
+    ms_strbuild_append(out, file);
+    return;
+  }
+  ms_path_append_joined(out, root, file);
+}
+
 /* The excerpt under a diagnostic: the file is read again from `root`. */
 static void finding_excerpt(MsStrBuild *out, MsSpan root, const Finding *finding) {
   MsStrBuild path = ms_strbuild_new();
-  ms_path_append_joined(&path, finding_is_package_file(finding->file) ? (MsSpan){0} : root, finding->file);
+  finding_location(&path, root, finding->file);
   MsBytes bytes = {0};
   if (ms_file_read(ms_strbuild_span(&path), &bytes)) {
     ms_snippet_excerpt(out, ms_bytes_span(&bytes), finding->diag.pos, finding->diag.has_end, finding->diag.end);
@@ -104,7 +115,7 @@ void finding_terminal_text(MsStrBuild *err, MsSpan root, const FindingList *find
   size_t warnings = 0;
   for (size_t i = 0; i < findings->len; i++) {
     const Finding *finding = &findings->ptr[i];
-    ms_path_append_joined(err, finding_is_package_file(finding->file) ? (MsSpan){0} : root, finding->file);
+    finding_location(err, root, finding->file);
     ms_strbuild_printf(err, ":%u:%u: ", finding->diag.pos.line, finding->diag.pos.column);
     if (finding->phase[0] != '\0') {
       ms_strbuild_append_text(err, finding->phase);
